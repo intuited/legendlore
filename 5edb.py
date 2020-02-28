@@ -11,7 +11,7 @@ def group(iterable, key):
     return ret
 
 def sort_group(group):
-    return sorted(group.items(), key=lambda i: len(i[1]))
+    return sorted(group.items(), key=lambda i: len(i[1]), reverse=True)
 
 def parse_db(db_file='FC5eXML/CoreOnly.xml'):
     debug('Parsing xml...')
@@ -37,10 +37,9 @@ def spell_tag_analysis(tree):
     for k, g in spell_tag_groups:
         print("{0}: {1} nodes".format(k, len(g)))
         value_group = group(g, lambda n: n.text)
-        #value_group = sorted(value_group.items(), key=lambda x: len(x[1]))
         if len(value_group.keys()) > 20:
             print("  {0} unique values.  Top Ten:".format(len(value_group.keys())))
-            topten = sort_group(value_group)[-10:]
+            topten = sort_group(value_group)[:10]
             summary = lambda i: '    {0}: {1}'.format(len(i[1]), str(i[0]))
             print('\n'.join(summary(item) for item in topten))
         else:
