@@ -71,9 +71,9 @@ def parse_spell_components(components):
     if components is None:
         return []
     c = []
-    m = re.match('^[^(,]*,', components.strip())
+    m = re.match('^[^(,]*,?', components.strip())
     while m:
-        c.append(m.group())
+        c.append(m.group().strip(' ,'))
         components = components[m.end():]
         m = re.match('^[^(,]*,', components.strip())
     return c
@@ -165,7 +165,7 @@ def parse_spells(tree):
         spell['components'] = parse_spell_components(node.find('components').text)
         spell['concentration'], spell['duration'] = parse_spell_duration(node.find('duration').text)
         spell['classes'] = parse_spell_classes(node.find('classes').text)
-        spell['text'] = parse_spell_text(n.text for n in node.findall('text'))
+        spell['text'], spell['source'] = parse_spell_text(n.text for n in node.findall('text'))
         spell['roll'] = getattr(node.find('roll'), 'text', None)
         #TODO: figure out what to do with this property
         yield spell
