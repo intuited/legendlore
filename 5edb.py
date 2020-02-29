@@ -3,8 +3,12 @@ from itertools import groupby
 from collections import defaultdict, Counter
 import re
 from pprint import pprint
+from textwrap import dedent
+from collections import namedtuple
 
 debug = print
+
+Reference = namedtuple('Reference', ('book', 'page'))
 
 def group(iterable, key):
     ret = defaultdict(list)
@@ -121,20 +125,80 @@ def parse_spell_classes(classes):
     """
     return sorted(classes)
 
+def parse_spell_source(source):
+    """Breaks source line into (source, page) components.
+
+    >>> source = "Xanathar's Guide to Everything, p. 152"
+    >>> parse_spell_source(source)
+    ("Xanathar's Guide to Everything", 152)
+    >>> source = "Player's Handbook, p. 277 (spell)"
+    >>> parse_spell_source(source)
+    ("Player's Handbook", 277)
+    >>> source = "Xanathar's Guide to Everything, p. 20 (class feature)"
+    >>> parse_spell_source(source)
+    """
+    source = source.strip()
+    m = re.match('^(?P<book>.*),\s*p\.?\s*(?P<page>\d+)\s*(?P<extra>.*).*$', source)
+    if m is None:
+        debug(f"parse_spell_source: failed match on line '{source}'")
+        return None
+    #debug(book)
+    extra = m.groupdict()['extra']
+    if extra == '(spell)' or not extra:
+        return Reference(m.groupdict()['book'], int(m.groupdict()['page']))
+    if extra == '(class feature)':
+        return None
+    else:
+        debug(f"parse_spell_source: unknown extra '{extra}'")
+
 def parse_spell_text(lines):
-    state = {'source': None}
+    """Parses list of strings containing <text> nodes from xml.
+
+    Checks for source book in last line of `lines`.
+    Returns (text, sources) where
+    -   `text` is the newline-joined contents of non-source lines
+    -   `sources` is a list of tuples with form (source, page)
+        - `source` is a string
+        - `page` is an int
+
+    >>> text = [
+    ...     "• A prone creature's only movement option is to crawl, unless it stands up and thereby ends the condition.",
+    ...     "",
+    ...     "• The creature has disadvantage on attack rolls.",
+    ...     "",
+    ...     "• An attack roll against the creature has advantage if the attacker is within 5 feet of the creature. Otherwise, the attack roll has disadvantage.",
+    ...     None,
+    ...     "Source: Xanathar's Guide to Everything, p. 168",
+    ...     "Elemental Evil Player's Companion, p. 22",
+    ...     "Princes of the Apocalypse, p. 240"]
+    >>> parsed = parse_spell_text(text)
+    >>> print(parsed[0])
+    • A prone creature's only movement option is to crawl, unless it stands up and thereby ends the condition.
+    <BLANKLINE>
+    • The creature has disadvantage on attack rolls.
+    <BLANKLINE>
+    • An attack roll against the creature has advantage if the attacker is within 5 feet of the creature. Otherwise, the attack roll has disadvantage.
+    >>> parsed[1] == (("Xanathar's Guide to Everything", 168),
+    ...               ("Elemental Evil Player's Companion", 22),
+    ...               ("Princes of the Apocalypse", 240))
+    True
+    """
+    sources = []
     def process(lines):
         for line in lines:
             if line is None:
-                yield ''
+                continue
             elif line[:8] == 'Source: ':
-                if state['source']:
-                    debug('Found two "Source: " lines')
-                state['source'] = line[8:]
+                parsed = parse_spell_source(line[8:])
+            elif sources:
+                parsed = parse_spell_source(line)
             else:
                 yield line.strip()
+                continue
+            if parsed is not None:
+                sources.append(parsed)
     text = '\n'.join(process(lines))
-    return text, state['source']
+    return text, tuple(sources)
 
 """thing to parse the initial db.
 
@@ -182,8 +246,8 @@ def parsed_spells_analysis(spells):
     print('spells with no source:')
     pprint([spell['name'] for spell in spells
                               if not spell.get('source', False)])
-    print('spell sources:')
-    pprint(Counter(s['source'] for s in spells))
+    print('spell books:')
+    pprint(Counter(ref.book for s in spells for ref in s['source']))
 
 if __name__ == '__main__':
     tree = parse_db()
