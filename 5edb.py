@@ -8,6 +8,7 @@ from collections import namedtuple
 from functools import partial
 
 debug = print
+log = print
 
 pprint = partial(pprint, indent=4)
 
@@ -132,10 +133,9 @@ def parse_spell_source(source):
     >>> source = "Xanathar's Guide to Everything, p. 20 (class feature)"
     >>> parse_spell_source(source)
     """
-    source = source.strip()
-    m = re.match('^(?P<book>.*),\s*p\.?\s*(?P<page>\d+)\s*(?P<extra>.*).*$', source)
+    m = re.match('^(?P<book>.*?),?\s*p\.?\s*(?P<page>\d+)\s*(?P<extra>.*).*$', source)
     if m is None:
-        debug(f"parse_spell_source: failed match on line '{source}'")
+        log(f"parse_spell_source: failed match on line '{source}'")
         return None
     #debug(book)
     extra = m.groupdict()['extra']
@@ -144,7 +144,21 @@ def parse_spell_source(source):
     if extra == '(class feature)':
         return None
     else:
-        debug(f"parse_spell_source: unknown extra '{extra}'")
+        log(f"parse_spell_source: unknown extra '{extra}'")
+
+def expand_newlines(lines):
+    r"""Split strings with newlines into multiple strings.
+
+    >>> l = ["1\n2\n3", None, "4\n5\n6"]
+    >>> list(expand_newlines(l))
+    ['1', '2', '3', None, '4', '5', '6']
+    """
+    for line in lines:
+        if line is None:
+            yield line
+        else:
+            for l in line.rstrip().split('\n'):
+                yield l
 
 def parse_spell_text(lines):
     """Parses list of strings containing <text> nodes from xml.
@@ -189,18 +203,22 @@ def parse_spell_text(lines):
     sources = []
     def process(lines):
         in_sources = False # State that tracks if we're recording sources
+        lines = list(expand_newlines(lines))
+
         for line in lines:
             if line is None:
                 if in_sources:
                     in_sources = False
                 continue
-            elif line[:8] == 'Source: ':
+
+            line = line.strip()
+            if line[:8] == 'Source: ':
                 in_sources = True
                 parsed = parse_spell_source(line[8:])
             elif in_sources:
                 parsed = parse_spell_source(line)
             else:
-                yield line.strip()
+                yield line
                 continue
             if parsed is not None:
                 sources.append(parsed)
