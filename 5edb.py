@@ -1,6 +1,6 @@
 from lxml import etree
 from itertools import groupby
-from collections import defaultdict
+from collections import defaultdict, Counter
 import re
 from pprint import pprint
 
@@ -174,6 +174,16 @@ def parsed_spells_analysis(spells):
     print('spell count: {0}'.format(len(spells)))
     print('first spell:')
     pprint(spells[0])
+    print('class occurrence counts:')
+    pprint(Counter(c for spell in spells for c in spell['classes']),
+           compact=True, width=160)
+    print('spells with no classes:')
+    pprint([spell for spell in spells if not spell['classes']])
+    print('spells with no source:')
+    pprint([spell['name'] for spell in spells
+                              if not spell.get('source', False)])
+    print('spell sources:')
+    pprint(Counter(s['source'] for s in spells))
 
 if __name__ == '__main__':
     tree = parse_db()
