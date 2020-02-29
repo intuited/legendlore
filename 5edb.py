@@ -114,19 +114,10 @@ def parse_spell_classes(classes):
         return []
     classes = re.split(',\s*', classes)
     classes = [c.strip() for c in classes]
-    """I thiiiiink I don't need this
-    def parse_subclass(c):
-        m = re.match('^\s*(?P<class>[^(]]+)\s*'
-                     + '(?P<subclass>\([^)]+\))?\s*$', c)
-        m = m.groups()
-        c = m[0]
-        s = m[1][1:][:-1].trim().rtrim()
-        return c, s
-    """
     return sorted(classes)
 
 def parse_spell_source(source):
-    """Breaks source line into (source, page) components.
+    """Breaks source line into Reference(book, page) components.
 
     >>> source = "Xanathar's Guide to Everything, p. 152"
     >>> parse_spell_source(source)
@@ -229,7 +220,7 @@ def parse_spells(tree):
         spell['components'] = parse_spell_components(node.find('components').text)
         spell['concentration'], spell['duration'] = parse_spell_duration(node.find('duration').text)
         spell['classes'] = parse_spell_classes(node.find('classes').text)
-        spell['text'], spell['source'] = parse_spell_text(n.text for n in node.findall('text'))
+        spell['text'], spell['sources'] = parse_spell_text(n.text for n in node.findall('text'))
         spell['roll'] = getattr(node.find('roll'), 'text', None)
         #TODO: figure out what to do with this property
         yield spell
@@ -245,9 +236,9 @@ def parsed_spells_analysis(spells):
     pprint([spell for spell in spells if not spell['classes']])
     print('spells with no source:')
     pprint([spell['name'] for spell in spells
-                              if not spell.get('source', False)])
+                              if not spell.get('sources', False)])
     print('spell books:')
-    pprint(Counter(ref.book for s in spells for ref in s['source']))
+    pprint(Counter(ref.book for s in spells for ref in s['sources']))
 
 if __name__ == '__main__':
     tree = parse_db()
