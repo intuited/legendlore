@@ -5,8 +5,11 @@ import re
 from pprint import pprint
 from textwrap import dedent
 from collections import namedtuple
+from functools import partial
 
 debug = print
+
+pprint = partial(pprint, indent=4)
 
 Reference = namedtuple('Reference', ('book', 'page'))
 
@@ -56,6 +59,7 @@ def parse_casting_time(time):
     #TODO: write this, validate
     # Why are there None values for this?
     return time
+
 def parse_spell_range(r):
     #TODO: write this, validate
     return r
@@ -247,8 +251,7 @@ def parsed_spells_analysis(spells):
     print('spells with no classes:')
     pprint([spell for spell in spells if not spell['classes']])
     print('spells with no source:')
-    pprint([spell['name'] for spell in spells
-                              if not spell.get('sources', False)])
+    pprint([spell for spell in spells if not spell.get('sources', False)])
     print('spell books:')
     pprint(Counter(ref.book for s in spells for ref in s['sources']))
 
