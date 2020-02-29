@@ -121,10 +121,10 @@ def parse_spell_source(source):
 
     >>> source = "Xanathar's Guide to Everything, p. 152"
     >>> parse_spell_source(source)
-    ("Xanathar's Guide to Everything", 152)
+    Reference(book="Xanathar's Guide to Everything", page=152)
     >>> source = "Player's Handbook, p. 277 (spell)"
     >>> parse_spell_source(source)
-    ("Player's Handbook", 277)
+    Reference(book="Player's Handbook", page=277)
     >>> source = "Xanathar's Guide to Everything, p. 20 (class feature)"
     >>> parse_spell_source(source)
     """
@@ -148,9 +148,7 @@ def parse_spell_text(lines):
     Checks for source book in last line of `lines`.
     Returns (text, sources) where
     -   `text` is the newline-joined contents of non-source lines
-    -   `sources` is a list of tuples with form (source, page)
-        - `source` is a string
-        - `page` is an int
+    -   `sources` is a list of Reference namedtuples
 
     >>> text = [
     ...     "• A prone creature's only movement option is to crawl, unless it stands up and thereby ends the condition.",
@@ -169,19 +167,33 @@ def parse_spell_text(lines):
     • The creature has disadvantage on attack rolls.
     <BLANKLINE>
     • An attack roll against the creature has advantage if the attacker is within 5 feet of the creature. Otherwise, the attack roll has disadvantage.
-    >>> parsed[1] == (("Xanathar's Guide to Everything", 168),
-    ...               ("Elemental Evil Player's Companion", 22),
-    ...               ("Princes of the Apocalypse", 240))
+    >>> parsed[1] == (Reference("Xanathar's Guide to Everything", 168),
+    ...               Reference("Elemental Evil Player's Companion", 22),
+    ...               Reference("Princes of the Apocalypse", 240))
     True
+    >>> text = [
+    ...     "Your spell bolsters your allies with toughness and resolve. Choose up to three creatures within range. Each target's hit point maximum and current hit points increase by 5 for the duration.",
+    ...     ""
+    ...     "At Higher Levels: When you cast this spell using a spell slot of 3rd level or higher, a target's hit points increase by an additional 5 for each slot level above 2nd.",
+    ...     None,
+    ...     "Source: Player's Handbook, p. 211",
+    ...     None,
+    ...     "* Oath, Domain, or Circle of the Land spell (always prepared)"]
+    >>> print(parse_spell_text(text)[1])
+    (Reference(book="Player's Handbook", page=211),)
     """
     sources = []
     def process(lines):
+        in_sources = False # State that tracks if we're recording sources
         for line in lines:
             if line is None:
+                if in_sources:
+                    in_sources = False
                 continue
             elif line[:8] == 'Source: ':
+                in_sources = True
                 parsed = parse_spell_source(line[8:])
-            elif sources:
+            elif in_sources:
                 parsed = parse_spell_source(line)
             else:
                 yield line.strip()
