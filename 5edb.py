@@ -1,5 +1,6 @@
 from lxml import etree
-from itertools import groupby
+from itertools import groupby, chain
+chainfi = chain.from_iterable
 from collections import defaultdict, Counter
 import re
 from pprint import pprint
@@ -153,12 +154,13 @@ def expand_newlines(lines):
     >>> list(expand_newlines(l))
     ['1', '2', '3', None, '4', '5', '6']
     """
-    for line in lines:
-        if line is None:
-            yield line
-        else:
-            for l in line.rstrip().split('\n'):
-                yield l
+    return chainfi([None] if l is None else l.split('\n') for l in lines)
+    #for line in lines:
+    #    if line is None:
+    #        yield line
+    #    else:
+    #        for l in line.rstrip().split('\n'):
+    #            yield l
 
 def parse_spell_text(lines):
     """Parses list of strings containing <text> nodes from xml.
