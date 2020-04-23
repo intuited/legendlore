@@ -25,6 +25,7 @@ def sort_group(group):
     return sorted(group.items(), key=lambda i: len(i[1]), reverse=True)
 
 def parse_db(db_file='FC5eXML/CoreOnly.xml'):
+    """Parse XML file with lxml parser."""
     debug('Parsing xml...')
     parser = etree.XMLParser()
     with open(db_file, 'r') as xmlfile:
