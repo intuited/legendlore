@@ -275,9 +275,3 @@ def parsed_spells_analysis(spells):
     pprint([spell for spell in spells if not spell.get('sources', False)])
     print('spell books:')
     pprint(Counter(ref.book for s in spells for ref in s['sources']))
-
-if __name__ == '__main__':
-    tree = parse_db()
-    #spell_tag_analysis(tree)
-    parsed = list(parse_spells(tree))
-    parsed_spells_analysis(parsed)
