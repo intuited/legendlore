@@ -444,7 +444,11 @@ def subclass_set_for_spell(spell, class_):
         else:
             return '-'
 
-def spell_summary_by_class(spell, classes):
+spell_classes = ["Artificer", "Bard", "Cleric", "Druid", "Fighter", "Monk",
+                 "Paladin", "Ranger", "Rogue", "Sorcerer", "Warlock", "Wizard",
+                 "Eldritch Invocations", "Martial Adept", "Ritual Caster"]
+
+def spell_summary_by_class(spell, classes=spell_classes):
     """ Return a line summarizing the spell with a column for each class."""
     components = [spell['name'],
                   abbrev_time(spell),
@@ -461,9 +465,6 @@ def search_desc(spells, string):
 
 def search_desc_by_class(spells, string):
     """Like `search_desc` but adds a column for each casting class."""
-    classes = ["Artificer", "Bard", "Cleric", "Druid", "Fighter", "Monk",
-               "Paladin", "Ranger", "Rogue", "Sorcerer", "Warlock", "Wizard",
-               "Eldritch Invocations", "Martial Adept", "Ritual Caster"]
 
     fields = ['name', 't', 'r', 'd', 'l']
     fields += [abbrev_class(c) for c in classes]
@@ -471,9 +472,13 @@ def search_desc_by_class(spells, string):
     matches = (s for s in spells if string.lower() in s['text'].lower())
 
     lines = [', '.join(fields)]
-    lines += [spell_summary_by_class(s, classes) for s in matches]
+    lines += [spell_summary_by_class(s, spell_classes) for s in matches]
 
     return "\n".join(lines)
+
+def spell_dict(spells):
+    """Returns a dictionary of the items in `spells` indexed by name."""
+    return dict((s['name'].lower(), s) for s in spells)
 
 """thing to parse the initial db.
 
