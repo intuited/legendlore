@@ -228,6 +228,253 @@ def parse_spell_text(lines):
     text = '\n'.join(process(lines))
     return text, tuple(sources)
 
+def abbrev_time(spell):
+    """Abbreviate time.
+
+    Possible return values: A, R, 1m, C1h, etc.
+    """
+    abbr = {None: 'N',
+            'None': 'N',
+            '1 action': 'A',
+            'part of the Attack action to fire a magic arrow': 'A*',
+            '1 bonus action': 'B',
+            '1 reaction': 'R',
+            '1 reaction, which you take when you take acid, cold, fire, lightning, or thunder damage': 'R*',
+            '1 reaction, which you take when a humanoid you can see within 60 feet of you dies': 'R*',
+            '1 minute': '1m',
+            '10 minutes': '10m',
+            '1 hour': '1h',
+            '8 hours': '8h',
+            '1 action or 8 hours': 'A/8h',
+            '12 hours': '12h',
+            '24 hours': '24h'}
+    return abbr[spell['time']]
+
+def abbrev_range(spell):
+    """Abbreviate range.
+
+    Possible return values: 10', 120', 500mi, S, S(30'cone), Unlimited, etc
+    """
+    abbr = {None: "N",
+            'Self': 'S',
+            'Self (10-foot radius)': "S(10'r)",
+            'Self (10-foot-radius sphere)': "S(10'r-sphere)",
+            'Self (10-foot-radius hemisphere)': "S(10'r-hemisphere)",
+            'Self (15-foot-radius)': "S(15'r)",
+            'Self (15-foot cone)': "S(15'cone)",
+            'Self (15-foot cube)': "S(15'cube)",
+            'Self (30-foot radius)': "S(30'r)",
+            'Self (30-foot cone)': "S(30'cone)",
+            'Self (60-foot line)': "S(60'line)",
+            'Self (60 foot cone)': "S(60'cone)",
+            'Self (60-foot cone)': "S(60'cone)",
+            'Self (100-foot line)': "S(100'line)",
+            'Self (5-mile radius)': "S(5mi.r)",
+            'Touch': "T",
+            'Special': "Special",
+            'Sight': "Sight",
+            '5 feet': "5'",
+            '10 feet': "10'",
+            '15 feet': "15'",
+            '30 feet': "30'",
+            '60 feet': "60'",
+            '90 feet': "90'",
+            '100 feet': "100'",
+            '120 feet': "120'",
+            '150 feet': "150'",
+            '300 feet': "300'",
+            '500 feet': "500'",
+            '1 mile': "1mi",
+            '500 miles': "500mi",
+            'Unlimited': "Unlimited"}
+    return abbr[spell['range']]
+
+def abbrev_duration(spell):
+    """Abbreviate spell duration.
+
+    Some possible return values:
+    N (none), S (special), 1r (1 round), 1m, 1h, <=1h, C1h (1h concentration)
+    """
+    abbr = {None: 'N',
+            'Instantaneous': 'I',
+            'Instantaneous or 1 hour (see below)': 'I/1h',
+            'Special': "S",
+            '1 turn': '1t',
+            'up to 1 round': '<=1r',
+            '1 round': '1r',
+            'up to 6 rounds': '<=6r',
+            'up to 1 minute': "<=1m",
+            'Up to 1 minute': '<=1m',
+            '1 minute': '1m',
+            'up to 10 minutes': "<=10m",
+            '10 minutes': '10m',
+            'up to 1 hour': "<=1h",
+            'Up to 1 hour': '<=1h',
+            '1 hour': "1h",
+            'up to 2 hours': '<=2h',
+            'up to 8 hours': '<=8h',
+            'Up to 8 hours': '<=8h',
+            '8 hours': "8h",
+            'up to 1 day': '<=1d',
+            '1 day': '1d',
+            '10 days': "10d",
+            '24 hours': "24h",
+            'up to 24 hours': "<=24h",
+            '30 days': '30d',
+            '7 days': '7d',
+            'Until dispelled or triggered': 'UD/T',
+            'Until dispelled': "UD"}
+
+    c = 'C' if spell['concentration'] else ''
+    return c + abbr[spell['duration']]
+
+def abbrev_class(c):
+    """Abbreviate a given class name.
+
+    Some possible return values:
+    "Wz", "Wl", "WlG", "FEK", "RAT", "R"
+    - FEK: Fighter (Eldritch Knight)
+    - WlG: Warlock (Great Old One)
+    - RAT: Rogue (Arcane Trickster)
+    - R: Ranger
+    """
+    abbr = {'Artificer': "A",
+            'Bard': "B",
+            'Cleric (Arcana)': "CA",
+            'Cleric (Death)': "CD",
+            'Cleric (Forge)': "CF",
+            'Cleric (Grave)': "CG",
+            'Cleric (Knowledge)': "CK",
+            'Cleric (Life)': "CLf",
+            'Cleric (Light)': "CLt",
+            'Cleric (Nature)': "CN",
+            'Cleric (Order)': "CO",
+            'Cleric (Protection)': "CP",
+            'Cleric (Tempest)': "CTm",
+            'Cleric (Trickery)': "CTr",
+            'Cleric (War)': "CW",
+            'Cleric': "C",
+            'Druid (Arctic)': "DA",
+            'Druid (Coast)': "DC",
+            'Druid (Desert)': "DD",
+            'Druid (Forest)': "DF",
+            'Druid (Grassland)': "DG",
+            'Druid (Mountain)': "DM",
+            'Druid (Swamp)': "DS",
+            'Druid (Underdark)': "DU",
+            'Druid': "D",
+            'Eldritch Invocations': "EI",
+            'Fighter': "F",
+            'Fighter (Arcane Archer)': "FAA",
+            'Fighter (Battle Master)': "FBM",
+            'Fighter (Eldritch Knight)': "FEK",
+            'Martial Adept': "MA",
+            'Monk': "M",
+            'Monk (Way of the Four Elements)': "M4",
+            'Paladin (Ancients)': "PA",
+            'Paladin (Conquest)': "PCn",
+            'Paladin (Crown)': "PCr",
+            'Paladin (Devotion)': "PD",
+            'Paladin (Oathbreaker)': "PO",
+            'Paladin (Redemption)': "PR",
+            'Paladin (Treachery)': "PT",
+            'Paladin (Vengeance)': "PV",
+            'Paladin': "P",
+            'Ranger (Gloom Stalker)': "RGS",
+            'Ranger (Horizon Walker)': "RHW",
+            'Ranger (Monster Slayer)': "RMS",
+            'Ranger (No Spells)': "R",
+            'Ranger (Primeval Guardian)': "RPG",
+            'Ranger': "Ra",
+            'Ritual Caster': "Rit",
+            'Rogue': "Ro",
+            'Rogue (Arcane Trickster)': "AT",
+            'Sorcerer (Stone Sorcery)': "SSS",
+            'Sorcerer': "S",
+            'Warlock (Archfey)': "WlA",
+            'Warlock (Celestial)': "WlC",
+            'Warlock (Fiend)': "WlF",
+            'Warlock (Great Old One)': "WlG",
+            'Warlock (Hexblade)': "WlH",
+            'Warlock (Raven Queen)': "WlR",
+            'Warlock (Seeker)': "WlS",
+            'Warlock (Undying)': "WlU",
+            'Warlock': "Wl",
+            'Wizard': "Wz"}
+
+    return abbr[c]
+
+def abbrev_classes(spell):
+    """Abbreviate the classes which have access to a given spell.
+
+    Return values are those from abbrev_class, joined with '+'.
+    """
+    return '+'.join(abbr[c] for c in spell['classes'])
+
+def spell_summary(spell):
+    """Return a string summarizing the spell.
+
+    Format:
+        NAME, TIME, RANGE, DURATION, LEVEL, CLASSES
+    """
+    f = {
+        'name': spell['name'],
+        't': abbrev_time(spell),
+        'r': abbrev_range(spell),
+        'd': abbrev_duration(spell),
+        'l': spell['level'],
+        'classes': abbrev_classes(spell)}
+
+    return "{name}, {t}, {r}, {d}, {l}, {classes}".format(**f)
+
+def subclass_set_for_spell(spell, class_):
+    """Returns a terse indicator of which subclasses of `class` get the spell.
+
+    Returns '*' if all do
+    Returns '-' if none do
+    Returns eg 'CO+CLf' if Order and Life clerics get the spell.
+    """
+    if class_ in spell['classes']:
+        return '*'
+    else:
+        subclasses = [c for c in spell['classes']
+                      if c.startswith(class_)]
+        if subclasses:
+            return '+'.join(abbrev_class(c) for c in subclasses)
+        else:
+            return '-'
+
+def spell_summary_by_class(spell, classes):
+    """ Return a line summarizing the spell with a column for each class."""
+    components = [spell['name'],
+                  abbrev_time(spell),
+                  abbrev_range(spell),
+                  abbrev_duration(spell),
+                  str(spell['level']) ]
+    components += [subclass_set_for_spell(spell, c) for c in classes]
+
+    return ', '.join(components)
+
+def search_desc(spells, string):
+    """Returns one-line summaries of all spells with `string` in their descriptions."""
+    return "\n".join(spell_summary(s) for s in spells if string in s['text'])
+
+def search_desc_by_class(spells, string):
+    """Like `search_desc` but adds a column for each casting class."""
+    classes = ["Artificer", "Bard", "Cleric", "Druid", "Fighter", "Monk",
+               "Paladin", "Ranger", "Rogue", "Sorcerer", "Warlock", "Wizard",
+               "Eldritch Invocations", "Martial Adept", "Ritual Caster"]
+
+    fields = ['name', 't', 'r', 'd', 'l']
+    fields += [abbrev_class(c) for c in classes]
+
+    matches = (s for s in spells if string.lower() in s['text'].lower())
+
+    lines = [', '.join(fields)]
+    lines += [spell_summary_by_class(s, classes) for s in matches]
+
+    return "\n".join(lines)
+
 """thing to parse the initial db.
 
 okay so it needs to verify that it's correctly parsed things
