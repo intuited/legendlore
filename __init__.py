@@ -601,12 +601,15 @@ class Spell(dict):
 class Monsters(list):
     """List of all the <monster> entries in the db.
 
-    >>> dir(Monsters()[0])
-    >>> c = [m for m in Monsters() if m.name == 'Champion']
-    >>> c[0].ac_num
+    >>> monster = lambda name: next(m for m in Monsters() if m.name == name)
+    >>> monster('Champion').ac_num
     18
-    >>> c[0].armor
+    >>> monster('Champion').armor
     'plate'
+    >>> monster('Cow').armor
+    Traceback (most recent call last):
+        ...
+    AttributeError: 'Monster' object has no attribute 'armor'
     """
     def __init__(self, tree=None):
         """Instantiates the list from the parsed xml `tree`."""
