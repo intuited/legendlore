@@ -7,9 +7,8 @@ from pprint import pprint
 from textwrap import dedent
 from collections import namedtuple
 from functools import partial
-
-debug = print
-log = print
+from logging import debug
+from logging import warning
 
 pprint = partial(pprint, indent=4)
 
@@ -137,7 +136,7 @@ def parse_spell_source(source):
     """
     m = re.match('^(?P<book>.*?),?\s*p\.?\s*(?P<page>\d+)\s*(?P<extra>.*).*$', source)
     if m is None:
-        log(f"parse_spell_source: failed match on line '{source}'")
+        warning(f"parse_spell_source: failed match on line '{source}'")
         return None
     #debug(book)
     extra = m.groupdict()['extra']
@@ -146,7 +145,7 @@ def parse_spell_source(source):
     if extra == '(class feature)':
         return None
     else:
-        log(f"parse_spell_source: unknown extra '{extra}'")
+        warning(f"parse_spell_source: unknown extra '{extra}'")
 
 def expand_newlines(lines):
     r"""Split strings with newlines into multiple strings.
@@ -156,12 +155,6 @@ def expand_newlines(lines):
     ['1', '2', '3', None, '4', '5', '6']
     """
     return chainfi([None] if l is None else l.split('\n') for l in lines)
-    #for line in lines:
-    #    if line is None:
-    #        yield line
-    #    else:
-    #        for l in line.rstrip().split('\n'):
-    #            yield l
 
 def parse_spell_text(lines):
     """Parses list of strings containing <text> nodes from xml.
@@ -228,115 +221,145 @@ def parse_spell_text(lines):
     text = '\n'.join(process(lines))
     return text, tuple(sources)
 
-def abbrev_time(spell):
-    """Abbreviate time.
+"""thing to parse the initial db.
 
-    Possible return values: A, R, 1m, C1h, etc.
+okay so it needs to verify that it's correctly parsed things
+by generating a 
+"""
+
+def parse_spells(tree):
+    spells = tree.xpath("//spell")
+    schools = {'EV': "Evocation",
+               'T': "Transmutation",
+               'C': "Conjuration",
+               'A': "Abjuration",
+               'EN': "Enchantment",
+               'D': "Divination",
+               'N': "Necromancy",
+               'I': "Illusion",
+               None: None}
+    for node in spells:
+        spell = {}
+        spell['name'] = node.find('name').text
+        spell['level'] = int(node.find('level').text)
+        #TODO: validation to confirm that this value is between 1 and 9
+        spell['school'] = schools[getattr(node.find('school'), 'text', None)]
+        spell['ritual'] = True if node.find('ritual') == "YES" else False
+        spell['time'] = parse_casting_time(node.find('time').text)
+        spell['range'] = parse_spell_range(node.find('range').text)
+        spell['components'] = parse_spell_components(node.find('components').text)
+        spell['concentration'], spell['duration'] = parse_spell_duration(node.find('duration').text)
+        spell['classes'] = parse_spell_classes(node.find('classes').text)
+        spell['text'], spell['sources'] = parse_spell_text(n.text for n in node.findall('text'))
+        spell['roll'] = getattr(node.find('roll'), 'text', None)
+        #TODO: figure out what to do with this property
+        yield spell
+
+def parsed_spells_analysis(spells):
+    print('spell count: {0}'.format(len(spells)))
+    print('first spell:')
+    pprint(spells[0])
+    print('class occurrence counts:')
+    pprint(Counter(c for spell in spells for c in spell['classes']),
+           compact=True, width=160)
+    print('spells with no classes:')
+    pprint([spell for spell in spells if not spell['classes']])
+    print('spells with no source:')
+    pprint([spell for spell in spells if not spell.get('sources', False)])
+    print('spell books:')
+    pprint(Counter(ref.book for s in spells for ref in s['sources']))
+
+class DB:
+    """Singleton class encapsulating the data read from the database file."""
+    #TODO: make `tree` and `spells` properties if that's a thing I can do with a class
+    #TODO: move the db filename in here
+    tree = None
+    spells = None
+
+    @classmethod
+    def get_tree(cls):
+        """Returns a tree at the top level of the parsed DB.
+
+        Parses it if it has not already been processed.
+        """
+        if not cls.tree:
+            cls.tree = parse_db()
+        return cls.tree
+
+    @classmethod
+    def get_spells(cls):
+        """Returns a Spells object that's a list of Spell objects.
+
+        If DB.spells already exists, returns it.
+        Otherwise, calls parse_spells and wraps its results.
+        """
+        if not cls.spells:
+            spells = parse_spells(cls.get_tree())
+            cls.spells = Spells(Spell(s) for s in spells)
+        return cls.spells
+
+class Spells(list):
+    """A list of spells from the db.
+
+    If passed a list of spells, wraps it with formatting methods.
+    If not, uses the full set of spells from the DB instead.
     """
-    abbr = {None: 'N',
-            'None': 'N',
-            '1 action': 'A',
-            'part of the Attack action to fire a magic arrow': 'A*',
-            '1 bonus action': 'B',
-            '1 reaction': 'R',
-            '1 reaction, which you take when you take acid, cold, fire, lightning, or thunder damage': 'R*',
-            '1 reaction, which you take when a humanoid you can see within 60 feet of you dies': 'R*',
-            '1 minute': '1m',
-            '10 minutes': '10m',
-            '1 hour': '1h',
-            '8 hours': '8h',
-            '1 action or 8 hours': 'A/8h',
-            '12 hours': '12h',
-            '24 hours': '24h'}
-    return abbr[spell['time']]
+    def __init__(self, *args, **kwargs):
+        if args:
+            super().__init__(*args, **kwargs)
+        else:
+            super().__init__(DB.get_spells())
 
-def abbrev_range(spell):
-    """Abbreviate range.
+    spell_classes = ["Artificer", "Bard", "Cleric", "Druid", "Fighter", "Monk",
+                     "Paladin", "Ranger", "Rogue", "Sorcerer", "Warlock", "Wizard",
+                     "Eldritch Invocations", "Martial Adept", "Ritual Caster"]
 
-    Possible return values: 10', 120', 500mi, S, S(30'cone), Unlimited, etc
-    """
-    abbr = {None: "N",
-            'Self': 'S',
-            'Self (10-foot radius)': "S(10'r)",
-            'Self (10-foot-radius sphere)': "S(10'r-sphere)",
-            'Self (10-foot-radius hemisphere)': "S(10'r-hemisphere)",
-            'Self (15-foot-radius)': "S(15'r)",
-            'Self (15-foot cone)': "S(15'cone)",
-            'Self (15-foot cube)': "S(15'cube)",
-            'Self (30-foot radius)': "S(30'r)",
-            'Self (30-foot cone)': "S(30'cone)",
-            'Self (60-foot line)': "S(60'line)",
-            'Self (60 foot cone)': "S(60'cone)",
-            'Self (60-foot cone)': "S(60'cone)",
-            'Self (100-foot line)': "S(100'line)",
-            'Self (5-mile radius)': "S(5mi.r)",
-            'Touch': "T",
-            'Special': "Special",
-            'Sight': "Sight",
-            '5 feet': "5'",
-            '10 feet': "10'",
-            '15 feet': "15'",
-            '30 feet': "30'",
-            '60 feet': "60'",
-            '90 feet': "90'",
-            '100 feet': "100'",
-            '120 feet': "120'",
-            '150 feet': "150'",
-            '300 feet': "300'",
-            '500 feet': "500'",
-            '1 mile': "1mi",
-            '500 miles': "500mi",
-            'Unlimited': "Unlimited"}
-    return abbr[spell['range']]
+    def dict(spells):
+        """Returns a dictionary of the items in `spells` indexed by name."""
+        return dict((s['name'].lower(), s) for s in self)
 
-def abbrev_duration(spell):
-    """Abbreviate spell duration.
+    def search(self, val, field='name'):
+        """Case-insensitive search over the data set
 
-    Some possible return values:
-    N (none), S (special), 1r (1 round), 1m, 1h, <=1h, C1h (1h concentration)
-    """
-    abbr = {None: 'N',
-            'Instantaneous': 'I',
-            'Instantaneous or 1 hour (see below)': 'I/1h',
-            'Special': "S",
-            '1 turn': '1t',
-            'up to 1 round': '<=1r',
-            '1 round': '1r',
-            'up to 6 rounds': '<=6r',
-            'up to 1 minute': "<=1m",
-            'Up to 1 minute': '<=1m',
-            '1 minute': '1m',
-            'up to 10 minutes': "<=10m",
-            '10 minutes': '10m',
-            'up to 1 hour': "<=1h",
-            'Up to 1 hour': '<=1h',
-            '1 hour': "1h",
-            'up to 2 hours': '<=2h',
-            'up to 8 hours': '<=8h',
-            'Up to 8 hours': '<=8h',
-            '8 hours': "8h",
-            'up to 1 day': '<=1d',
-            '1 day': '1d',
-            '10 days': "10d",
-            '24 hours': "24h",
-            'up to 24 hours': "<=24h",
-            '30 days': '30d',
-            '7 days': '7d',
-            'Until dispelled or triggered': 'UD/T',
-            'Until dispelled': "UD"}
+        Returns items where `field` contains `val`.
+        """
+        return Spells(s for s in self
+                      if str(val).lower() in str(s.get(field)).lower())
 
-    c = 'C' if spell['concentration'] else ''
-    return c + abbr[spell['duration']]
+    def search_desc(self, val):
+        return self.search(val, field='text')
 
+    # kind of an example function.
+    def oneline_desc(self, string):
+        """Returns one-line summaries of all spells with `string` in their descriptions."""
+        return '\n'.join(Spell.oneline(s) for s in self.search_desc(string))
+
+    def csv_table(self):
+        """Returns CSV tabular data with a header for the contents of this list."""
+        fields = ['name', 't', 'r', 'd', 'l']
+        fields += [abbrev_class(c) for c in classes]
+        lines = [', '.join(fields)]
+
+        lines += [Spell.summary_class_columns(s, self.spell_classes)
+                  for s in self]
+
+        return "\n".join(lines)
+
+
+#TODO: make this a class method of Spell?
 def abbrev_class(c):
     """Abbreviate a given class name.
 
-    Some possible return values:
-    "Wz", "Wl", "WlG", "FEK", "RAT", "R"
-    - FEK: Fighter (Eldritch Knight)
-    - WlG: Warlock (Great Old One)
-    - RAT: Rogue (Arcane Trickster)
-    - R: Ranger
+    >>> abbrev_class("Ranger")
+    'Ra'
+    >>> abbrev_class("Warlock")
+    'Wl'
+    >>> abbrev_class("Warlock (Great Old One)")
+    'WlG'
+    >>> abbrev_class("Rogue (Arcane Trickster)")
+    'AT'
+    >>> abbrev_class("Fighter (Eldritch Knight)")
+    'FEK'
     """
     abbr = {'Artificer': "A",
             'Bard': "B",
@@ -404,126 +427,176 @@ def abbrev_class(c):
 
     return abbr[c]
 
-def abbrev_classes(spell):
-    """Abbreviate the classes which have access to a given spell.
+class Spell(dict):
+    """A dictionary from the DB with details on a given spell.
 
-    Return values are those from abbrev_class, joined with '+'.
+    Methods can be called from an instantiated object
+    or can be called statically and passed a dict from the DB
+        or an element from a Spells object.
     """
-    return '+'.join(abbr[c] for c in spell['classes'])
+    def __init__(self, spell):
+        super().__init__(spell)
 
-def spell_summary(spell):
-    """Return a string summarizing the spell.
+    def abbrev_time(spell):
+        """Abbreviate time.
 
-    Format:
-        NAME, TIME, RANGE, DURATION, LEVEL, CLASSES
-    """
-    f = {
-        'name': spell['name'],
-        't': abbrev_time(spell),
-        'r': abbrev_range(spell),
-        'd': abbrev_duration(spell),
-        'l': spell['level'],
-        'classes': abbrev_classes(spell)}
+        Possible return values: A, R, 1m, C1h, etc.
+        """
+        abbr = {None: 'N',
+                'None': 'N',
+                '1 action': 'A',
+                'part of the Attack action to fire a magic arrow': 'A*',
+                '1 bonus action': 'B',
+                '1 reaction': 'R',
+                '1 reaction, which you take when you take acid, cold, fire, lightning, or thunder damage': 'R*',
+                '1 reaction, which you take when a humanoid you can see within 60 feet of you dies': 'R*',
+                '1 minute': '1m',
+                '10 minutes': '10m',
+                '1 hour': '1h',
+                '8 hours': '8h',
+                '1 action or 8 hours': 'A/8h',
+                '12 hours': '12h',
+                '24 hours': '24h'}
+        return abbr[spell['time']]
 
-    return "{name}, {t}, {r}, {d}, {l}, {classes}".format(**f)
+    def abbrev_range(spell):
+        """Abbreviate range.
 
-def subclass_set_for_spell(spell, class_):
-    """Returns a terse indicator of which subclasses of `class` get the spell.
+        Possible return values: 10', 120', 500mi, S, S(30'cone), Unlimited, etc
+        """
+        abbr = {None: "N",
+                'Self': 'S',
+                'Self (10-foot radius)': "S(10'r)",
+                'Self (10-foot-radius sphere)': "S(10'r-sphere)",
+                'Self (10-foot-radius hemisphere)': "S(10'r-hemisphere)",
+                'Self (15-foot-radius)': "S(15'r)",
+                'Self (15-foot cone)': "S(15'cone)",
+                'Self (15-foot cube)': "S(15'cube)",
+                'Self (30-foot radius)': "S(30'r)",
+                'Self (30-foot cone)': "S(30'cone)",
+                'Self (60-foot line)': "S(60'line)",
+                'Self (60 foot cone)': "S(60'cone)",
+                'Self (60-foot cone)': "S(60'cone)",
+                'Self (100-foot line)': "S(100'line)",
+                'Self (5-mile radius)': "S(5mi.r)",
+                'Touch': "T",
+                'Special': "Special",
+                'Sight': "Sight",
+                '5 feet': "5'",
+                '10 feet': "10'",
+                '15 feet': "15'",
+                '30 feet': "30'",
+                '60 feet': "60'",
+                '90 feet': "90'",
+                '100 feet': "100'",
+                '120 feet': "120'",
+                '150 feet': "150'",
+                '300 feet': "300'",
+                '500 feet': "500'",
+                '1 mile': "1mi",
+                '500 miles': "500mi",
+                'Unlimited': "Unlimited"}
+        return abbr[spell['range']]
 
-    Returns '*' if all do
-    Returns '-' if none do
-    Returns eg 'CO+CLf' if Order and Life clerics get the spell.
-    """
-    if class_ in spell['classes']:
-        return '*'
-    else:
-        subclasses = [c for c in spell['classes']
-                      if c.startswith(class_)]
-        if subclasses:
-            return '+'.join(abbrev_class(c) for c in subclasses)
+    def abbrev_duration(spell):
+        """Abbreviate spell duration.
+
+        Some possible return values:
+        N (none), S (special), 1r (1 round), 1m, 1h, <=1h, C1h (1h concentration)
+        """
+        abbr = {None: 'N',
+                'Instantaneous': 'I',
+                'Instantaneous or 1 hour (see below)': 'I/1h',
+                'Special': "S",
+                '1 turn': '1t',
+                'up to 1 round': '<=1r',
+                '1 round': '1r',
+                'up to 6 rounds': '<=6r',
+                'up to 1 minute': "<=1m",
+                'Up to 1 minute': '<=1m',
+                '1 minute': '1m',
+                'up to 10 minutes': "<=10m",
+                '10 minutes': '10m',
+                'up to 1 hour': "<=1h",
+                'Up to 1 hour': '<=1h',
+                '1 hour': "1h",
+                'up to 2 hours': '<=2h',
+                'up to 8 hours': '<=8h',
+                'Up to 8 hours': '<=8h',
+                '8 hours': "8h",
+                'up to 1 day': '<=1d',
+                '1 day': '1d',
+                '10 days': "10d",
+                '24 hours': "24h",
+                'up to 24 hours': "<=24h",
+                '30 days': '30d',
+                '7 days': '7d',
+                'Until dispelled or triggered': 'UD/T',
+                'Until dispelled': "UD"}
+
+        c = 'C' if spell['concentration'] else ''
+        return c + abbr[spell['duration']]
+
+    def abbrev_classes(spell):
+        """Abbreviate the classes which have access to a given spell.
+
+        Return values are those from abbrev_class, joined with '+'.
+        """
+        return '+'.join(abbrev_class(c) for c in spell['classes'])
+
+
+    def oneline(spell):
+        """Return a string summarizing the spell.
+
+        Format:
+            NAME, T/R/D, (L:CLASSES)
+
+        Where
+            T = Time
+            R = Range
+            D = Duration
+            L = Level
+
+        >>> Spells().search('banishing smite')[0].oneline()
+        'Banishing Smite B/S/C<=1m (5:P+WlH)'
+        """
+        f = {
+            'name': spell['name'],
+            't': spell.abbrev_time(),
+            'r': spell.abbrev_range(),
+            'd': spell.abbrev_duration(),
+            'l': spell['level'],
+            'classes': spell.abbrev_classes()}
+
+        return "{name} {t}/{r}/{d} ({l}:{classes})".format(**f)
+
+    def subclass_set(spell, class_):
+        """Returns a terse indicator of which subclasses of `class` get the spell.
+
+        Returns '*' if all do
+        Returns '-' if none do
+        Returns eg 'CO+CLf' if Order and Life clerics get the spell.
+        """
+        if class_ in spell['classes']:
+            return '*'
         else:
-            return '-'
+            subclasses = [c for c in spell['classes']
+                          if c.startswith(class_)]
+            if subclasses:
+                return '+'.join(abbrev_class(c) for c in subclasses)
+            else:
+                return '-'
 
-spell_classes = ["Artificer", "Bard", "Cleric", "Druid", "Fighter", "Monk",
-                 "Paladin", "Ranger", "Rogue", "Sorcerer", "Warlock", "Wizard",
-                 "Eldritch Invocations", "Martial Adept", "Ritual Caster"]
+    def summary_class_columns(spell, classes=Spells.spell_classes):
+        """ Return a line summarizing the spell with a column for each class.
 
-def spell_summary_by_class(spell, classes=spell_classes):
-    """ Return a line summarizing the spell with a column for each class."""
-    components = [spell['name'],
-                  abbrev_time(spell),
-                  abbrev_range(spell),
-                  abbrev_duration(spell),
-                  str(spell['level']) ]
-    components += [subclass_set_for_spell(spell, c) for c in classes]
+        Uses CSV format and column set compatible with Spells.csv_table().
+        """
+        components = [spell['name'],
+                      spell.abbrev_time(),
+                      spell.abbrev_range(),
+                      spell.abbrev_duration(),
+                      str(spell['level']) ]
+        components += [spell.subclass_set(c) for c in classes]
 
-    return ', '.join(components)
-
-def search_desc(spells, string):
-    """Returns one-line summaries of all spells with `string` in their descriptions."""
-    return "\n".join(spell_summary(s) for s in spells if string in s['text'])
-
-def search_desc_by_class(spells, string):
-    """Like `search_desc` but adds a column for each casting class."""
-
-    fields = ['name', 't', 'r', 'd', 'l']
-    fields += [abbrev_class(c) for c in classes]
-
-    matches = (s for s in spells if string.lower() in s['text'].lower())
-
-    lines = [', '.join(fields)]
-    lines += [spell_summary_by_class(s, spell_classes) for s in matches]
-
-    return "\n".join(lines)
-
-def spell_dict(spells):
-    """Returns a dictionary of the items in `spells` indexed by name."""
-    return dict((s['name'].lower(), s) for s in spells)
-
-"""thing to parse the initial db.
-
-okay so it needs to verify that it's correctly parsed things
-by generating a 
-"""
-
-def parse_spells(tree):
-    spells = tree.xpath("//spell")
-    schools = {'EV': "Evocation",
-               'T': "Transmutation",
-               'C': "Conjuration",
-               'A': "Abjuration",
-               'EN': "Enchantment",
-               'D': "Divination",
-               'N': "Necromancy",
-               'I': "Illusion",
-               None: None}
-    for node in spells:
-        spell = {}
-        spell['name'] = node.find('name').text
-        spell['level'] = int(node.find('level').text)
-        #TODO: validation to confirm that this value is between 1 and 9
-        spell['school'] = schools[getattr(node.find('school'), 'text', None)]
-        spell['ritual'] = True if node.find('ritual') == "YES" else False
-        spell['time'] = parse_casting_time(node.find('time').text)
-        spell['range'] = parse_spell_range(node.find('range').text)
-        spell['components'] = parse_spell_components(node.find('components').text)
-        spell['concentration'], spell['duration'] = parse_spell_duration(node.find('duration').text)
-        spell['classes'] = parse_spell_classes(node.find('classes').text)
-        spell['text'], spell['sources'] = parse_spell_text(n.text for n in node.findall('text'))
-        spell['roll'] = getattr(node.find('roll'), 'text', None)
-        #TODO: figure out what to do with this property
-        yield spell
-
-def parsed_spells_analysis(spells):
-    print('spell count: {0}'.format(len(spells)))
-    print('first spell:')
-    pprint(spells[0])
-    print('class occurrence counts:')
-    pprint(Counter(c for spell in spells for c in spell['classes']),
-           compact=True, width=160)
-    print('spells with no classes:')
-    pprint([spell for spell in spells if not spell['classes']])
-    print('spells with no source:')
-    pprint([spell for spell in spells if not spell.get('sources', False)])
-    print('spell books:')
-    pprint(Counter(ref.book for s in spells for ref in s['sources']))
+        return ', '.join(components)
