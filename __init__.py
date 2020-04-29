@@ -610,6 +610,10 @@ class Monsters(list):
     Traceback (most recent call last):
         ...
     AttributeError: 'Monster' object has no attribute 'armor'
+    >>> monster('Froghemoth').hp
+    184
+    >>> monster('Froghemoth').hitdice
+    '16d12+80'
     """
     def __init__(self, tree=None):
         """Instantiates the list from the parsed xml `tree`."""
@@ -627,12 +631,18 @@ class Monster:
         self._assign_if_present(node, 'type')
         self._assign_if_present(node, 'alignment')
         self._assign_if_present(node, 'ac', Monster._assign_ac)
+        self._assign_if_present(node, 'hp', Monster._assign_hp)
 
     def __repr__(self):
         return f"Monster({{'name': {self.name}, 'type': {self.type}}})"
 
+    def _assign_if_present(self, node, field, fn=setattr):
+        field_node = node.find(field)
+        if hasattr(field_node, 'text'):
+            fn(self, field, field_node.text)
+
     def _assign_ac(self, field, text):
-        """Assign to ac fields.
+        """Assign to ac attributes.
 
         If a numeric AC is parsed, it is stored in the `ac_num` field.
         If information on armor is parsed in the parentheses following the AC,
@@ -644,7 +654,7 @@ class Monster:
         #m = match('^(\d+)(?: \(.*)?$', text)
         m = match('^(\d+)(?: \(([^)]*)\))?$', text)
         if m is None:
-            debug(f'Failed to match AC field for text "{text}"')
+            debug(f'Failed match for AC text "{text}"')
             return
         g = m.groups()
         if g[0]:
@@ -652,7 +662,33 @@ class Monster:
         if g[1]:
             setattr(self, 'armor', g[1])
 
-    def _assign_if_present(self, node, field, fn=setattr):
-        field_node = node.find(field)
-        if hasattr(field_node, 'text'):
-            fn(self, field, field_node.text)
+    def _assign_hp(self, field, text):
+        """Assign to hp attributes.
+
+        Similar to _assign_ac but assigns to `hp` and `hitdice` attributes.
+
+        >>> class Blank:
+        ...     None
+        >>> m = Blank()
+        >>> Monster._assign_hp(m, 'hp', '135 (18d10+36)')
+        >>> m.hp
+        135
+        >>> m.hitdice
+        '18d10+36'
+        >>> m = Blank()
+        >>> Monster._assign_hp(m, 'hp', '0')
+        >>> m.hp
+        0
+        >>> m.hitdice
+        Traceback (most recent call last):
+            ...
+        AttributeError: 'Blank' object has no attribute 'hitdice'
+        """
+        m = match('^(\d+)(?: \(([^)]*)\))?$', text)
+        if m is None:
+            debug(f'Failed match for HP text "{text}"')
+            return
+        g = m.groups()
+        setattr(self, 'hp', int(g[0]))
+        if g[1]:
+            setattr(self, 'hitdice', g[1])
