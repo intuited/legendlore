@@ -9,6 +9,7 @@ from collections import namedtuple
 from functools import partial
 from logging import debug
 from logging import warning
+from re import match
 
 pprint = partial(pprint, indent=4)
 
@@ -314,10 +315,6 @@ class Spells(list):
                      "Paladin", "Ranger", "Rogue", "Sorcerer", "Warlock", "Wizard",
                      "Eldritch Invocations", "Martial Adept", "Ritual Caster"]
 
-    def dict(spells):
-        """Returns a dictionary of the items in `spells` indexed by name."""
-        return dict((s['name'].lower(), s) for s in self)
-
     def search(self, val, field='name'):
         """Case-insensitive search over the data set
 
@@ -600,3 +597,59 @@ class Spell(dict):
         components += [spell.subclass_set(c) for c in classes]
 
         return ', '.join(components)
+
+class Monsters(list):
+    """List of all the <monster> entries in the db.
+
+    >>> dir(Monsters()[0])
+    >>> c = [m for m in Monsters() if m.name == 'Champion']
+    >>> c[0].ac_num
+    18
+    >>> c[0].armor
+    'plate'
+    """
+    def __init__(self, tree=None):
+        """Instantiates the list from the parsed xml `tree`."""
+        if not tree:
+            tree = DB.get_tree()
+
+        monsters = tree.xpath('//monster')
+        super().__init__(Monster(m) for m in monsters)
+
+class Monster:
+    def __init__(self, node):
+        """Instantiates this instance using data from the XML `node`."""
+        self._assign_if_present(node, 'name')
+        self._assign_if_present(node, 'size')
+        self._assign_if_present(node, 'type')
+        self._assign_if_present(node, 'alignment')
+        self._assign_if_present(node, 'ac', Monster._assign_ac)
+
+    def __repr__(self):
+        return f"Monster({{'name': {self.name}, 'type': {self.type}}})"
+
+    def _assign_ac(self, field, text):
+        """Assign to ac fields.
+
+        If a numeric AC is parsed, it is stored in the `ac_num` field.
+        If information on armor is parsed in the parentheses following the AC,
+        it is stored in `armor`.
+        In any case, the full text of the field is stored in `ac`.
+        """
+        setattr(self, 'ac', text)
+
+        #m = match('^(\d+)(?: \(.*)?$', text)
+        m = match('^(\d+)(?: \(([^)]*)\))?$', text)
+        if m is None:
+            debug(f'Failed to match AC field for text "{text}"')
+            return
+        g = m.groups()
+        if g[0]:
+            setattr(self, 'ac_num', int(g[0]))
+        if g[1]:
+            setattr(self, 'armor', g[1])
+
+    def _assign_if_present(self, node, field, fn=setattr):
+        field_node = node.find(field)
+        if hasattr(field_node, 'text'):
+            fn(self, field, field_node.text)
