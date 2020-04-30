@@ -148,7 +148,9 @@ class Monster():
         vector_re_basic = f'(?:{mtre} )?\d+ ?ft\.?' # [movement_type] speed
         vector_re_hover = f'fly \d+ ft. \([Hh]over\)'
         vector_re_speed_first = f'\d+ ?ft\.? {mtre}'
-        vector_re = f'(?:{vector_re_basic}|{vector_re_hover}|{vector_re_speed_first})'
+        vector_just_a_number = f'\d+'
+        vector_re = (f'(?:{vector_re_basic}|{vector_re_hover}|'
+                      + f'{vector_re_speed_first}|{vector_just_a_number})')
 
         csv_match_re = f'^({vector_re})(?:, ({vector_re}))*$' # list of speeds, no ()
 
@@ -168,6 +170,7 @@ class Monster():
             # capture groups for type and speed
             parse_re = f'^(?:({mtre}) )?(\d+) ?ft\.?(?: \([Hh]over\))?$'
             parse_re_speed_first = f'^(\d+) ?ft\.? ({mtre})$'
+            parse_re_just_a_number = '^(\d+)$'
 
             m = re.match(parse_re, vector)
             if m:
@@ -176,15 +179,17 @@ class Monster():
                     mtype = 'walk'
                 else:
                     mtype = g[0]
-                speed = g[1]
-            else:
-                try:
-                    g = re.match(parse_re_speed_first, vector).groups()
-                    speed, mtype = g[0], g[1]
-                except AttributeError:
-                    raise Exception(f'parse_vector: invalid match on "{vector}"')
+                return (mtype, int(g[1]))
 
-            return (mtype, int(speed))
+            m = re.match(parse_re_speed_first, vector)
+            if m:
+                return (m.group(2), int(m.group(1)))
+
+            m = re.match(parse_re_just_a_number, vector)
+            if m:
+                return ('walk', int(m.group(1)))
+            else:
+                raise Exception(f'parse_vector: invalid match on "{vector}"')
 
         if re.match(csv_match_re, text):
             csv_iter_re = f'^({vector_re})(?:, ({vector_re}(?:, {vector_re})*))?$'
