@@ -637,6 +637,8 @@ class Monsters(list):
     '16d12+80'
     >>> monster('Astral Dreadnought').speed
     {'walk': 15, 'fly': 80}
+    >>> monster('Arbeyach')
+    >>> monster('Arbeyach')
     """
     def __init__(self, tree=None):
         """Instantiates the list from the parsed xml `tree`."""

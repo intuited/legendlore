@@ -55,18 +55,18 @@ class Monster():
 
         Similar to _assign_ac but assigns to `hp` and `hitdice` attributes.
 
-        >>> m = mutate_blank(Monster._assign_hp, 'hp', '135 (18d10+36)')
-        >>> m.hp
+        >>> d = dict(Monster.yield_hp('hp', '135 (18d10+36)'))
+        >>> d['hp']
         135
-        >>> m.hitdice
+        >>> d['hitdice']
         '18d10+36'
-        >>> m = mutate_blank(Monster._assign_hp, 'hp', '0')
-        >>> m.hp
+        >>> d = dict(Monster.yield_hp('hp', '0'))
+        >>> d['hp']
         0
-        >>> m.hitdice
+        >>> d['hitdice']
         Traceback (most recent call last):
             ...
-        AttributeError: 'Blank' object has no attribute 'hitdice'
+        KeyError: 'hitdice'
         """
         m = re.match('^(\d+)(?: \(([^)]*)\))?$', text)
         if m is None:
@@ -91,7 +91,7 @@ class Monster():
     def yield_speed(cls, field, text):
         """Parse speed fields into a dictionary.
 
-        >>> test = lambda t: dict(Monster.yield_speed(t))['speed']
+        >>> test = lambda t: dict(Monster.yield_speed('', t))['speed']
         >>> test('25 ft.')
         {'walk': 25}
         >>> result = test('40 ft., fly 80 ft., swim 40 ft.')
@@ -136,12 +136,18 @@ class Monster():
         >>> result = test('walk 40 ft., climb 30 ft., fly 40 ft.')
         >>> result == {'walk': 40, 'climb': 30, 'fly': 40}
         True
+        >>> result = test('30 ft. swim')
+        >>> result == {'swim': 30}
+        True
+        >>> result = test('30 ft., 30 ft. swim')
+        >>> result == {'walk': 30, 'swim': 30}
+        True
         """
         movement_types = ['walk', 'fly', 'swim', 'climb', 'burrow']
         mtre = '(?:' + '|'.join(movement_types) + ')'
         vector_re_basic = f'(?:{mtre} )?\d+ ?ft\.?' # [movement_type] speed
         vector_re_hover = f'fly \d+ ft. \([Hh]over\)'
-        vector_re_speed_first = f'\d+\?ft\.? {mtre}'
+        vector_re_speed_first = f'\d+ ?ft\.? {mtre}'
         vector_re = f'(?:{vector_re_basic}|{vector_re_hover}|{vector_re_speed_first})'
 
         csv_match_re = f'^({vector_re})(?:, ({vector_re}))*$' # list of speeds, no ()
@@ -161,7 +167,7 @@ class Monster():
             """
             # capture groups for type and speed
             parse_re = f'^(?:({mtre}) )?(\d+) ?ft\.?(?: \([Hh]over\))?$'
-            parse_re_speed_first = f'^(\d+)\?ft\.? ({mtre})$'
+            parse_re_speed_first = f'^(\d+) ?ft\.? ({mtre})$'
 
             m = re.match(parse_re, vector)
             if m:
@@ -176,7 +182,7 @@ class Monster():
                     g = re.match(parse_re_speed_first, vector).groups()
                     speed, mtype = g[0], g[1]
                 except AttributeError:
-                    error(f'parse_vector: invalid match on {vector}')
+                    raise Exception(f'parse_vector: invalid match on "{vector}"')
 
             return (mtype, int(speed))
 
