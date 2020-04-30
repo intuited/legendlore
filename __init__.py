@@ -15,6 +15,28 @@ pprint = partial(pprint, indent=4)
 
 Reference = namedtuple('Reference', ('book', 'page'))
 
+class Blank:
+    """Utility class used in doctests.
+
+    >>> b = Blank()
+    >>> b.test = 'OK'
+    >>> b.test
+    'OK'
+    """
+    None
+
+def mutate_blank(fn, *args, **kwargs):
+    """Create a new Blank object and pass it as the first argument to `fn`.
+
+    Return the modified Blank instance.
+
+    >>> mutate_blank(setattr, 'test', 'OK').test
+    'OK'
+    """
+    b = Blank()
+    fn(b, *args, **kwargs)
+    return b
+
 def group(iterable, key):
     ret = defaultdict(list)
     for i in iterable:
@@ -667,16 +689,12 @@ class Monster:
 
         Similar to _assign_ac but assigns to `hp` and `hitdice` attributes.
 
-        >>> class Blank:
-        ...     None
-        >>> m = Blank()
-        >>> Monster._assign_hp(m, 'hp', '135 (18d10+36)')
+        >>> m = mutate_blank(Monster._assign_hp, 'hp', '135 (18d10+36)')
         >>> m.hp
         135
         >>> m.hitdice
         '18d10+36'
-        >>> m = Blank()
-        >>> Monster._assign_hp(m, 'hp', '0')
+        >>> m = mutate_blank(Monster._assign_hp, 'hp', '0')
         >>> m.hp
         0
         >>> m.hitdice
@@ -692,3 +710,101 @@ class Monster:
         setattr(self, 'hp', int(g[0]))
         if g[1]:
             setattr(self, 'hitdice', g[1])
+
+    def _assign_csv(self, field, text):
+        """Parse comma-separated values and assign them as a list.
+
+        >>> mutate_blank(Monster._assign_csv, 'speed',
+        ...              '40 ft., fly 80 ft., swim 40 ft.').speed
+        ['40 ft.', 'fly 80 ft.', 'swim 40 ft.']
+        """
+
+    def _assign_speed(self, field, text):
+        """Parse speed fields into a dictionary.
+
+        >>> test = lambda t: mutate_blank(Monster._assign_speed, 'speed', t).speed
+        >>> test('25 ft.')
+        {'walk': 25}
+        >>> result = test('40 ft., fly 80 ft., swim 40 ft.')
+        >>> result == {'walk': 40, 'fly': 80, 'swim': 40}
+        True
+        >>> result = test('40 ft., burrow 30 ft., fly 80 ft., swim 40 ft.')
+        >>> result == {'walk': 40, 'burrow': 30, 'fly': 80, 'swim': 40}
+        True
+        >>> result = test('30 ft., climb 30 ft.')
+        >>> result == {'walk': 30, 'climb': 30}
+        True
+        >>> result = test('swim 50 ft.')
+        >>> result == {'swim': 50}
+        True
+        >>> result = test('60 ft. (30 ft.in goblin form)')
+        >>> result == {'walk': 60, 'walk (in goblin form)': 30}
+        True
+        >>> result = test('30 ft. (20 ft. and swim 40 ft. in hybrid form)')
+        >>> result == {'walk': 30, 'walk (in hybrid form)': 20,
+        ...                        'swim (in hybrid form)': 40}
+        True
+        >>> result = test('60 ft., fly 120 ft. (hover)')
+        >>> result == {'walk': 60, 'fly': 120}
+        True
+        >>> result = test('30 ft. (60 ft. with boots of speed)')
+        >>> result == {'walk': 30, 'walk (with boots of speed)': 60}
+        True
+        >>> result = test('15 ft. (30 ft. when rolling, 60 ft. rolling downhill)')
+        >>> result == {'walk': 15, 'walk (when rolling)': 30,
+        ...                        'walk (when rolling downhill)': 60}
+        True
+        >>> result = test('30 ft. (climb 30 ft., fly 60 ft., in bat or hybrid form)')
+        >>> result == {'walk': 30, 'climb (in bat or hybrid form)': 30,
+        ...                        'fly (in bat or hybrid form)': 60}
+        True
+        >>> result = test('50 ft. (in one direction chosen at the start of its turn)')
+        >>> result == {'walk (in one direction chosen at the start of its turn)': 50}
+        True
+        >>> result = test('30 ft., fly 50 ft. in raven and hybrid forms')
+        >>> result == {'walk': 30, 'fly (in raven and hybrid form)': 50}
+        True
+        >>> result = test('walk 40 ft., climb 30 ft., fly 40 ft.')
+        >>> result == {'walk': 40, 'climb': 30, 'fly': 40}
+        True
+        """
+        movement_types = ['walk', 'fly', 'swim', 'climb', 'burrow']
+        mtre = '(?:' + '|'.join(movement_types) + ')'
+        vector_re = f'(?:{mtre} )?\d+ ft\.' # [movement_type] speed
+
+        csv_match_re = f'^({vector_re})(?:, ({vector_re}))*$' # list of speeds, no ()
+
+        def parse_vector(vector):
+            """Parse a movement vector and return (type, speed)
+            
+            >>> parse_vector('60 ft.')
+            ('walk', 60)
+            >>> parse_vector('climb 30 ft.')
+            ('climb', 30)
+            >>> parse_vector('yeet 10000 ft.')
+            """
+            warning(f'parse_vector.  vector: {vector}')
+
+            parse_re = f'(?:({mtre}) )?(\d+) ft\.' # groups for type and speed
+            g = re.match(parse_re, vector).groups()
+            if g[0] is None:  # the movement type was implied
+                mtype = 'walk'
+            else:
+                mtype = g[0]
+            speed = g[1]
+
+            return (mtype, int(speed))
+
+        if re.match(csv_match_re, text):
+            csv_iter_re = f'^({vector_re})(?:, ({vector_re}(?:, {vector_re})*))?$'
+            def iter_vectors(text):
+                while text:
+                    m = re.match(csv_iter_re, text)
+                    if m:
+                        yield m.group(1)
+                        text = m.group(2)
+                    else:
+                        raise(f'iter_vectors failed to match text "{text}"')
+            self.speed = dict(parse_vector(v) for v in iter_vectors(text))
+        else:
+            warning(f'_assign_speed failed to match "{text}"')
