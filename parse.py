@@ -203,6 +203,7 @@ class Monster():
                         raise Exception(f'iter_vectors failed to match text "{text}"')
             yield('speed', dict(parse_vector(v) for v in iter_vectors(text)))
         else:
+            # manually handle a bunch of special cases
             irregulars = {
                 "60 ft. (30 ft.in goblin form)":
                     {'walk': 60, 'walk (in goblin form)': 30},
@@ -223,7 +224,17 @@ class Monster():
                     {'walk (in one direction chosen at the start of its turn)':
                      50},
                 "30 ft., fly 50 ft. in raven and hybrid forms":
-                    {'walk': 30, 'fly (in raven and hybrid forms)': 50} }
+                    {'walk': 30, 'fly (in raven and hybrid forms)': 50},
+                "30 ft. (40 ft., climb 30 ft. in bear or hybrid form)":
+                    {'walk': 30, 'climb (in bear or hybrid form)': 30},
+                "30 ft. (40 ft. in boar form)":
+                    {'walk': 30, 'walk (in boar form)': 40},
+                "30 ft. (40 ft. in tiger form)":
+                    {'walk': 30, 'walk (in tiger form)': 40},
+                "30 ft. (40 ft. in wolf form)":
+                    {'walk': 30, 'walk (in wolf form)': 40},
+                "50 ft,":
+                    {'walk': 50} }
 
             try:
                 yield ('speed', irregulars[text])
