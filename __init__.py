@@ -644,13 +644,20 @@ class Monsters(list):
     >>> monster('War Priest')
     Monster({'name': War Priest, 'type': humanoid (any race)})
     """
+    _singleton = None
+
     def __init__(self, tree=None):
         """Instantiates the list from the parsed xml `tree`."""
+        if self._singleton:
+            super().__init__(self._singleton) # don't parse again
+            return
+
         if not tree:
             tree = DB.get_tree()
 
         monsters = tree.xpath('//monster')
         super().__init__(Monster(m) for m in monsters)
+        Monsters._singleton = self
 
 class Monster:
     def __init__(self, node):

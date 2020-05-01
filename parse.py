@@ -23,6 +23,7 @@ class Monster():
         for stat in ('str', 'dex', 'con', 'int', 'wis', 'cha'):
             yield from cls.yield_if_present(node, stat, cls.yield_int)
         yield from cls.yield_if_present(node, 'save', cls.yield_saves)
+        yield from cls.yield_if_present(node, 'skill', cls.yield_skills)
 
     @classmethod
     def yield_if_present(cls, node, field, fn=yield_args):
@@ -242,9 +243,9 @@ class Monster():
 
     @classmethod
     def yield_saves(cls, field, text):
-        """Yield ('saves': {..})
+        """Yield ('saves', {..})
 
-        Dictionary entries are a stat (eg 'str') and a number.
+        Dictionary entries are a stat (eg 'str') and an integer.
 
         >>> test = lambda text: next(Monster.yield_saves('save', text))
         >>> test(None)
@@ -266,3 +267,43 @@ class Monster():
             return
 
         yield ('saves', dict(saves))
+
+    @classmethod
+    def yield_skills(cls, field, text):
+        """Yield ('skills', {..})
+
+        Dictionary entries are a skill (eg 'Athletics') and an integer.
+
+        >>> test = lambda text: next(Monster.yield_skills('skill', text))
+        >>> test(None)
+        Traceback (most recent call last):
+            ...
+        StopIteration
+        >>> test('Perception +5')
+        ('skills', {'Perception': 5})
+        >>> test('History +7, Perception +11, Persuasion +8, Stealth +5')
+        ('skills', {'History': 7, 'Perception': 11, 'Persuasion': 8, 'Stealth': 5})
+        """
+        if text is None:
+            return
+
+        all_skills = [
+            'Athletics', 'Acrobatics', 'Sleight of Hand', 'Stealth', 'Arcana',
+            'History', 'Investigation', 'Nature', 'Religion', 'Animal Handling',
+            'Insight', 'Medicine', 'Perception', 'Survival', 'Deception',
+            'Intimidation', 'Performance', 'Persuasion' ]
+
+        def normalize(skill):
+            for s in all_skills:
+                if skill.lower() == s.lower():
+                    return s
+            raise Exception(f'Unknown skill "{skill}"')
+
+        try:
+            skills = re.split(', ?', text)
+            skills = (re.split(' \+', skill) for skill in skills)
+            skills = dict((normalize(skill), int(val)) for skill, val in skills)
+        except Exception as e:
+            error(f'yield_skills: {type(e)} "{e}" for text "{text}"')
+
+        yield ('skills', skills)
