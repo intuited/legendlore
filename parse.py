@@ -77,16 +77,6 @@ class Monster():
         if g[1]:
             yield ('hitdice', g[1])
 
-    # Pretty sure I don't need this
-    # def _assign_csv(self, field, text):
-    #     """Parse comma-separated values and assign them as a list.
-
-    #     >>> mutate_blank(Monster._assign_csv, 'speed',
-    #     ...              '40 ft., fly 80 ft., swim 40 ft.').speed
-    #     ['40 ft.', 'fly 80 ft.', 'swim 40 ft.']
-    #     """
-
-
     @classmethod
     def yield_speed(cls, field, text):
         """Parse speed fields into a dictionary.
@@ -164,6 +154,7 @@ class Monster():
             >>> parse_vector('climb 30 ft.')
             ('climb', 30)
             >>> parse_vector('yeet 10000 ft.')
+            These don't work because it's an inner function.
             >>> parse_vector('fly 30 ft. (hover)')
             ('fly', 30)
             """
