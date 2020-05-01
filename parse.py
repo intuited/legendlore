@@ -20,6 +20,9 @@ class Monster():
         yield from cls.yield_if_present(node, 'ac', cls.yield_ac)
         yield from cls.yield_if_present(node, 'hp', cls.yield_hp)
         yield from cls.yield_if_present(node, 'speed', cls.yield_speed)
+        for stat in ('str', 'dex', 'con', 'int', 'wis', 'cha'):
+            yield from cls.yield_if_present(node, stat, cls.yield_int)
+        yield from cls.yield_if_present(node, 'save', cls.yield_saves)
 
     @classmethod
     def yield_if_present(cls, node, field, fn=yield_args):
@@ -231,3 +234,35 @@ class Monster():
                 yield ('speed', irregulars[text])
             except KeyError:
                 warning(f'yield_speed failed to match "{text}"')
+
+    @classmethod
+    def yield_int(cls, field, text):
+        """Yield an integer that comprises the entirety of `text`."""
+        yield (field, int(text))
+
+    @classmethod
+    def yield_saves(cls, field, text):
+        """Yield ('saves': {..})
+
+        Dictionary entries are a stat (eg 'str') and a number.
+
+        >>> test = lambda text: next(Monster.yield_saves('save', text))
+        >>> test(None)
+        Traceback (most recent call last):
+            ...
+        StopIteration
+        >>> test('Dex +5, Con +11, Wis +7, Cha +9')
+        ('saves', {'dex': 5, 'con': 11, 'wis': 7, 'cha': 9})
+        """
+        if text is None:
+            return
+
+        try:
+            saves = re.split(', ', text)
+            saves = (re.split(' +', save) for save in saves)
+            saves = ((stat.lower(), int(val)) for stat, val in saves)
+        except:
+            error(f'yield_saves: parsing error for text "{text}"')
+            return
+
+        yield ('saves', dict(saves))
