@@ -40,7 +40,9 @@ class Monster():
             yield from cls.yield_if_present(node, stat, cls.yield_int)
         yield from cls.yield_if_present(node, 'save', cls.yield_saves)
         yield from cls.yield_if_present(node, 'skill', cls.yield_skills)
-        yield from cls.yield_if_present(node, 'resist', cls.yield_resistances)
+        yield from cls.yield_if_present(node, 'resist', cls.yield_damage_types)
+        yield from cls.yield_if_present(node, 'vulnerable', cls.yield_damage_types)
+        yield from cls.yield_if_present(node, 'immune', cls.yield_damage_types)
 
     @classmethod
     def yield_if_present(cls, node, field, fn=yield_args):
@@ -332,6 +334,8 @@ class Monster():
         'poison', 'acid', 'fire', 'cold', 'radiant', 'necrotic',
         'lightning', 'thunder', 'force', 'psychic',
 
+        'charmed', 'petrified', 'blinded', # should be in conditions but the DB is wrong
+
         'damage from spells',
         'piercing from magic weapons wielded by good creatures',
         "one of the following: acid, cold, fire, lightning or poison",
@@ -364,6 +368,11 @@ class Monster():
                 'nonmagical piercing',
                 'nonmagical slashing'}},
         "bludgeoning, piercing and slashing from nonmagical attacks": {
+            'types': {
+                'nonmagical bludgeoning',
+                'nonmagical piercing',
+                'nonmagical slashing'}},
+        "bludgeoning, piercing, and slashing that is nonmagical": {
             'types': {
                 'nonmagical bludgeoning',
                 'nonmagical piercing',
@@ -437,8 +446,26 @@ class Monster():
                 'nonmagical nonsilver bludgeoning',
                 'nonmagical nonsilver piercing',
                 'nonmagical nonsilver slashing'}},
+        "bludgeoning, piercing, and slashing damage from nonmagical attacks that aren't silvered": {
+            'types': {
+                'nonmagical nonsilver bludgeoning',
+                'nonmagical nonsilver piercing',
+                'nonmagical nonsilver slashing'}},
+        "bludgeoning, piercing, and slashing damage from nonmagical attacks that aren't silvered weapons": {
+            'types': {
+                'nonmagical nonsilver bludgeoning',
+                'nonmagical nonsilver piercing',
+                'nonmagical nonsilver slashing'}},
         "slashing damage from nonmagical attacks not made with silvered weapons": {
             'types': {
+                'nonmagical nonsilver slashing'}},
+
+        "lightning, poison, bludgeoning, piercing, sand slashing from non-magical attacks that aren't adamantine or silvered": {
+            'types': {
+                'lightning',
+                'poison',
+                'nonmagical nonsilver bludgeoning',
+                'nonmagical nonsilver piercing',
                 'nonmagical nonsilver slashing'}},
 
         "bludgeoning, piercing, and slashing from nonmagical attacks that aren't adamantine": {
@@ -456,10 +483,27 @@ class Monster():
                 'nonmagical nonadamantine bludgeoning',
                 'nonmagical nonadamantine piercing',
                 'nonmagical nonadamantine slashing'}},
+        "bludgeoning, piercing, and slashing from nonmagical attacks that aren’t adamantine": {
+            'types': {
+                'nonmagical nonadamantine bludgeoning',
+                'nonmagical nonadamantine piercing',
+                'nonmagical nonadamantine slashing'}},
+        "bludgeoning, piercing, and slashing from nonmagical weapons that aren't adamantine": {
+            'types': {
+                'nonmagical nonadamantine bludgeoning',
+                'nonmagical nonadamantine piercing',
+                'nonmagical nonadamantine slashing'}},
         "piercing and slashing from nonmagical attacks that aren't adamantine": {
             'types': {
                 'nonmagical nonadamantine piercing',
                 'nonmagical nonadamantine slashing'}},
+
+        "fire, bludgeoning, piercing, and slashing from metal weapons": {
+            'types': {
+                'fire',
+                'metal bludgeoning',
+                'metal piercing',
+                'metal slashing'}},
 
         "bludgeoning, piercing, and slashing from magic weapons": {
             'types': {
@@ -487,16 +531,30 @@ class Monster():
             'notes': {
                 'While wearing the mask of the Dragon Queen': [
                     'acid', 'cold', 'lightning', 'poison']}},
+        "while wearing the mask of the dragon queen: fire": {
+            'types': {'fire'},
+            'notes': {'while wearing the mask of the dragon queen': 'fire'}},
+
+        "cold (while wearing the ring of winter)": {
+            'types': {'cold'},
+            'notes': {'while wearing the ring of winter': 'cold'}},
+
+        'posion': {
+            'types': {'poison'}},
     }
 
     @classmethod
-    def yield_resistances(cls, field, text):
-        """Yield ('resistances': {..})
+    def yield_damage_types(cls, field, text):
+        """Yields the `field` and the damage types that apply to it for `text`.
 
-        Set entries are strings.
+        `field` can be "resist", "vulnerable", or "immune"
+
+        Yield format e.g. ('resist': {..})
+
+        May also yield notes in the form ('resist_notes': {..})
 
         >>> from pprint import pprint
-        >>> test = lambda text: list(Monster.yield_resistances('resist', text))
+        >>> test = lambda text: list(Monster.yield_damage_types('resist', text))
         >>> test(None)
         []
         >>> pprint(test('lightning; thunder; bludgeoning, piercing, ' + 
