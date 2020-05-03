@@ -4,6 +4,22 @@ from logging import debug, warning, error
 def yield_args(*args):
     yield args
 
+def anyfalse(bools):
+    """Returns True iff any elements of iterable `bools` are False
+
+    >>> anyfalse([True, True])
+    False
+    >>> anyfalse([True, False, True])
+    True
+    >>> anyfalse(None)
+    False
+    """
+    if bools is None: return False
+    for b in bools:
+        if not b:
+            return True
+    return False
+
 class Monster():
     """Collection of class functions for parsing monster nodes."""
 
@@ -24,6 +40,7 @@ class Monster():
             yield from cls.yield_if_present(node, stat, cls.yield_int)
         yield from cls.yield_if_present(node, 'save', cls.yield_saves)
         yield from cls.yield_if_present(node, 'skill', cls.yield_skills)
+        yield from cls.yield_if_present(node, 'resist', cls.yield_resistances)
 
     @classmethod
     def yield_if_present(cls, node, field, fn=yield_args):
@@ -307,3 +324,264 @@ class Monster():
             error(f'yield_skills: {type(e)} "{e}" for text "{text}"')
 
         yield ('skills', skills)
+
+    # damage types as they are used in the XML file
+    # for resistances, vulnerabilities, and immunities
+    damage_types = { # simple types which don't need remapping
+        'bludgeoning', 'piercing', 'slashing',
+        'poison', 'acid', 'fire', 'cold', 'radiant', 'necrotic',
+        'lightning', 'thunder', 'force', 'psychic',
+
+        'damage from spells',
+        'piercing from magic weapons wielded by good creatures',
+        "one of the following: acid, cold, fire, lightning or poison",
+        "one of the following: acid, cold, fire, lightning, or poison",
+    }
+    damage_mappings = { # translation of complex fields
+        'bludgeoning, piercing, and slashing from nonmagical attacks': {
+            'types': {
+                'nonmagical bludgeoning',
+                'nonmagical piercing',
+                'nonmagical slashing'}},
+        "bludgeoning, piercing, and slashing damage from nonmagical weapons": {
+            'types': {
+                'nonmagical bludgeoning',
+                'nonmagical piercing',
+                'nonmagical slashing'}},
+        "bludgeoning, piercing, slashing from nonmagical attacks": {
+            'types': {
+                'nonmagical bludgeoning',
+                'nonmagical piercing',
+                'nonmagical slashing'}},
+        "bludgeoning, piercing, and slashing damage from nonmagical attacks": {
+            'types': {
+                'nonmagical bludgeoning',
+                'nonmagical piercing',
+                'nonmagical slashing'}},
+        "bludgeoning, piercing, and slashing from nonmagical weapons": {
+            'types': {
+                'nonmagical bludgeoning',
+                'nonmagical piercing',
+                'nonmagical slashing'}},
+        "bludgeoning, piercing and slashing from nonmagical attacks": {
+            'types': {
+                'nonmagical bludgeoning',
+                'nonmagical piercing',
+                'nonmagical slashing'}},
+        "bludgeoning from nonmagical attacks": {
+            'types': {
+                'nonmagical bludgeoning'}},
+
+        "fire, bludgeoning, piercing, and slashing from nonmagical attacks": {
+            'types': {
+                'nonmagical fire',
+                'nonmagical bludgeoning',
+                'nonmagical piercing',
+                'nonmagical slashing'}},
+        "cold, fire, lightning, bludgeoning, piercing and slashing that is nonmagical": {
+            'types': {
+                'nonmagical cold',
+                'nonmagical fire',
+                'nonmagical bludgeoning',
+                'nonmagical piercing',
+                'nonmagical slashing'}},
+
+        'non magical bludgeoning, piercing, and slashing (from stoneskin)': {
+            'types': {
+                'nonmagical bludgeoning',
+                'nonmagical piercing',
+                'nonmagical slashing'},
+            'notes': {
+                'from stoneskin': [
+                    'nonmagical bludgeoning',
+                    'nonmagical piercing',
+                    'nonmagical slashing']}},
+        "nonmagical bludgeoning, piercing, slashing (from stoneskin)": {
+            'types': {
+                'nonmagical bludgeoning',
+                'nonmagical piercing',
+                'nonmagical slashing'},
+            'notes': {
+                'from stoneskin': [
+                    'nonmagical bludgeoning',
+                    'nonmagical piercing',
+                    'nonmagical slashing']}},
+
+        "bludgeoning, piercing, and slashing from nonmagical attacks that aren't silvered": {
+            'types': {
+                'nonmagical nonsilver bludgeoning',
+                'nonmagical nonsilver piercing',
+                'nonmagical nonsilver slashing'}},
+        "bludgeoning, piercing, and slashing from nonmagical attacks that aren’t silvered": {
+            'types': {
+                'nonmagical nonsilver bludgeoning',
+                'nonmagical nonsilver piercing',
+                'nonmagical nonsilver slashing'}},
+        "bludgeoning, piercing, slashing from nonmagical attacks that aren't silvered": {
+            'types': {
+                'nonmagical nonsilver bludgeoning',
+                'nonmagical nonsilver piercing',
+                'nonmagical nonsilver slashing'}},
+        "bludgeoning, piercing, and slashing from nonmagical/nonsilver weapons": {
+            'types': {
+                'nonmagical nonsilver bludgeoning',
+                'nonmagical nonsilver piercing',
+                'nonmagical nonsilver slashing'}},
+        "bludgeoning, piercing, and slashing from nonmagical attacks not made with silvered weapons": {
+            'types': {
+                'nonmagical nonsilver bludgeoning',
+                'nonmagical nonsilver piercing',
+                'nonmagical nonsilver slashing'}},
+        "bludgeoning, piercing, and slashing from nonmagical weapons that aren't silvered": {
+            'types': {
+                'nonmagical nonsilver bludgeoning',
+                'nonmagical nonsilver piercing',
+                'nonmagical nonsilver slashing'}},
+        "slashing damage from nonmagical attacks not made with silvered weapons": {
+            'types': {
+                'nonmagical nonsilver slashing'}},
+
+        "bludgeoning, piercing, and slashing from nonmagical attacks that aren't adamantine": {
+            'types': {
+                'nonmagical nonadamantine bludgeoning',
+                'nonmagical nonadamantine piercing',
+                'nonmagical nonadamantine slashing'}},
+        "bludgeoning, piercing, and slashing damage from nonmagical attacks not made with adamantine weapons": {
+            'types': {
+                'nonmagical nonadamantine bludgeoning',
+                'nonmagical nonadamantine piercing',
+                'nonmagical nonadamantine slashing'}},
+        "bludgeoning, piercing, slashing from nonmagical attacks that aren't adamantine": {
+            'types': {
+                'nonmagical nonadamantine bludgeoning',
+                'nonmagical nonadamantine piercing',
+                'nonmagical nonadamantine slashing'}},
+        "piercing and slashing from nonmagical attacks that aren't adamantine": {
+            'types': {
+                'nonmagical nonadamantine piercing',
+                'nonmagical nonadamantine slashing'}},
+
+        "bludgeoning, piercing, and slashing from magic weapons": {
+            'types': {
+                'magical bludgeoning',
+                'magical piercing',
+                'magical slashing'}},
+
+        "bludgeoning, piercing, and slashing while in dim light or darkness": {
+            'types': {
+                'bludgeoning while in dim light or darkness',
+                'piercing while in dim light or darkness',
+                'slashing while in dim light or darkness'}},
+        "bludgeoning, piercing, and slashing from nonmagical attacks while in dim light or darkness": {
+            'types': {
+                'nonmagical bludgeoning while in dim light or darkness',
+                'nonmagical piercing while in dim light or darkness',
+                'nonmagical slashing while in dim light or darkness'}},
+
+        "while wearing the mask of the dragon queen: acid, cold, lightning, poison": {
+            'types': {
+                'acid', 'cold', 'lightning', 'poison',
+                'nonmagical bludgeoning',
+                'nonmagical piercing',
+                'nonmagical slashing'},
+            'notes': {
+                'While wearing the mask of the Dragon Queen': [
+                    'acid', 'cold', 'lightning', 'poison']}},
+    }
+
+    @classmethod
+    def yield_resistances(cls, field, text):
+        """Yield ('resistances': {..})
+
+        Set entries are strings.
+
+        >>> from pprint import pprint
+        >>> test = lambda text: list(Monster.yield_resistances('resist', text))
+        >>> test(None)
+        []
+        >>> pprint(test('lightning; thunder; bludgeoning, piercing, ' + 
+        ...             'and slashing from nonmagical attacks'))
+        [('resist',
+          {'lightning',
+           'nonmagical bludgeoning',
+           'nonmagical piercing',
+           'nonmagical slashing',
+           'thunder'})]
+        >>> pprint(test('damage from spells; non magical bludgeoning, ' + 
+        ...             'piercing, and slashing (from stoneskin)'))
+        [('resist',
+          {'damage from spells',
+           'nonmagical bludgeoning',
+           'nonmagical piercing',
+           'nonmagical slashing'}),
+         ('resist_notes',
+          {'from stoneskin': ['nonmagical bludgeoning',
+                              'nonmagical piercing',
+                              'nonmagical slashing']})]
+        >>> r = test('acid, cold, fire, lightning, thunder')
+        >>> r == [('resist', {'acid', 'cold', 'fire', 'lightning', 'thunder'})]
+        True
+        >>> pprint(test('While wearing the mask of the Dragon Queen: acid, cold, ' +
+        ...             'lightning, poison; bludgeoning, piercing, ' +
+        ...             'and slashing damage from nonmagical weapons'))
+        [('resist',
+          {'acid',
+           'cold',
+           'lightning',
+           'nonmagical bludgeoning',
+           'nonmagical piercing',
+           'nonmagical slashing',
+           'poison'}),
+         ('resist_notes',
+          {'While wearing the mask of the Dragon Queen': ['acid',
+                                                          'cold',
+                                                          'lightning',
+                                                          'poison']})]
+        """
+        if text == None:
+            return
+
+        found, notfound = [], []
+
+        # First, parse the text, first along semicolon delimeters,
+        # then along commas
+        scsvs = re.split('; ?', text.lower()) #Semi-Colon-Separated Values
+        scsvs = map(str.strip, scsvs)
+
+        damage_types = set()
+        damage_types.update(cls.damage_types)
+        damage_types.update(cls.damage_mappings.keys())
+
+        for scsv in scsvs:
+            if scsv in damage_types:
+                found.append(scsv)
+            else:  # check if all subitems from comma-split match
+                csvs = re.split(', ?', scsv) #Comma-Separated Values
+                csvs = map(str.strip, csvs)
+                if anyfalse(csv in damage_types for csv in csvs):
+                    notfound.append(scsv)
+                else:
+                    found += csvs
+
+        for item in notfound:
+            warning(f'Unrecognised scsv "{item}" in text "{text}"')
+
+        # Now check the parsed field contents for any items
+        # which require remapping to multiple or different items
+        # and/or have associated notes.
+        field_contents = []
+        field_notes = {}
+        for i in found:
+            if i in cls.damage_mappings.keys():
+                try:
+                    field_contents += cls.damage_mappings[i]['types']
+                    field_notes.update(cls.damage_mappings[i]['notes'])
+                except KeyError:
+                    None
+            else:
+                field_contents.append(i)
+
+        if field_contents:
+            yield (field, set(field_contents))
+        if field_notes:
+            yield (f'{field}_notes', field_notes)
