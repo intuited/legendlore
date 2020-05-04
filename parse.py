@@ -1,5 +1,7 @@
 import re
 from logging import debug, warning, error
+from functools import reduce
+from pprint import pprint
 
 def yield_args(*args):
     yield args
@@ -19,6 +21,13 @@ def anyfalse(bools):
         if not b:
             return True
     return False
+
+def dict_merge(d1, d2):
+    """Merges dictionaries and returns the result."""
+    d = {}
+    d.update(d1)
+    d.update(d2)
+    return d
 
 class Monster():
     """Collection of class functions for parsing monster nodes."""
@@ -43,6 +52,7 @@ class Monster():
         yield from cls.yield_if_present(node, 'resist', cls.yield_damage_types)
         yield from cls.yield_if_present(node, 'vulnerable', cls.yield_damage_types)
         yield from cls.yield_if_present(node, 'immune', cls.yield_damage_types)
+        yield from cls.yield_if_present(node, 'senses', cls.yield_senses)
 
     @classmethod
     def yield_if_present(cls, node, field, fn=yield_args):
@@ -553,7 +563,6 @@ class Monster():
 
         May also yield notes in the form ('resist_notes': {..})
 
-        >>> from pprint import pprint
         >>> test = lambda text: list(Monster.yield_damage_types('resist', text))
         >>> test(None)
         []
@@ -576,9 +585,8 @@ class Monster():
           {'from stoneskin': ['nonmagical bludgeoning',
                               'nonmagical piercing',
                               'nonmagical slashing']})]
-        >>> r = test('acid, cold, fire, lightning, thunder')
-        >>> r == [('resist', {'acid', 'cold', 'fire', 'lightning', 'thunder'})]
-        True
+        >>> test('acid, cold, fire, lightning, thunder')
+        ('resist', {'acid', 'cold', 'fire', 'lightning', 'thunder'})
         >>> pprint(test('While wearing the mask of the Dragon Queen: acid, cold, ' +
         ...             'lightning, poison; bludgeoning, piercing, ' +
         ...             'and slashing damage from nonmagical weapons'))
@@ -643,3 +651,77 @@ class Monster():
             yield (field, set(field_contents))
         if field_notes:
             yield (f'{field}_notes', field_notes)
+
+    @classmethod
+    def yield_senses(cls, field, text):
+        """Parse 'senses' fields and yield the results.
+
+        >>> test = lambda text: dict(Monster.yield_senses('senses', text))
+        >>> test(None)
+        {}
+        >>> next(Monster.yield_senses('senses', None))
+        Traceback (most recent call last):
+            ...
+        StopIteration
+        >>> test('darkvision 120 ft.')
+        {'senses': {'darkvision': 120}}
+        >>> test('blindsight 30 ft., darkvision 60 ft.')
+        {'senses': {'blindsight': 30, 'darkvision': 60}}
+        >>> pprint(test('darkvision 60 ft. (rat form only)'))
+        {'senses': {'darkvision': 60}, 'senses_notes': {'darkvision': 'rat form only'}}
+        """
+        just_senses_res = { # match component of text, map to fn(groups) of match
+            'darkvision (\d+) ?(?:ft\.?)?': lambda *a: {'darkvision': int(a[0])},
+            'blindsight (\d+) ?ft\.?':      lambda *a: {'blindsight': int(a[0])},
+            'truesight (\d+) ?ft\.?':       lambda *a: {'truesight': int(a[0])},
+            'tremorsense (\d+) ?ft\.?':     lambda *a: {'tremorsense': int(a[0])},
+            'blindsight (\d+) ?ft\.? \(blind beyond this (?:radius|distance)\)':
+                lambda *a: {'blindsight': int(a[0])},
+            'blindsight (\d+) ?ft. or (\d+) ?ft. while deafened \(blind beyond this radius\)':
+                lambda *a: {'blindsight': int(a[0]), 'blindsight while deafened': int(a[1])},
+            'darkvision (\d+) ?ft\. \((?:including|penetrates) magical darkness\)':
+                lambda *a: {'devilsight': int(a[0])},
+            "darkvision (\d+) ?ft\. \(see devil's sight below\)":
+                lambda *a: {'devilsight': int(a[0])},
+        }
+        with_notes_strings = { # match full text, map to full dictionary
+            'darkvision 60 ft. (rat form only)':
+                {'senses': {'darkvision': 60},
+                 'senses_notes': {'darkvision': 'rat form only'}},
+            'While wearing the Mask of the Dragon Queen: darkvision 60 ft.':
+                {'senses': {'darkvision': 60},
+                 'senses_notes': 'darkvision while wearing the Mask of the Dragon Queen'},
+            'darkvision 60 ft. (can see invisible creatures out to the same range)':
+                {'senses': {'darkvision': 60},
+                 'senses_notes': {'darkvision': 'can see invisible creatures to same range'}}
+        }
+
+        def map_component(c):
+            """Find a matching RE and map the component to a dictionary.
+
+            >>> map_component('darkvision 120 ft')
+            {'darkvision': 120}
+            """
+            for r, f in just_senses_res.items():
+                m = re.fullmatch(r, c, re.I)
+                if m:
+                    return f(*m.groups())
+
+        if text is None:
+            return
+
+        for s, v in with_notes_strings.items():
+            if s == text:
+                yield from v.items()
+                return
+
+        components = re.split(', ?', text)
+        mapped_components = (map_component(c) for c in components)
+        mapped_components = (m for m in mapped_components if m) # drop Nones
+        try:
+            senses = reduce(dict_merge, mapped_components)
+        except TypeError:
+            warning(f'yield_senses: failed match on text "{text}"')
+            return
+
+        yield (field, senses)
