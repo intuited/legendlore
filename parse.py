@@ -585,8 +585,9 @@ class Monster():
           {'from stoneskin': ['nonmagical bludgeoning',
                               'nonmagical piercing',
                               'nonmagical slashing']})]
-        >>> test('acid, cold, fire, lightning, thunder')
-        ('resist', {'acid', 'cold', 'fire', 'lightning', 'thunder'})
+        >>> r = test('acid, cold, fire, lightning, thunder')
+        >>> r == [('resist', {'acid', 'cold', 'fire', 'lightning', 'thunder'})]
+        True
         >>> pprint(test('While wearing the mask of the Dragon Queen: acid, cold, ' +
         ...             'lightning, poison; bludgeoning, piercing, ' +
         ...             'and slashing damage from nonmagical weapons'))
@@ -623,7 +624,7 @@ class Monster():
                 found.append(scsv)
             else:  # check if all subitems from comma-split match
                 csvs = re.split(', ?', scsv) #Comma-Separated Values
-                csvs = map(str.strip, csvs)
+                csvs = list(map(str.strip, csvs))
                 if anyfalse(csv in damage_types for csv in csvs):
                     notfound.append(scsv)
                 else:
