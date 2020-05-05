@@ -1,4 +1,5 @@
 import re
+import logging
 from logging import debug, warning, error
 from functools import reduce
 from pprint import pprint
@@ -54,6 +55,7 @@ class Monster():
         yield from cls.yield_if_present(node, 'immune', cls.yield_damage_types)
         yield from cls.yield_if_present(node, 'conditionImmune', cls.yield_condition)
         yield from cls.yield_if_present(node, 'senses', cls.yield_senses)
+        yield from cls.yield_if_present(node, 'passive', cls.yield_int)
 
     @classmethod
     def yield_if_present(cls, node, field, fn=yield_args):
@@ -797,3 +799,30 @@ class Monster():
             return
 
         yield (field, senses)
+
+    @classmethod
+    def yield_int(cls, field, text):
+        """Parse integer values and yield (field, value)
+
+        >>> test = lambda text: dict(Monster.yield_int('passive', text))
+        >>> test(None)
+        {}
+        >>> test('42')
+        {'passive': 42}
+        >>> import logging
+        >>> old_warning = logging.warning
+        >>> warnings = []
+        >>> logging.warning = lambda msg: warnings.append(msg)
+        >>> test('seven')
+        {}
+        >>> warnings
+        ['yield_int: failed to parse text "seven"']
+        >>> logging.warning = old_warning
+        """
+        if text == None:
+            return
+
+        try:
+            yield (field, int(text))
+        except ValueError:
+            logging.warning(f'yield_int: failed to parse text "{text}"')
