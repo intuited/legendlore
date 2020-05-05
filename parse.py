@@ -52,6 +52,7 @@ class Monster():
         yield from cls.yield_if_present(node, 'resist', cls.yield_damage_types)
         yield from cls.yield_if_present(node, 'vulnerable', cls.yield_damage_types)
         yield from cls.yield_if_present(node, 'immune', cls.yield_damage_types)
+        yield from cls.yield_if_present(node, 'conditionImmune', cls.yield_condition)
         yield from cls.yield_if_present(node, 'senses', cls.yield_senses)
 
     @classmethod
@@ -652,6 +653,76 @@ class Monster():
             yield (field, set(field_contents))
         if field_notes:
             yield (f'{field}_notes', field_notes)
+
+    @classmethod
+    def yield_condition(cls, field, text):
+        """Parse field containing a set of conditions and yield the result.
+
+        >>> test = lambda text: dict(Monster.yield_condition('conditionImmune', text))
+        >>> ptest = lambda text: pprint(test(text), width=200)
+        >>> test(None)
+        {}
+        >>> r = test('charmed, frightened, paralyzed, petrified, poisoned , unconscious')
+        >>> r == {'conditionImmune': {'charmed', 'frightened', 'unconscious', 'poisoned', 'paralysed', 'petrified'}}
+        True
+        >>> test('petrified')
+        {'conditionImmune': {'petrified'}}
+        >>> r = test('While wearing the mask of the Dragon Queen: charmed, frightened, poisoned')
+        >>> r['conditionImmune'] == {'charmed', 'frightened', 'poisoned'}
+        True
+        >>> pprint(r['conditionImmune_notes'])
+        {'charmed': 'While wearing the mask of the Dragon Queen',
+         'frightened': 'While wearing the mask of the Dragon Queen',
+         'poisoned': 'While wearing the mask of the Dragon Queen'}
+        >>> test('Frightened')
+        {'conditionImmune': {'frightened'}}
+        """
+        full_text = { # special cases
+            'While wearing the mask of the Dragon Queen: charmed, frightened, poisoned': {
+                field: {'charmed', 'frightened', 'poisoned'},
+                f'{field}_notes': {
+                    'charmed': 'While wearing the mask of the Dragon Queen',
+                    'frightened': 'While wearing the mask of the Dragon Queen',
+                    'poisoned': 'While wearing the mask of the Dragon Queen'}},
+        }
+        conditions = { # format: {RE: normalized representation}
+            'blinded': None,
+            'charmed': None,
+            'deafened': None,
+            'exhaustion': None,
+            'frightened': None,
+            'grappled': None,
+            'incapacitated': None,
+            'paraly[sz]ed': 'paralysed',
+            'petrified': None,
+            'poisoned': None,
+            'prone': None,
+            'restrained': None,
+            'stunned': None,
+            'uncons?cious': 'unconscious',
+        }
+
+        if text == None:
+            return
+
+        for ft, v in full_text.items():
+            if re.fullmatch(ft, text):
+                yield from v.items()
+                return
+
+        found = []
+        notfound = []
+        csvs = re.split(' ?, ?', text)
+        def process_csv(csv):
+            for c, v in conditions.items():
+                if re.fullmatch(c, csv, re.I):
+                    return v if v else c
+            raise Exception(f'Unmatched CSV "{csv}" in field text "{text}"')
+
+        try:
+            yield (field, set(process_csv(csv) for csv in csvs))
+        except Exception as e:
+            warning(f'yield_condition: {e.args[0]}')
 
     @classmethod
     def yield_senses(cls, field, text):
