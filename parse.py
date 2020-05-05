@@ -55,6 +55,7 @@ class Monster():
         yield from cls.yield_if_present(node, 'conditionImmune', cls.yield_condition)
         yield from cls.yield_if_present(node, 'senses', cls.yield_senses)
         yield from cls.yield_if_present(node, 'passive', cls.yield_int)
+        yield from cls.yield_if_present(node, 'description', cls.yield_text)
 
     @classmethod
     def yield_if_present(cls, node, field, fn=yield_args):
@@ -822,3 +823,11 @@ class Monster():
             yield (field, int(text))
         except ValueError:
             warning(f'yield_int: failed to parse text "{text}"')
+
+    @classmethod
+    def yield_text(cls, field, text):
+        """Just yield the text field."""
+        if text is None:
+            return
+
+        yield (field, text)
