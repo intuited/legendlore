@@ -1,5 +1,4 @@
 import re
-import logging
 from logging import debug, warning, error
 from functools import reduce
 from pprint import pprint
@@ -809,15 +808,12 @@ class Monster():
         {}
         >>> test('42')
         {'passive': 42}
-        >>> import logging
-        >>> old_warning = logging.warning
-        >>> warnings = []
-        >>> logging.warning = lambda msg: warnings.append(msg)
-        >>> test('seven')
+        >>> from unittest import TestCase
+        >>> with TestCase.assertLogs(_) as cm:
+        ...     print(test('seven'))
+        ...     print(cm.output)
         {}
-        >>> warnings
-        ['yield_int: failed to parse text "seven"']
-        >>> logging.warning = old_warning
+        ['WARNING:root:yield_int: failed to parse text "seven"']
         """
         if text == None:
             return
@@ -825,4 +821,4 @@ class Monster():
         try:
             yield (field, int(text))
         except ValueError:
-            logging.warning(f'yield_int: failed to parse text "{text}"')
+            warning(f'yield_int: failed to parse text "{text}"')
