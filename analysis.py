@@ -50,15 +50,16 @@ def analyze_fey(tree=None):
 
     print('how do save bonuses work?  Are they added to AS bonuses or do they replace them?')
     flatten = lambda lists: [i for l in lists for i in l]
-    headers = ['name', 'cr'] + flatten([ascore, f'{ascore} save'] for ascore in as_names)
+    headers = ['name', 'cr', 'ac', 'hp'] + flatten([ascore, f'{ascore} save'] for ascore in as_names)
     def msave(m, stat):
         if hasattr(m, 'saves'):
             return m.saves.get(stat, '-')
         else:
             return '-'
-    row_items = lambda m: [m.name, m.cr] + flatten([getattr(m, ascore), msave(m, ascore)] for ascore in as_names)
+    row_items = lambda m: [m.name, m.cr, getattr(m, 'ac_num', '-'), m.hp] + flatten([getattr(m, ascore), msave(m, ascore)] for ascore in as_names)
     data = [headers] + [row_items(m) for m in fey]
-    print('\n'.join(tabular(data)))
+    #print('\n'.join(tabular(data)))
+    print('\n'.join(csv(data)))
 
     print('Fey spells/slots:')
     fey = sorted(fey, key=lambda m: m.cr)
@@ -84,6 +85,9 @@ def fntab(db, rows, datagetter, fns):
     results = list(zip(*results))
 
     return '\n'.join(tabular(results))
+
+def csv(rows):
+    yield from (', '.join(map(str, row)) for row in rows)
 
 def tabular(rows):
     """`rows` is a list of lists of strings.
