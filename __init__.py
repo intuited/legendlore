@@ -52,7 +52,14 @@ def parse_db(db_file='FC5eXML/CoreOnly.xml'):
     with open(db_file, 'r') as xmlfile:
         tree = etree.parse(xmlfile, parser)
     debug('...done')
+    apply_errata(tree)
     return tree
+
+def apply_errata(tree):
+    """Corrects errors that have been discovered in the XML file."""
+    darkling = tree.xpath("//monster[name/text() = 'Darkling']")[0]
+    con = darkling.find('con')
+    con.text = '12'
 
 def spell_tag_analysis(tree):
     spells = tree.xpath("//spell")
