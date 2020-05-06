@@ -60,6 +60,16 @@ def analyze_fey(tree=None):
     data = [headers] + [row_items(m) for m in fey]
     print('\n'.join(tabular(data)))
 
+    print('Fey spells/slots:')
+    fey = sorted(fey, key=lambda m: m.cr)
+    for m in fey:
+        if hasattr(m, 'spells'):
+            print(f"- {m.name} (CR {m.cr}): [{m.spells}]; slots: {getattr(m, 'slots', 'N/A')}")
+
+    spells = Counter(flatten(m.spells.split(', ') for m in fey if hasattr(m, 'spells')))
+    print('Number of fey with each spell:')
+    print('\n'.join(f'{s}, {f}' for s, f in spells.items()))
+
 def fntab(db, rows, datagetter, fns):
     """Runs aggregate functions `fns` on values from the db
 

@@ -58,6 +58,8 @@ class Monster():
         yield from cls.yield_if_present(node, 'passive', cls.yield_int)
         yield from cls.yield_if_present(node, 'description', cls.yield_text)
         yield from cls.yield_if_present(node, 'cr', cls.yield_fraction)
+        yield from cls.yield_if_present(node, 'spells', cls.yield_text)
+        yield from cls.yield_if_present(node, 'slots', cls.yield_text)
 
     @classmethod
     def yield_if_present(cls, node, field, fn=yield_args):
