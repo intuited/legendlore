@@ -50,13 +50,13 @@ def analyze_fey(tree=None):
 
     print('how do save bonuses work?  Are they added to AS bonuses or do they replace them?')
     flatten = lambda lists: [i for l in lists for i in l]
-    headers = [''] + flatten([ascore, f'{ascore} save'] for ascore in as_names)
+    headers = ['name', 'cr'] + flatten([ascore, f'{ascore} save'] for ascore in as_names)
     def msave(m, stat):
         if hasattr(m, 'saves'):
             return m.saves.get(stat, '-')
         else:
             return '-'
-    row_items = lambda m: [m.name] + flatten([getattr(m, ascore), msave(m, ascore)] for ascore in as_names)
+    row_items = lambda m: [m.name, m.cr] + flatten([getattr(m, ascore), msave(m, ascore)] for ascore in as_names)
     data = [headers] + [row_items(m) for m in fey]
     print('\n'.join(tabular(data)))
 

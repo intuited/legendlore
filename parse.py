@@ -2,6 +2,7 @@ import re
 from logging import debug, warning, error
 from functools import reduce
 from pprint import pprint
+from fractions import Fraction
 
 def yield_args(*args):
     yield args
@@ -56,6 +57,7 @@ class Monster():
         yield from cls.yield_if_present(node, 'senses', cls.yield_senses)
         yield from cls.yield_if_present(node, 'passive', cls.yield_int)
         yield from cls.yield_if_present(node, 'description', cls.yield_text)
+        yield from cls.yield_if_present(node, 'cr', cls.yield_fraction)
 
     @classmethod
     def yield_if_present(cls, node, field, fn=yield_args):
@@ -831,3 +833,31 @@ class Monster():
             return
 
         yield (field, text)
+
+    @classmethod
+    def yield_fraction(cls, field, text):
+        """Convert fractional text field to float and yield (field, result)
+
+        >>> test = lambda text: dict(Monster.yield_fraction('cr', text))
+        >>> test(None)
+        {}
+        >>> test('42')
+        {'cr': 42.0}
+        >>> test('4/2')
+        {'cr': 2.0}
+        >>> test('2/4')
+        {'cr': 0.5}
+        >>> from unittest import TestCase
+        >>> with TestCase.assertLogs(_) as cm:
+        ...     print(test('not a fraction'))
+        ...     print(cm.output)
+        {}
+        ['WARNING:root:yield_fraction: failed to parse text "not a fraction"']
+        """
+        if text == None:
+            return
+
+        try:
+            yield (field, float(Fraction(text)))
+        except ValueError:
+            warning(f'yield_fraction: failed to parse text "{text}"')
