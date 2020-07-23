@@ -692,6 +692,16 @@ class Monsters(list):
         super().__init__(Monster(m) for m in monsters)
         Monsters.__all_monsters = self
 
+    def search(self, val, field='name'):
+        """Case-insensitive search over the data set
+
+        Returns items where `field` contains `val`.
+        >>> Monsters().search('AAR')[0]
+        Monster({'name': Aarakocra, 'type': humanoid (aarakocra)})
+        """
+        return Monsters(m for m in self
+                        if str(val).lower() in str(getattr(m, field, '')).lower())
+
 class Monster:
     def __init__(self, node):
         """Instantiates this instance using data from the XML `node`."""
