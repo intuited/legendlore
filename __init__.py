@@ -661,21 +661,36 @@ class Monsters(list):
     Monster({'name': Duergar Warlord, 'type': humanoid (dwarf)})
     >>> monster('War Priest')
     Monster({'name': War Priest, 'type': humanoid (any race)})
+    >>> Monsters(m for m in Monsters() if getattr(m, 'name').startswith('C'))[0]
+    Monster({'name': Cambion, 'type': fiend})
     """
-    _singleton = None
+    __all_monsters = None
 
-    def __init__(self, tree=None):
-        """Instantiates the list from the parsed xml `tree`."""
-        if self._singleton:
-            super().__init__(self._singleton) # don't parse again
+    def __init__(self, l=None, tree=None):
+        """A list of Monster objects with added methods.
+
+        With no arguments, returns the list of all monsters from the tree,
+        parsing it if needed.
+
+        With a list-like argument, wraps the list as a Monsters object
+        and returns it.
+        """
+        if l:
+            super().__init__(l)
             return
+
+        if self.__all_monsters:
+            super().__init__(self.__all_monsters) # don't parse again
+            return
+
+        # otherwise, we need to parse the tree
 
         if not tree:
             tree = DB.get_tree()
 
         monsters = tree.xpath('//monster')
         super().__init__(Monster(m) for m in monsters)
-        Monsters._singleton = self
+        Monsters.__all_monsters = self
 
 class Monster:
     def __init__(self, node):
