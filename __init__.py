@@ -95,43 +95,44 @@ def parse_spell_range(r):
     #TODO: write this, validate
     return r
 
-def parse_spell_components(components):
+def parse_spell_components(text):
     """Returns a dictionary with form resembling
 
     {'V': True,
-     'S': False,
      'M': "a sprig of rosemary"}
 
     Initial strings are comma-separated strings of one of these forms:
     * V
     * S
     * M (...)
-    """
-    if components is None:
-        return []
-    c = []
-    m = re.match('^[^(,]*,?', components.strip())
-    while m:
-        c.append(m.group().strip(' ,'))
-        components = components[m.end():]
-        m = re.match('^[^(,]*,', components.strip())
-    return c
 
-    """ uhhhh
-    ret = {}
-    m = re.match('^\s*(V|S|M\s*\([^)]*\)(,\s*)*)+\s*$')
-
-    for c in components:
-        if c[0] == 'V':
-            ret['V'] = True
-            assert len(c) == 1
-        elif c[0] == 'S'
-            ret['S'] = True
-            assert len(c) == 1
-        elif c[0] == 'M'
+    >>> parse_spell_components('V, S, M (a sprinkling of holy water, rare incense, and powdered ruby worth at least 1,000 gp)')
+    {'M': 'a sprinkling of holy water, rare incense, and powdered ruby worth at least 1,000 gp)', 'S': True, 'V': True}
     """
-    #TODO: finish this
-    return components
+    return text
+
+    # Okay, this doesn't work because the parenthetical string after M
+    # sometimes contains commas
+    #if text is None:
+    #    return {}
+    #components = re.split(' ?, ?', text)
+    #components = (c.strip() for c in components)
+    #ret = {}
+    #for c in components:
+    #    if re.fullmatch('[vs]', c, re.I):
+    #        ret[c.upper()] = True
+    #    elif c[0] == 'M':
+    #        try:
+    #            specific = re.fullmatch('M(?: \(([^)]+)\))?', c).group(1)
+    #            ret['M'] = specific if specific else True
+    #        except AttributeError:
+    #            warning(f'parse_spell_components: re match fail on material component "{c}" for text "{text}"')
+    #            return {}
+    #    else:
+    #        warning(f'parse_spell_components: parse fail on text "{text}"')
+    #        return {}
+
+    #return ret
 
 def parse_spell_duration(duration):
     """Return: concentration, duration = ({True, False}, [STRING])"""
@@ -273,7 +274,7 @@ def parse_spells(tree):
         spell['level'] = int(node.find('level').text)
         #TODO: validation to confirm that this value is between 1 and 9
         spell['school'] = schools[getattr(node.find('school'), 'text', None)]
-        spell['ritual'] = True if node.find('ritual') == "YES" else False
+        spell['ritual'] = True if getattr(node.find('ritual'), 'text', False) == "YES" else False
         spell['time'] = parse_casting_time(node.find('time').text)
         spell['range'] = parse_spell_range(node.find('range').text)
         spell['components'] = parse_spell_components(node.find('components').text)
@@ -316,16 +317,22 @@ class DB:
         return cls.tree
 
     @classmethod
-    def get_spells(cls):
+    def get_spells(cls, tree=None):
         """Returns a Spells object that's a list of Spell objects.
 
         If DB.spells already exists, returns it.
         Otherwise, calls parse_spells and wraps its results.
         """
-        if not cls.spells:
-            spells = parse_spells(cls.get_tree())
-            cls.spells = Spells(Spell(s) for s in spells)
-        return cls.spells
+        if not tree:
+            if not cls.spells:
+                spells = parse_spells(cls.get_tree())
+                cls.spells = Spells(Spell(s) for s in spells)
+            return cls.spells
+
+        if tree:
+            spells = parse_spells(tree)
+            spells = Spells(Spell(s) for s in spells)
+            return spells
 
 class Spells(list):
     """A list of spells from the db.
@@ -582,18 +589,22 @@ class Spell(dict):
             D = Duration
             L = Level
 
-        >>> Spells().search('banishing smite')[0].oneline()
+        >>> test = lambda name: Spells().search(name)[0].oneline()
+        >>> test('Banishing Smite')
         'Banishing Smite B/S/C<=1m (5:P+WlH)'
+        >>> test('Identify')
+        'Identify (rit.) 1m/T/I (1:A+B+Wz)'
         """
         f = {
             'name': spell['name'],
+            'rit': ' (rit.)' if spell['ritual'] else '',
             't': spell.abbrev_time(),
             'r': spell.abbrev_range(),
             'd': spell.abbrev_duration(),
             'l': spell['level'],
             'classes': spell.abbrev_classes()}
 
-        return "{name} {t}/{r}/{d} ({l}:{classes})".format(**f)
+        return "{name}{rit} {t}/{r}/{d} ({l}:{classes})".format(**f)
 
     def subclass_set(spell, class_):
         """Returns a terse indicator of which subclasses of `class` get the spell.

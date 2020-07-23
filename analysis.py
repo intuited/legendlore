@@ -7,8 +7,8 @@ import statistics
 pprint = partial(pprint, indent=2, width=100)
 pformat = partial(pformat, indent=2, width=100)
 
-def indent(text, depth=4):
-    return '\n'.join(' '*depth + line for line in text.split("\n"))
+def indent(text, prefix='    '):
+    return '\n'.join(prefix + line for line in text.split("\n"))
 
 def analyze_monster_nodes(tree=None):
     """Output a bunch of info about the monster nodes in the DB."""
@@ -97,3 +97,32 @@ def tabular(rows):
     widths = [max(map(len, map(str, col))) for col in zip(*rows)]
     for row in rows:
         yield "  ".join((str(val).ljust(width) for val, width in zip(row, widths)))
+
+def knowledge_cleric_spells(tree=None):
+    """Prints one-line summaries of knowledge cleric spells."""
+    spells = dnd5edb.DB.get_spells()
+
+    cleric_spells = (spell for spell in spells
+                     if 'Cleric' in spell['classes']
+                     or 'Cleric (Knowledge)' in spell['classes'])
+
+    cleric_spells = sorted(cleric_spells, key=lambda s: s['level'])
+
+    for spell in cleric_spells:
+        print(f'* {spell.oneline()}')
+        text = spell.get('text', False)
+        if text:
+            print(indent(text, '  " '))
+
+    for spell in cleric_spells:
+        if 'gp' in spell['components']:
+            print(f'{spell["name"]}: {spell["components"]}')
+        #print(spell['components'])
+        #if 'gp' in spell['components'].get('M', ''):
+        #    print(f'{spell["name"]}: {spell["components"]["M"]}')
+
+    mod_spells = ['Detect Thoughts', 'Detect Magic', 'See Invisibility']
+    for spell in spells:
+        if spell['name'] in mod_spells:
+            print(f'* {spell.oneline()}')
+            print(indent(spell['text'], '  " '))
