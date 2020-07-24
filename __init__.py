@@ -8,7 +8,8 @@ from textwrap import dedent
 from collections import namedtuple
 from functools import partial
 from logging import debug, warning, error
-from dnd5edb import parse
+from dnd5edb import parse, predicates
+from functools import partial
 
 pprint = partial(pprint, indent=4)
 
@@ -701,6 +702,45 @@ class Monsters(list):
         """
         return Monsters(m for m in self
                         if str(val).lower() in str(getattr(m, field, '')).lower())
+
+    def filter(self, pred):
+        """Returns Monsters object containing items for which pred(item) is True"""
+        return Monsters(m for m in self if pred(m))
+
+    # @staticmethod
+    # def compfilter(op):
+    #     """Generate a numeric comparison filter for the given operator."""
+    #     return lambda field, val: self.filter(lambda m: hasattr(m, field) and op(
+
+
+    def where(self, **kwargs):
+        """Filter for items for which all conditions are true.
+
+        If a function-like value is passed, it is treated as a predicate.
+        If any other value is passed, it is treated as an == predicate for that value.
+
+        >>> from dnd5edb import predicates as p
+        >>> Monsters().where(name='Aarakocra')
+        [Monster({'name': Aarakocra, 'type': humanoid (aarakocra)})]
+        >>> names = lambda mlist: [m.name for m in mlist]
+        >>> names(Monsters().where(cr=p.gt(28.0)))
+        ['Tarrasque', 'Rak Tulkhesh', 'Sul Khatesh', 'Tiamat']
+        >>> names(Monsters().where(cr=3.0, senses=p.key('blindsight')))[0:4]
+        ['Blue Dragon Wyrmling', 'Giant Scorpion', 'Gold Dragon Wyrmling', 'Grell']
+        >>> Monsters().where(cr=3.0, int=p.gte(16)).where(int=p.lte(17))
+        [Monster({'name': Merrenoloth, 'type': fiend (yugoloth)})]
+        >>> Monsters().where(movement=p.key('swim'))
+        """
+        result = self
+        for field, value in kwargs.items():
+            if hasattr(value, '__call__'):
+                pred = value
+            else:
+                pred = predicates.eq(value)
+
+            result = result.filter(partial(pred, field))
+
+        return result
 
 class Monster:
     def __init__(self, node):
