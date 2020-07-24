@@ -3,7 +3,7 @@ from itertools import groupby, chain
 chainfi = chain.from_iterable
 from collections import defaultdict, Counter
 import re
-from pprint import pprint
+from pprint import pprint, pformat
 from textwrap import dedent
 from collections import namedtuple
 from functools import partial
@@ -749,3 +749,104 @@ class Monster:
 
     def __repr__(self):
         return f"Monster({{'name': {self.name}, 'type': {self.type}}})"
+
+    def fulltext(self):
+        def render_text(name=None, alignment=None, type=None,
+                        size=None, cr=None, hp=None, hitdice=None,
+                        ac=None, ac_num=None, speed=None,
+                        str=None, dex=None, con=None,
+                        int=None, wis=None, cha=None,
+                        skills=None, saves=None,
+                        passive=None, senses=None, senses_notes=None,
+                        spells=None, slots=None, armor=None,
+                        immune=None, immune_notes=None,
+                        resist=None, resist_notes=None,
+                        conditionImmune=None, conditionImmune_notes=None,
+                        vulnerable=None, description=None):
+            text = []
+            # * 'name': 1268,
+            # * 'alignment': 1252,
+            # * 'type': 1268,
+            # * 'size': 1268,
+            # * 'cr': 1241,
+            text.append(f'{name} ({alignment} {type})  Size: {size}  CR: {cr}')
+
+            # * 'hp': 1267,
+            #   * 'hitdice': 1261,
+            # * 'ac': 1268,
+            #   * 'ac_num': 1266,
+            # * 'speed': 1267,
+            text.append(f'HP: {hp}({hitdice})  AC: {ac}({ac_num})  Speed: {speed}')
+
+            # * 'str': 1268,
+            # * 'dex': 1268,
+            # * 'con': 1268,
+            # * 'int': 1268,
+            # * 'wis': 1268,
+            # * 'cha': 1268,
+            text.append(f'STR:{str} DEX:{dex} CON:{con} INT:{int} WIS:{wis} CHA:{cha}')
+
+            # * 'skills': 877,
+            if skills:
+                text.append(f'skills: {skills}')
+            # * 'saves': 485,
+            if saves:
+                text.append(f'saves: {saves}')
+            # * 'passive': 1264,
+            # * 'senses': 881,
+            # * 'senses_notes': 3,
+            text.append(f'passive perception: {passive}')
+            if senses:
+                text.append(f'senses: {senses}')
+                if senses_notes:
+                    text.append(f'NOTE: {senses_notes}')
+            # * 'spells': 388,
+            if spells:
+                text.append(f'spells: {spells}')
+            # * 'slots': 203,
+            if slots:
+                text.append(f'slots: {slots}')
+
+            # * 'armor': 960,
+            if armor:
+                text.append(f'armor: {armor}')
+
+            # * 'immune': 447,
+            # * 'immune_notes': 2,
+            # * 'resist': 392,
+            # * 'resist_notes': 5,
+            # * 'conditionImmune': 449,
+            # * 'conditionImmune_notes': 1
+            # * 'vulnerable': 51,
+            if immune:
+                text.append(f'immunities: {immune}')
+                if immune_notes:
+                    text.append(f'NOTE: {immune_notes}')
+            if resist:
+                text.append(f'resistances: {resist}')
+                if resist_notes:
+                    text.append(f'NOTE: {resist_notes}')
+            if conditionImmune:
+                text.append(f'condition immunities: {conditionImmune}')
+                if conditionImmune_notes:
+                    text.append(f'NOTE: {conditionImmune_notes}')
+            if vulnerable:
+                text.append(f'vulnerabilities: {vulnerable}')
+
+            # * 'description': 255,
+            if description:
+                text.append(description)
+
+            return '\n'.join(text)
+
+        fields = ['name', 'alignment', 'type', 'size', 'cr',
+                  'hp', 'hitdice', 'ac', 'ac_num', 'speed',
+                  'str', 'dex', 'con', 'int', 'wis', 'cha',
+                  'skills', 'saves', 'passive', 'senses', 'senses_notes',
+                  'spells', 'slots', 'armor', 'immune', 'immune_notes',
+                  'resist', 'resist_notes',
+                  'conditionImmune', 'conditionImmune_notes',
+                  'vulnerable', 'description']
+
+        m = [(f, getattr(self, f, None)) for f in dir(self) if f in fields]
+        return render_text(**dict(m))
