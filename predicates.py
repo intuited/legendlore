@@ -27,3 +27,6 @@ def key(val):
                     return True
         return False
     return keypred
+def in_(val):
+    """Check if `val` is in the value of `field`."""
+    return lambda field, m: hasattr(m, field) and val in getattr(m, field)

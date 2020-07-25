@@ -729,7 +729,10 @@ class Monsters(list):
         ['Blue Dragon Wyrmling', 'Giant Scorpion', 'Gold Dragon Wyrmling', 'Grell']
         >>> Monsters().where(cr=3.0, int=p.gte(16)).where(int=p.lte(17))
         [Monster({'name': Merrenoloth, 'type': fiend (yugoloth)})]
-        >>> Monsters().where(movement=p.key('swim'))
+        >>> Monsters().where(speed=p.key('swim'))[0]
+        Monster({'name': Aboleth, 'type': aberration})
+        >>> Monsters().where(spells=p.in_('conjure animals'))[0].name
+        'Drow Priestess of Lolth'
         """
         result = self
         for field, value in kwargs.items():
