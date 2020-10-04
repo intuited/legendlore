@@ -126,3 +126,15 @@ def knowledge_cleric_spells(tree=None):
         if spell['name'] in mod_spells:
             print(f'* {spell.oneline()}')
             print(indent(spell['text'], '  " '))
+
+def battle_royale_creatures():
+    """Interesting creature options for battle royale at odd CRs.
+
+    """
+    blindsight = sorted(M.where(senses=p.key('blindsight'))
+    truesight = sorted(M.where(senses=p.key('truesight')
+
+    blindsight = sorted(((m.cr, m.name) for m in M.where(senses=p.key('blindsight'))), key=lambda t: t[0])
+
+    pare = lambda mlist: [m for m in mlist if m.cr % 2 == 1 and m.cr > 1 and m.cr < 19]
+    printms = lambda mlist: '\n'.join(f'* {int(m.cr)}: {m.name}' for m in mlist)
