@@ -1,8 +1,15 @@
 import re
+from lxml import etree
 from logging import debug, warning, error
+from collections import namedtuple
 from functools import reduce
-from pprint import pprint
+from pprint import pprint, pformat
+from textwrap import dedent
 from fractions import Fraction
+import dnd5edb
+from dnd5edb import predicates
+from itertools import groupby, chain
+chainfi = chain.from_iterable
 
 def yield_args(*args):
     yield args
@@ -29,6 +36,42 @@ def dict_merge(d1, d2):
     d.update(d1)
     d.update(d2)
     return d
+
+
+class XML:
+    """Singleton class encapsulating the data read from the database file."""
+    #TODO: make `tree` and `spells` properties if that's a thing I can do with a class
+    #TODO: move the db filename in here
+    tree = None
+    spells = None
+
+    @classmethod
+    def apply_errata(cls, tree):
+        """Corrects errors that have been discovered in the XML file."""
+        darkling = tree.xpath("//monster[name/text() = 'Darkling']")[0]
+        con = darkling.find('con')
+        con.text = '12'
+
+    @classmethod
+    def parse_db(cls, db_file='FC5eXML/CoreOnly.xml'):
+        """Parse XML file with lxml parser."""
+        debug('Parsing xml...')
+        parser = etree.XMLParser()
+        with open(db_file, 'r') as xmlfile:
+            tree = etree.parse(xmlfile, parser)
+        debug('...done')
+        cls.apply_errata(tree)
+        return tree
+
+    @classmethod
+    def get_tree(cls):
+        """Returns a tree at the top level of the parsed DB.
+
+        Parses it if it has not already been processed.
+        """
+        if not cls.tree:
+            cls.tree = cls.parse_db()
+        return cls.tree
 
 class Monster():
     """Collection of class functions for parsing monster nodes."""
@@ -863,3 +906,202 @@ class Monster():
             yield (field, float(Fraction(text)))
         except ValueError:
             warning(f'yield_fraction: failed to parse text "{text}"')
+
+# `Reference` tuple used by Spell class
+Reference = namedtuple('Reference', ('book', 'page'))
+
+class Spell():
+    """Class functions to parse spell nodes."""
+
+    @classmethod
+    def parse(cls, node):
+        """Parse a spell from a node in the tree."""
+        spell = {}
+        spell['name'] = node.find('name').text
+        spell['level'] = int(node.find('level').text)
+        #TODO: validation to confirm that this value is between 1 and 9
+        spell['school'] = dnd5edb.Spell.schools[getattr(node.find('school'), 'text', None)]
+        spell['ritual'] = True if getattr(node.find('ritual'), 'text', False) == "YES" else False
+        spell['time'] = cls.parse_casting_time(node.find('time').text)
+        spell['range'] = cls.parse_spell_range(node.find('range').text)
+        spell['components'] = cls.parse_spell_components(node.find('components').text)
+        spell['concentration'], spell['duration'] = cls.parse_spell_duration(node.find('duration').text)
+        spell['classes'] = cls.parse_spell_classes(node.find('classes').text)
+        spell['text'], spell['sources'] = cls.parse_spell_text(n.text for n in node.findall('text'))
+        spell['roll'] = getattr(node.find('roll'), 'text', None)
+        #TODO: figure out what to do with this property
+
+        return spell
+
+    @classmethod
+    def parse_casting_time(cls, time):
+        #TODO: write this, validate
+        # Why are there None values for this?
+        return time
+
+    @classmethod
+    def parse_spell_range(cls, r):
+        #TODO: write this, validate
+        return r
+
+    @classmethod
+    def parse_spell_components(cls, text):
+        """Returns a dictionary with form resembling
+
+        {'V': True,
+         'M': "a sprig of rosemary"}
+
+        Initial strings are comma-separated strings of one of these forms:
+        * V
+        * S
+        * M (...)
+
+        >>> Spell.parse_spell_components('V, S, M (a sprinkling of holy water, rare incense, and powdered ruby worth at least 1,000 gp)')
+        {'M': 'a sprinkling of holy water, rare incense, and powdered ruby worth at least 1,000 gp)', 'S': True, 'V': True}
+        """
+        return text
+
+        # Okay, this doesn't work because the parenthetical string after M
+        # sometimes contains commas
+        #if text is None:
+        #    return {}
+        #components = re.split(' ?, ?', text)
+        #components = (c.strip() for c in components)
+        #ret = {}
+        #for c in components:
+        #    if re.fullmatch('[vs]', c, re.I):
+        #        ret[c.upper()] = True
+        #    elif c[0] == 'M':
+        #        try:
+        #            specific = re.fullmatch('M(?: \(([^)]+)\))?', c).group(1)
+        #            ret['M'] = specific if specific else True
+        #        except AttributeError:
+        #            warning(f'parse_spell_components: re match fail on material component "{c}" for text "{text}"')
+        #            return {}
+        #    else:
+        #        warning(f'parse_spell_components: parse fail on text "{text}"')
+        #        return {}
+
+        #return ret
+
+    @classmethod
+    def parse_spell_duration(cls, duration):
+        """Return: concentration, duration = ({True, False}, [STRING])"""
+        #TODO: add validation
+        if duration is None:
+            return False, None
+
+        if duration[:15] == 'Concentration, ':
+            return True, duration[15:]
+        else:
+            return False, duration
+
+    @classmethod
+    def parse_spell_classes(cls, classes):
+        if classes is None:
+            return []
+        classes = re.split(',\s*', classes)
+        classes = [c.strip() for c in classes]
+        return sorted(classes)
+
+    @classmethod
+    def parse_spell_source(cls, source):
+        """Breaks source line into Reference(book, page) components.
+
+        >>> source = "Xanathar's Guide to Everything, p. 152"
+        >>> Spell.parse_spell_source(source)
+        Reference(book="Xanathar's Guide to Everything", page=152)
+        >>> source = "Player's Handbook, p. 277 (spell)"
+        >>> Spell.parse_spell_source(source)
+        Reference(book="Player's Handbook", page=277)
+        >>> source = "Xanathar's Guide to Everything, p. 20 (class feature)"
+        >>> Spell.parse_spell_source(source)
+        """
+        m = re.match('^(?P<book>.*?),?\s*p\.?\s*(?P<page>\d+)\s*(?P<extra>.*).*$', source)
+        if m is None:
+            warning(f"parse_spell_source: failed match on line '{source}'")
+            return None
+        #debug(book)
+        extra = m.groupdict()['extra']
+        if extra == '(spell)' or not extra:
+            return Reference(m.groupdict()['book'], int(m.groupdict()['page']))
+        if extra == '(class feature)':
+            return None
+        else:
+            warning(f"parse_spell_source: unknown extra '{extra}'")
+
+    @staticmethod
+    def expand_newlines(lines):
+        r"""Split strings with newlines into multiple strings.
+
+        >>> l = ["1\n2\n3", None, "4\n5\n6"]
+        >>> list(expand_newlines(l))
+        ['1', '2', '3', None, '4', '5', '6']
+        """
+        return chainfi([None] if l is None else l.split('\n') for l in lines)
+
+    @classmethod
+    def parse_spell_text(cls, lines):
+        """Parses list of strings containing <text> nodes from xml.
+
+        Checks for source book in last line of `lines`.
+        Returns (text, sources) where
+        -   `text` is the newline-joined contents of non-source lines
+        -   `sources` is a list of Reference namedtuples
+
+        >>> text = [
+        ...     "• A prone creature's only movement option is to crawl, unless it stands up and thereby ends the condition.",
+        ...     "",
+        ...     "• The creature has disadvantage on attack rolls.",
+        ...     "",
+        ...     "• An attack roll against the creature has advantage if the attacker is within 5 feet of the creature. Otherwise, the attack roll has disadvantage.",
+        ...     None,
+        ...     "Source: Xanathar's Guide to Everything, p. 168",
+        ...     "Elemental Evil Player's Companion, p. 22",
+        ...     "Princes of the Apocalypse, p. 240"]
+        >>> parsed = Spell.parse_spell_text(text)
+        >>> print(parsed[0])
+        • A prone creature's only movement option is to crawl, unless it stands up and thereby ends the condition.
+        <BLANKLINE>
+        • The creature has disadvantage on attack rolls.
+        <BLANKLINE>
+        • An attack roll against the creature has advantage if the attacker is within 5 feet of the creature. Otherwise, the attack roll has disadvantage.
+        >>> parsed[1] == (Reference("Xanathar's Guide to Everything", 168),
+        ...               Reference("Elemental Evil Player's Companion", 22),
+        ...               Reference("Princes of the Apocalypse", 240))
+        True
+        >>> text = [
+        ...     "Your spell bolsters your allies with toughness and resolve. Choose up to three creatures within range. Each target's hit point maximum and current hit points increase by 5 for the duration.",
+        ...     ""
+        ...     "At Higher Levels: When you cast this spell using a spell slot of 3rd level or higher, a target's hit points increase by an additional 5 for each slot level above 2nd.",
+        ...     None,
+        ...     "Source: Player's Handbook, p. 211",
+        ...     None,
+        ...     "* Oath, Domain, or Circle of the Land spell (always prepared)"]
+        >>> print(Spell.parse_spell_text(text)[1])
+        (Reference(book="Player's Handbook", page=211),)
+        """
+        sources = []
+        def process(lines):
+            in_sources = False # State that tracks if we're recording sources
+            lines = list(Spell.expand_newlines(lines))
+
+            for line in lines:
+                if line is None:
+                    if in_sources:
+                        in_sources = False
+                    continue
+
+                line = line.strip()
+                if line[:8] == 'Source: ':
+                    in_sources = True
+                    parsed = cls.parse_spell_source(line[8:])
+                elif in_sources:
+                    parsed = cls.parse_spell_source(line)
+                else:
+                    yield line
+                    continue
+                if parsed is not None:
+                    sources.append(parsed)
+        text = '\n'.join(process(lines))
+        return text, tuple(sources)

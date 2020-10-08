@@ -1,265 +1,13 @@
-from lxml import etree
-from itertools import groupby, chain
-chainfi = chain.from_iterable
-from collections import defaultdict, Counter
-import re
-from pprint import pprint, pformat
-from textwrap import dedent
-from collections import namedtuple
 from functools import partial
-from logging import debug, warning, error
-from dnd5edb import parse, predicates
-from functools import partial
+from dnd5edb import parse
 
-pprint = partial(pprint, indent=4)
+class Spell(dict):
+    """A dictionary from the DB with details on a given spell.
 
-Reference = namedtuple('Reference', ('book', 'page'))
-
-class Blank:
-    """Utility class used in doctests.
-
-    >>> b = Blank()
-    >>> b.test = 'OK'
-    >>> b.test
-    'OK'
+    Methods can be called from an instantiated object
+    or can be called statically and passed a dict from the DB
+        or an element from a Spells object.
     """
-    None
-
-def mutate_blank(fn, *args, **kwargs):
-    """Create a new Blank object and pass it as the first argument to `fn`.
-
-    Return the modified Blank instance.
-
-    >>> mutate_blank(setattr, 'test', 'OK').test
-    'OK'
-    """
-    b = Blank()
-    fn(b, *args, **kwargs)
-    return b
-
-def group(iterable, key):
-    ret = defaultdict(list)
-    for i in iterable:
-        ret[key(i)].append(i)
-    return ret
-
-def sort_group(group):
-    return sorted(group.items(), key=lambda i: len(i[1]), reverse=True)
-
-def parse_db(db_file='FC5eXML/CoreOnly.xml'):
-    """Parse XML file with lxml parser."""
-    debug('Parsing xml...')
-    parser = etree.XMLParser()
-    with open(db_file, 'r') as xmlfile:
-        tree = etree.parse(xmlfile, parser)
-    debug('...done')
-    apply_errata(tree)
-    return tree
-
-def apply_errata(tree):
-    """Corrects errors that have been discovered in the XML file."""
-    darkling = tree.xpath("//monster[name/text() = 'Darkling']")[0]
-    con = darkling.find('con')
-    con.text = '12'
-
-def spell_tag_analysis(tree):
-    spells = tree.xpath("//spell")
-    spell_nodes = tree.xpath("//spell/*")
-    print(len(spells))
-    print(len(spell_nodes))
-    print(dir(spell_nodes[0]))
-    print(spell_nodes[0].__class__)
-    print(spell_nodes[0].tag)
-
-    spell_tags = set((node.tag for node in spell_nodes))
-    print(spell_tags)
-
-    spell_tag_groups = group(spell_nodes, lambda n: n.tag).items()
-    for k, g in spell_tag_groups:
-        print("{0}: {1} nodes".format(k, len(g)))
-        value_group = group(g, lambda n: n.text)
-        if len(value_group.keys()) > 20:
-            print("  {0} unique values.  Top Ten:".format(len(value_group.keys())))
-            topten = sort_group(value_group)[:10]
-            summary = lambda i: '    {0}: {1}'.format(len(i[1]), str(i[0]))
-            print('\n'.join(summary(item) for item in topten))
-        else:
-            for h, i in sort_group(value_group):
-                print("  {0}: {1} nodes".format(h, len(i)))
-
-def parse_casting_time(time):
-    #TODO: write this, validate
-    # Why are there None values for this?
-    return time
-
-def parse_spell_range(r):
-    #TODO: write this, validate
-    return r
-
-def parse_spell_components(text):
-    """Returns a dictionary with form resembling
-
-    {'V': True,
-     'M': "a sprig of rosemary"}
-
-    Initial strings are comma-separated strings of one of these forms:
-    * V
-    * S
-    * M (...)
-
-    >>> parse_spell_components('V, S, M (a sprinkling of holy water, rare incense, and powdered ruby worth at least 1,000 gp)')
-    {'M': 'a sprinkling of holy water, rare incense, and powdered ruby worth at least 1,000 gp)', 'S': True, 'V': True}
-    """
-    return text
-
-    # Okay, this doesn't work because the parenthetical string after M
-    # sometimes contains commas
-    #if text is None:
-    #    return {}
-    #components = re.split(' ?, ?', text)
-    #components = (c.strip() for c in components)
-    #ret = {}
-    #for c in components:
-    #    if re.fullmatch('[vs]', c, re.I):
-    #        ret[c.upper()] = True
-    #    elif c[0] == 'M':
-    #        try:
-    #            specific = re.fullmatch('M(?: \(([^)]+)\))?', c).group(1)
-    #            ret['M'] = specific if specific else True
-    #        except AttributeError:
-    #            warning(f'parse_spell_components: re match fail on material component "{c}" for text "{text}"')
-    #            return {}
-    #    else:
-    #        warning(f'parse_spell_components: parse fail on text "{text}"')
-    #        return {}
-
-    #return ret
-
-def parse_spell_duration(duration):
-    """Return: concentration, duration = ({True, False}, [STRING])"""
-    #TODO: add validation
-    if duration is None:
-        return False, None
-
-    if duration[:15] == 'Concentration, ':
-        return True, duration[15:]
-    else:
-        return False, duration
-
-def parse_spell_classes(classes):
-    if classes is None:
-        return []
-    classes = re.split(',\s*', classes)
-    classes = [c.strip() for c in classes]
-    return sorted(classes)
-
-def parse_spell_source(source):
-    """Breaks source line into Reference(book, page) components.
-
-    >>> source = "Xanathar's Guide to Everything, p. 152"
-    >>> parse_spell_source(source)
-    Reference(book="Xanathar's Guide to Everything", page=152)
-    >>> source = "Player's Handbook, p. 277 (spell)"
-    >>> parse_spell_source(source)
-    Reference(book="Player's Handbook", page=277)
-    >>> source = "Xanathar's Guide to Everything, p. 20 (class feature)"
-    >>> parse_spell_source(source)
-    """
-    m = re.match('^(?P<book>.*?),?\s*p\.?\s*(?P<page>\d+)\s*(?P<extra>.*).*$', source)
-    if m is None:
-        warning(f"parse_spell_source: failed match on line '{source}'")
-        return None
-    #debug(book)
-    extra = m.groupdict()['extra']
-    if extra == '(spell)' or not extra:
-        return Reference(m.groupdict()['book'], int(m.groupdict()['page']))
-    if extra == '(class feature)':
-        return None
-    else:
-        warning(f"parse_spell_source: unknown extra '{extra}'")
-
-def expand_newlines(lines):
-    r"""Split strings with newlines into multiple strings.
-
-    >>> l = ["1\n2\n3", None, "4\n5\n6"]
-    >>> list(expand_newlines(l))
-    ['1', '2', '3', None, '4', '5', '6']
-    """
-    return chainfi([None] if l is None else l.split('\n') for l in lines)
-
-def parse_spell_text(lines):
-    """Parses list of strings containing <text> nodes from xml.
-
-    Checks for source book in last line of `lines`.
-    Returns (text, sources) where
-    -   `text` is the newline-joined contents of non-source lines
-    -   `sources` is a list of Reference namedtuples
-
-    >>> text = [
-    ...     "• A prone creature's only movement option is to crawl, unless it stands up and thereby ends the condition.",
-    ...     "",
-    ...     "• The creature has disadvantage on attack rolls.",
-    ...     "",
-    ...     "• An attack roll against the creature has advantage if the attacker is within 5 feet of the creature. Otherwise, the attack roll has disadvantage.",
-    ...     None,
-    ...     "Source: Xanathar's Guide to Everything, p. 168",
-    ...     "Elemental Evil Player's Companion, p. 22",
-    ...     "Princes of the Apocalypse, p. 240"]
-    >>> parsed = parse_spell_text(text)
-    >>> print(parsed[0])
-    • A prone creature's only movement option is to crawl, unless it stands up and thereby ends the condition.
-    <BLANKLINE>
-    • The creature has disadvantage on attack rolls.
-    <BLANKLINE>
-    • An attack roll against the creature has advantage if the attacker is within 5 feet of the creature. Otherwise, the attack roll has disadvantage.
-    >>> parsed[1] == (Reference("Xanathar's Guide to Everything", 168),
-    ...               Reference("Elemental Evil Player's Companion", 22),
-    ...               Reference("Princes of the Apocalypse", 240))
-    True
-    >>> text = [
-    ...     "Your spell bolsters your allies with toughness and resolve. Choose up to three creatures within range. Each target's hit point maximum and current hit points increase by 5 for the duration.",
-    ...     ""
-    ...     "At Higher Levels: When you cast this spell using a spell slot of 3rd level or higher, a target's hit points increase by an additional 5 for each slot level above 2nd.",
-    ...     None,
-    ...     "Source: Player's Handbook, p. 211",
-    ...     None,
-    ...     "* Oath, Domain, or Circle of the Land spell (always prepared)"]
-    >>> print(parse_spell_text(text)[1])
-    (Reference(book="Player's Handbook", page=211),)
-    """
-    sources = []
-    def process(lines):
-        in_sources = False # State that tracks if we're recording sources
-        lines = list(expand_newlines(lines))
-
-        for line in lines:
-            if line is None:
-                if in_sources:
-                    in_sources = False
-                continue
-
-            line = line.strip()
-            if line[:8] == 'Source: ':
-                in_sources = True
-                parsed = parse_spell_source(line[8:])
-            elif in_sources:
-                parsed = parse_spell_source(line)
-            else:
-                yield line
-                continue
-            if parsed is not None:
-                sources.append(parsed)
-    text = '\n'.join(process(lines))
-    return text, tuple(sources)
-
-"""thing to parse the initial db.
-
-okay so it needs to verify that it's correctly parsed things
-by generating a 
-"""
-
-def parse_spells(tree):
-    spells = tree.xpath("//spell")
     schools = {'EV': "Evocation",
                'T': "Transmutation",
                'C': "Conjuration",
@@ -269,207 +17,96 @@ def parse_spells(tree):
                'N': "Necromancy",
                'I': "Illusion",
                None: None}
-    for node in spells:
-        spell = {}
-        spell['name'] = node.find('name').text
-        spell['level'] = int(node.find('level').text)
-        #TODO: validation to confirm that this value is between 1 and 9
-        spell['school'] = schools[getattr(node.find('school'), 'text', None)]
-        spell['ritual'] = True if getattr(node.find('ritual'), 'text', False) == "YES" else False
-        spell['time'] = parse_casting_time(node.find('time').text)
-        spell['range'] = parse_spell_range(node.find('range').text)
-        spell['components'] = parse_spell_components(node.find('components').text)
-        spell['concentration'], spell['duration'] = parse_spell_duration(node.find('duration').text)
-        spell['classes'] = parse_spell_classes(node.find('classes').text)
-        spell['text'], spell['sources'] = parse_spell_text(n.text for n in node.findall('text'))
-        spell['roll'] = getattr(node.find('roll'), 'text', None)
-        #TODO: figure out what to do with this property
-        yield spell
 
-def parsed_spells_analysis(spells):
-    print('spell count: {0}'.format(len(spells)))
-    print('first spell:')
-    pprint(spells[0])
-    print('class occurrence counts:')
-    pprint(Counter(c for spell in spells for c in spell['classes']),
-           compact=True, width=160)
-    print('spells with no classes:')
-    pprint([spell for spell in spells if not spell['classes']])
-    print('spells with no source:')
-    pprint([spell for spell in spells if not spell.get('sources', False)])
-    print('spell books:')
-    pprint(Counter(ref.book for s in spells for ref in s['sources']))
+    char_classes = ["Artificer", "Bard", "Cleric", "Druid", "Fighter", "Monk",
+                    "Paladin", "Ranger", "Rogue", "Sorcerer", "Warlock", "Wizard",
+                    "Eldritch Invocations", "Martial Adept", "Ritual Caster"]
 
-class DB:
-    """Singleton class encapsulating the data read from the database file."""
-    #TODO: make `tree` and `spells` properties if that's a thing I can do with a class
-    #TODO: move the db filename in here
-    tree = None
-    spells = None
 
-    @classmethod
-    def get_tree(cls):
-        """Returns a tree at the top level of the parsed DB.
+    def __init__(self, node):
+        super().__init__(parse.Spell.parse(node))
 
-        Parses it if it has not already been processed.
+    @staticmethod
+    def abbrev_class(char_class):
+        """Abbreviate a given class name.
+
+        >>> abbrev_class("Ranger")
+        'Ra'
+        >>> abbrev_class("Warlock")
+        'Wl'
+        >>> abbrev_class("Warlock (Great Old One)")
+        'WlG'
+        >>> abbrev_class("Rogue (Arcane Trickster)")
+        'AT'
+        >>> abbrev_class("Fighter (Eldritch Knight)")
+        'FEK'
         """
-        if not cls.tree:
-            cls.tree = parse_db()
-        return cls.tree
+        abbr = {'Artificer': "A",
+                'Bard': "B",
+                'Cleric (Arcana)': "CA",
+                'Cleric (Death)': "CD",
+                'Cleric (Forge)': "CF",
+                'Cleric (Grave)': "CG",
+                'Cleric (Knowledge)': "CK",
+                'Cleric (Life)': "CLf",
+                'Cleric (Light)': "CLt",
+                'Cleric (Nature)': "CN",
+                'Cleric (Order)': "CO",
+                'Cleric (Protection)': "CP",
+                'Cleric (Tempest)': "CTm",
+                'Cleric (Trickery)': "CTr",
+                'Cleric (War)': "CW",
+                'Cleric': "C",
+                'Druid (Arctic)': "DA",
+                'Druid (Coast)': "DC",
+                'Druid (Desert)': "DD",
+                'Druid (Forest)': "DF",
+                'Druid (Grassland)': "DG",
+                'Druid (Mountain)': "DM",
+                'Druid (Swamp)': "DS",
+                'Druid (Underdark)': "DU",
+                'Druid': "D",
+                'Eldritch Invocations': "EI",
+                'Fighter': "F",
+                'Fighter (Arcane Archer)': "FAA",
+                'Fighter (Battle Master)': "FBM",
+                'Fighter (Eldritch Knight)': "FEK",
+                'Martial Adept': "MA",
+                'Monk': "M",
+                'Monk (Way of the Four Elements)': "M4",
+                'Paladin (Ancients)': "PA",
+                'Paladin (Conquest)': "PCn",
+                'Paladin (Crown)': "PCr",
+                'Paladin (Devotion)': "PD",
+                'Paladin (Oathbreaker)': "PO",
+                'Paladin (Redemption)': "PR",
+                'Paladin (Treachery)': "PT",
+                'Paladin (Vengeance)': "PV",
+                'Paladin': "P",
+                'Ranger (Gloom Stalker)': "RGS",
+                'Ranger (Horizon Walker)': "RHW",
+                'Ranger (Monster Slayer)': "RMS",
+                'Ranger (No Spells)': "R",
+                'Ranger (Primeval Guardian)': "RPG",
+                'Ranger': "Ra",
+                'Ritual Caster': "Rit",
+                'Rogue': "Ro",
+                'Rogue (Arcane Trickster)': "AT",
+                'Sorcerer (Stone Sorcery)': "SSS",
+                'Sorcerer': "S",
+                'Warlock (Archfey)': "WlA",
+                'Warlock (Celestial)': "WlC",
+                'Warlock (Fiend)': "WlF",
+                'Warlock (Great Old One)': "WlG",
+                'Warlock (Hexblade)': "WlH",
+                'Warlock (Raven Queen)': "WlR",
+                'Warlock (Seeker)': "WlS",
+                'Warlock (Undying)': "WlU",
+                'Warlock': "Wl",
+                'Wizard': "Wz"}
 
-    @classmethod
-    def get_spells(cls, tree=None):
-        """Returns a Spells object that's a list of Spell objects.
-
-        If DB.spells already exists, returns it.
-        Otherwise, calls parse_spells and wraps its results.
-        """
-        if not tree:
-            if not cls.spells:
-                spells = parse_spells(cls.get_tree())
-                cls.spells = Spells(Spell(s) for s in spells)
-            return cls.spells
-
-        if tree:
-            spells = parse_spells(tree)
-            spells = Spells(Spell(s) for s in spells)
-            return spells
-
-class Spells(list):
-    """A list of spells from the db.
-
-    If passed a list of spells, wraps it with formatting methods.
-    If not, uses the full set of spells from the DB instead.
-    """
-    def __init__(self, *args, **kwargs):
-        if args:
-            super().__init__(*args, **kwargs)
-        else:
-            super().__init__(DB.get_spells())
-
-    spell_classes = ["Artificer", "Bard", "Cleric", "Druid", "Fighter", "Monk",
-                     "Paladin", "Ranger", "Rogue", "Sorcerer", "Warlock", "Wizard",
-                     "Eldritch Invocations", "Martial Adept", "Ritual Caster"]
-
-    def search(self, val, field='name'):
-        """Case-insensitive search over the data set
-
-        Returns items where `field` contains `val`.
-        """
-        return Spells(s for s in self
-                      if str(val).lower() in str(s.get(field)).lower())
-
-    def search_desc(self, val):
-        return self.search(val, field='text')
-
-    # kind of an example function.
-    def oneline_desc(self, string):
-        """Returns one-line summaries of all spells with `string` in their descriptions."""
-        return '\n'.join(Spell.oneline(s) for s in self.search_desc(string))
-
-    def csv_table(self):
-        """Returns CSV tabular data with a header for the contents of this list."""
-        fields = ['name', 't', 'r', 'd', 'l']
-        fields += [abbrev_class(c) for c in classes]
-        lines = [', '.join(fields)]
-
-        lines += [Spell.summary_class_columns(s, self.spell_classes)
-                  for s in self]
-
-        return "\n".join(lines)
-
-
-#TODO: make this a class method of Spell?
-def abbrev_class(c):
-    """Abbreviate a given class name.
-
-    >>> abbrev_class("Ranger")
-    'Ra'
-    >>> abbrev_class("Warlock")
-    'Wl'
-    >>> abbrev_class("Warlock (Great Old One)")
-    'WlG'
-    >>> abbrev_class("Rogue (Arcane Trickster)")
-    'AT'
-    >>> abbrev_class("Fighter (Eldritch Knight)")
-    'FEK'
-    """
-    abbr = {'Artificer': "A",
-            'Bard': "B",
-            'Cleric (Arcana)': "CA",
-            'Cleric (Death)': "CD",
-            'Cleric (Forge)': "CF",
-            'Cleric (Grave)': "CG",
-            'Cleric (Knowledge)': "CK",
-            'Cleric (Life)': "CLf",
-            'Cleric (Light)': "CLt",
-            'Cleric (Nature)': "CN",
-            'Cleric (Order)': "CO",
-            'Cleric (Protection)': "CP",
-            'Cleric (Tempest)': "CTm",
-            'Cleric (Trickery)': "CTr",
-            'Cleric (War)': "CW",
-            'Cleric': "C",
-            'Druid (Arctic)': "DA",
-            'Druid (Coast)': "DC",
-            'Druid (Desert)': "DD",
-            'Druid (Forest)': "DF",
-            'Druid (Grassland)': "DG",
-            'Druid (Mountain)': "DM",
-            'Druid (Swamp)': "DS",
-            'Druid (Underdark)': "DU",
-            'Druid': "D",
-            'Eldritch Invocations': "EI",
-            'Fighter': "F",
-            'Fighter (Arcane Archer)': "FAA",
-            'Fighter (Battle Master)': "FBM",
-            'Fighter (Eldritch Knight)': "FEK",
-            'Martial Adept': "MA",
-            'Monk': "M",
-            'Monk (Way of the Four Elements)': "M4",
-            'Paladin (Ancients)': "PA",
-            'Paladin (Conquest)': "PCn",
-            'Paladin (Crown)': "PCr",
-            'Paladin (Devotion)': "PD",
-            'Paladin (Oathbreaker)': "PO",
-            'Paladin (Redemption)': "PR",
-            'Paladin (Treachery)': "PT",
-            'Paladin (Vengeance)': "PV",
-            'Paladin': "P",
-            'Ranger (Gloom Stalker)': "RGS",
-            'Ranger (Horizon Walker)': "RHW",
-            'Ranger (Monster Slayer)': "RMS",
-            'Ranger (No Spells)': "R",
-            'Ranger (Primeval Guardian)': "RPG",
-            'Ranger': "Ra",
-            'Ritual Caster': "Rit",
-            'Rogue': "Ro",
-            'Rogue (Arcane Trickster)': "AT",
-            'Sorcerer (Stone Sorcery)': "SSS",
-            'Sorcerer': "S",
-            'Warlock (Archfey)': "WlA",
-            'Warlock (Celestial)': "WlC",
-            'Warlock (Fiend)': "WlF",
-            'Warlock (Great Old One)': "WlG",
-            'Warlock (Hexblade)': "WlH",
-            'Warlock (Raven Queen)': "WlR",
-            'Warlock (Seeker)': "WlS",
-            'Warlock (Undying)': "WlU",
-            'Warlock': "Wl",
-            'Wizard': "Wz"}
-
-    return abbr[c]
-
-class Spell(dict):
-    """A dictionary from the DB with details on a given spell.
-
-    Methods can be called from an instantiated object
-    or can be called statically and passed a dict from the DB
-        or an element from a Spells object.
-    """
-    def __init__(self, spell):
-        super().__init__(spell)
-
+        return abbr[char_class]
+    
     def abbrev_time(spell):
         """Abbreviate time.
 
@@ -575,7 +212,7 @@ class Spell(dict):
 
         Return values are those from abbrev_class, joined with '+'.
         """
-        return '+'.join(abbrev_class(c) for c in spell['classes'])
+        return '+'.join(Spell.abbrev_class(c) for c in spell['classes'])
 
 
     def oneline(spell):
@@ -620,11 +257,11 @@ class Spell(dict):
             subclasses = [c for c in spell['classes']
                           if c.startswith(class_)]
             if subclasses:
-                return '+'.join(abbrev_class(c) for c in subclasses)
+                return '+'.join(Spell.abbrev_class(c) for c in subclasses)
             else:
                 return '-'
 
-    def summary_class_columns(spell, classes=Spells.spell_classes):
+    def summary_class_columns(spell, classes=char_classes):
         """ Return a line summarizing the spell with a column for each class.
 
         Uses CSV format and column set compatible with Spells.csv_table().
@@ -637,113 +274,6 @@ class Spell(dict):
         components += [spell.subclass_set(c) for c in classes]
 
         return ', '.join(components)
-
-class Monsters(list):
-    """List of all the <monster> entries in the db.
-
-    >>> monster = lambda name: next(m for m in Monsters() if m.name == name)
-    >>> monster('Champion').ac_num
-    18
-    >>> monster('Champion').armor
-    'plate'
-    >>> monster('Cow').armor
-    Traceback (most recent call last):
-        ...
-    AttributeError: 'Monster' object has no attribute 'armor'
-    >>> monster('Froghemoth').hp
-    184
-    >>> monster('Froghemoth').hitdice
-    '16d12+80'
-    >>> monster('Astral Dreadnought').speed
-    {'walk': 15, 'fly': 80}
-    >>> monster('Aarakocra')
-    Monster({'name': Aarakocra, 'type': humanoid (aarakocra)})
-    >>> monster('Duergar Warlord')
-    Monster({'name': Duergar Warlord, 'type': humanoid (dwarf)})
-    >>> monster('War Priest')
-    Monster({'name': War Priest, 'type': humanoid (any race)})
-    >>> Monsters(m for m in Monsters() if getattr(m, 'name').startswith('C'))[0]
-    Monster({'name': Cambion, 'type': fiend})
-    """
-    __all_monsters = None
-
-    def __init__(self, l=None, tree=None):
-        """A list of Monster objects with added methods.
-
-        With no arguments, returns the list of all monsters from the tree,
-        parsing it if needed.
-
-        With a list-like argument, wraps the list as a Monsters object
-        and returns it.
-        """
-        if l:
-            super().__init__(l)
-            return
-
-        if self.__all_monsters:
-            super().__init__(self.__all_monsters) # don't parse again
-            return
-
-        # otherwise, we need to parse the tree
-
-        if not tree:
-            tree = DB.get_tree()
-
-        monsters = tree.xpath('//monster')
-        super().__init__(Monster(m) for m in monsters)
-        Monsters.__all_monsters = self
-
-    def search(self, val, field='name'):
-        """Case-insensitive search over the data set
-
-        Returns items where `field` contains `val`.
-        >>> Monsters().search('AAR')[0]
-        Monster({'name': Aarakocra, 'type': humanoid (aarakocra)})
-        """
-        return Monsters(m for m in self
-                        if str(val).lower() in str(getattr(m, field, '')).lower())
-
-    def filter(self, pred):
-        """Returns Monsters object containing items for which pred(item) is True"""
-        return Monsters(m for m in self if pred(m))
-
-    # @staticmethod
-    # def compfilter(op):
-    #     """Generate a numeric comparison filter for the given operator."""
-    #     return lambda field, val: self.filter(lambda m: hasattr(m, field) and op(
-
-
-    def where(self, **kwargs):
-        """Filter for items for which all conditions are true.
-
-        If a function-like value is passed, it is treated as a predicate.
-        If any other value is passed, it is treated as an == predicate for that value.
-
-        >>> from dnd5edb import predicates as p
-        >>> Monsters().where(name='Aarakocra')
-        [Monster({'name': Aarakocra, 'type': humanoid (aarakocra)})]
-        >>> names = lambda mlist: [m.name for m in mlist]
-        >>> names(Monsters().where(cr=p.gt(28.0)))
-        ['Tarrasque', 'Rak Tulkhesh', 'Sul Khatesh', 'Tiamat']
-        >>> names(Monsters().where(cr=3.0, senses=p.key('blindsight')))[0:4]
-        ['Blue Dragon Wyrmling', 'Giant Scorpion', 'Gold Dragon Wyrmling', 'Grell']
-        >>> Monsters().where(cr=3.0, int=p.gte(16)).where(int=p.lte(17))
-        [Monster({'name': Merrenoloth, 'type': fiend (yugoloth)})]
-        >>> Monsters().where(speed=p.key('swim'))[0]
-        Monster({'name': Aboleth, 'type': aberration})
-        >>> Monsters().where(spells=p.in_('conjure animals'))[0].name
-        'Drow Priestess of Lolth'
-        """
-        result = self
-        for field, value in kwargs.items():
-            if hasattr(value, '__call__'):
-                pred = value
-            else:
-                pred = predicates.eq(value)
-
-            result = result.filter(partial(pred, field))
-
-        return result
 
 class Monster:
     def __init__(self, node):
@@ -853,3 +383,158 @@ class Monster:
 
         m = [(f, getattr(self, f, None)) for f in dir(self) if f in fields]
         return render_text(**dict(m))
+
+
+class Collection(list):
+    """Virtual superclass for a list of DB items.
+
+    This base class for Monsters and Spells is only useful when subclassed.
+
+    Subclasses implement:
+    - _xpath: string, finds all objects of the collection type in the tree
+    - type: type the subtype collects
+        - e.g. Monsters._type = Monster
+    """
+
+    def __init__(self, l=None, tree=None):
+        """A list of db objects with added methods.
+
+        With no arguments, returns the list of all db objects of the type, 
+        parsing it if needed.
+
+        With a list-like argument, wraps the list and returns it.
+
+        If `tree` is given or if no tree has yet been parsed,
+            parses `tree` or the default tree
+
+        If tree was not given, stores the parsed tree in a class
+            variable (`_parsed`)
+        """
+        if l:
+            super().__init__(l)
+            return
+
+        if hasattr(self, '_parsed') and not tree:
+            # if we've already parsed, don't parse again
+            super().__init__(self._parsed)
+            return
+
+        # otherwise, parse the tree
+
+        store_tree = not tree
+
+        if not tree:
+            tree = parse.XML.get_tree()
+
+        objects = tree.xpath(self._xpath)
+        super().__init__(self._type(i) for i in objects)
+        if store_tree:
+            self.__class__._parsed = self
+
+    def search(self, val, field='name'):
+        """Case-insensitive search over the data set
+
+        Returns items where `field` contains `val`.
+        >>> Monsters().search('AAR')[0]
+        Monster({'name': Aarakocra, 'type': humanoid (aarakocra)})
+        """
+        return self._type(i for i in self
+                          if str(val).lower() in str(getattr(i, field, '')).lower())
+
+    def filter(self, pred):
+        """Returns Collection of the appropriate subclass.
+
+        Collection (e.g. Monsters object) contains items for which pred(item) is True.
+        """
+        return self.__class__(i for i in self if pred(i))
+
+    def where(self, **kwargs):
+        """Filter for items for which all conditions are true.
+
+        If a function-like value is passed, it is treated as a predicate.
+        If any other value is passed, it is treated as an == predicate for that value.
+
+        >>> from dnd5edb import predicates as p
+        >>> Monsters().where(name='Aarakocra')
+        [Monster({'name': Aarakocra, 'type': humanoid (aarakocra)})]
+        >>> names = lambda mlist: [m.name for m in mlist]
+        >>> names(Monsters().where(cr=p.gt(28.0)))
+        ['Tarrasque', 'Rak Tulkhesh', 'Sul Khatesh', 'Tiamat']
+        >>> names(Monsters().where(cr=3.0, senses=p.key('blindsight')))[0:4]
+        ['Blue Dragon Wyrmling', 'Giant Scorpion', 'Gold Dragon Wyrmling', 'Grell']
+        >>> Monsters().where(cr=3.0, int=p.gte(16)).where(int=p.lte(17))
+        [Monster({'name': Merrenoloth, 'type': fiend (yugoloth)})]
+        >>> Monsters().where(speed=p.key('swim'))[0]
+        Monster({'name': Aboleth, 'type': aberration})
+        >>> Monsters().where(spells=p.in_('conjure animals'))[0].name
+        'Drow Priestess of Lolth'
+        """
+        result = self
+        for field, value in kwargs.items():
+            if hasattr(value, '__call__'):
+                pred = value
+            else:
+                pred = predicates.eq(value)
+
+            result = result.filter(partial(pred, field))
+
+        return result
+
+class Spells(Collection):
+    """A list of spells from the db.
+
+    If passed a list of spells, wraps it with formatting methods.
+    If not, uses the full set of spells from the DB instead.
+    """
+
+    _xpath = '//spell'
+    _type = Spell
+
+    def search_desc(self, val):
+        return self.search(val, field='text')
+
+    # kind of an example function.
+    def oneline_desc(self, string):
+        """Returns one-line summaries of all spells with `string` in their descriptions."""
+        return '\n'.join(Spell.oneline(s) for s in self.search_desc(string))
+
+    def csv_table(self):
+        """Returns CSV tabular data with a header for the contents of this list."""
+        fields = ['name', 't', 'r', 'd', 'l']
+        fields += [Spell.abbrev_class(c) for c in classes]
+        lines = [', '.join(fields)]
+
+        lines += [Spell.summary_class_columns(s, Spell.char_classes)
+                  for s in self]
+
+        return "\n".join(lines)
+
+class Monsters(Collection):
+    """List of all the <monster> entries in the db.
+
+    >>> monster = lambda name: next(m for m in Monsters() if m.name == name)
+    >>> monster('Champion').ac_num
+    18
+    >>> monster('Champion').armor
+    'plate'
+    >>> monster('Cow').armor
+    Traceback (most recent call last):
+        ...
+    AttributeError: 'Monster' object has no attribute 'armor'
+    >>> monster('Froghemoth').hp
+    184
+    >>> monster('Froghemoth').hitdice
+    '16d12+80'
+    >>> monster('Astral Dreadnought').speed
+    {'walk': 15, 'fly': 80}
+    >>> monster('Aarakocra')
+    Monster({'name': Aarakocra, 'type': humanoid (aarakocra)})
+    >>> monster('Duergar Warlord')
+    Monster({'name': Duergar Warlord, 'type': humanoid (dwarf)})
+    >>> monster('War Priest')
+    Monster({'name': War Priest, 'type': humanoid (any race)})
+    >>> Monsters(m for m in Monsters() if getattr(m, 'name').startswith('C'))[0]
+    Monster({'name': Cambion, 'type': fiend})
+    """
+    _xpath = '//monster'
+    _type = Monster

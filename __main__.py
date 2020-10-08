@@ -3,5 +3,5 @@ import sys
 from dnd5edb import analysis
 
 if __name__ == '__main__':
-    command = sys.argv[0].split('/')[-1]
+    command = sys.argv[1].split('/')[-1]
     getattr(analysis, command)()

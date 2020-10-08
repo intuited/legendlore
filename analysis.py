@@ -1,8 +1,14 @@
+"""analysis.py
+
+Various functions that use the module code to analyse the database.
+Not part of the core functionality.
+"""
 import dnd5edb
-from collections import Counter
+from collections import defaultdict, Counter
 from pprint import pprint, pformat
 from functools import partial
 import statistics
+from dnd5edb.parse import XML
 
 pprint = partial(pprint, indent=2, width=100)
 pformat = partial(pformat, indent=2, width=100)
@@ -10,10 +16,59 @@ pformat = partial(pformat, indent=2, width=100)
 def indent(text, prefix='    '):
     return '\n'.join(prefix + line for line in text.split("\n"))
 
-def analyze_monster_nodes(tree=None):
+def group(iterable, key):
+    ret = defaultdict(list)
+    for i in iterable:
+        ret[key(i)].append(i)
+    return ret
+
+def sort_group(group):
+    return sorted(group.items(), key=lambda i: len(i[1]), reverse=True)
+
+# TODO: update so it can take zero arguments
+def spell_tag_analysis(tree=XML.get_tree()):
+    spells = tree.xpath("//spell")
+    spell_nodes = tree.xpath("//spell/*")
+    print(len(spells))
+    print(len(spell_nodes))
+    print(dir(spell_nodes[0]))
+    print(spell_nodes[0].__class__)
+    print(spell_nodes[0].tag)
+
+    spell_tags = set((node.tag for node in spell_nodes))
+    print(spell_tags)
+
+    spell_tag_groups = group(spell_nodes, lambda n: n.tag).items()
+    for k, g in spell_tag_groups:
+        print("{0}: {1} nodes".format(k, len(g)))
+        value_group = group(g, lambda n: n.text)
+        if len(value_group.keys()) > 20:
+            print("  {0} unique values.  Top Ten:".format(len(value_group.keys())))
+            topten = sort_group(value_group)[:10]
+            summary = lambda i: '    {0}: {1}'.format(len(i[1]), str(i[0]))
+            print('\n'.join(summary(item) for item in topten))
+        else:
+            for h, i in sort_group(value_group):
+                print("  {0}: {1} nodes".format(h, len(i)))
+
+# TODO: update so it can take zero arguments
+def parsed_spells_analysis(spells):
+    pprint = partial(pprint, indent=4)
+    print('spell count: {0}'.format(len(spells)))
+    print('first spell:')
+    pprint(spells[0])
+    print('class occurrence counts:')
+    pprint(Counter(c for spell in spells for c in spell['classes']),
+           compact=True, width=160)
+    print('spells with no classes:')
+    pprint([spell for spell in spells if not spell['classes']])
+    print('spells with no source:')
+    pprint([spell for spell in spells if not spell.get('sources', False)])
+    print('spell books:')
+    pprint(Counter(ref.book for s in spells for ref in s['sources']))
+
+def analyze_monster_nodes(tree=XML.get_tree()):
     """Output a bunch of info about the monster nodes in the DB."""
-    if not tree:
-        tree = dnd5edb.DB.get_tree()
     monsters = tree.xpath('//monster')
     print(f"Monster node count: {len(monsters)}")
     subnodecounts = Counter(n.tag for n in tree.xpath('//monster/*'))
@@ -34,10 +89,8 @@ def analyze_monster_nodes(tree=None):
             print(f"  {len(valuecounts)} unique values:")
             print(fmt_all(valuecounts.items()))
 
-def analyze_fey(tree=None):
+def analyze_fey(tree=XML.get_tree()):
     """Breakdown of Fey monsters in 5e."""
-    if not tree:
-        tree = dnd5edb.DB.get_tree()
     fey = [m for m in dnd5edb.Monsters() if m.type.startswith('fey')]
     print(f'Number of fey monsters: {len(fey)}')
 
@@ -98,9 +151,9 @@ def tabular(rows):
     for row in rows:
         yield "  ".join((str(val).ljust(width) for val, width in zip(row, widths)))
 
-def knowledge_cleric_spells(tree=None):
+def knowledge_cleric_spells(tree=XML.get_tree()):
     """Prints one-line summaries of knowledge cleric spells."""
-    spells = dnd5edb.DB.get_spells()
+    spells = dnd5edb.Spells()
 
     cleric_spells = (spell for spell in spells
                      if 'Cleric' in spell['classes']
@@ -131,8 +184,9 @@ def battle_royale_creatures():
     """Interesting creature options for battle royale at odd CRs.
 
     """
-    blindsight = sorted(M.where(senses=p.key('blindsight'))
-    truesight = sorted(M.where(senses=p.key('truesight')
+    M = dnd5edb.Monsters()
+    blindsight = sorted(M.where(senses=p.key('blindsight')))
+    truesight = sorted(M.where(senses=p.key('truesight')))
 
     blindsight = sorted(((m.cr, m.name) for m in M.where(senses=p.key('blindsight'))), key=lambda t: t[0])
 
