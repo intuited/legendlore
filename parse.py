@@ -957,7 +957,7 @@ class Spell():
         * M (...)
 
         >>> Spell.parse_spell_components('V, S, M (a sprinkling of holy water, rare incense, and powdered ruby worth at least 1,000 gp)')
-        {'M': 'a sprinkling of holy water, rare incense, and powdered ruby worth at least 1,000 gp)', 'S': True, 'V': True}
+        {'M': 'a sprinkling of holy water, rare incense, and powdered ruby worth at least 1,000 gp', 'S': True, 'V': True}
         """
         return text
 

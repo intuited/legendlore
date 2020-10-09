@@ -1,13 +1,8 @@
 from functools import partial
 from dnd5edb import parse, predicates
 
-class Spell(dict):
-    """A dictionary from the DB with details on a given spell.
-
-    Methods can be called from an instantiated object
-    or can be called statically and passed a dict from the DB
-        or an element from a Spells object.
-    """
+class Spell:
+    """Object with spell db object fields mapped as attributes."""
     schools = {'EV': "Evocation",
                'T': "Transmutation",
                'C': "Conjuration",
@@ -22,9 +17,11 @@ class Spell(dict):
                     "Paladin", "Ranger", "Rogue", "Sorcerer", "Warlock", "Wizard",
                     "Eldritch Invocations", "Martial Adept", "Ritual Caster"]
 
-
     def __init__(self, node):
-        super().__init__(parse.Spell.parse(node))
+        self.__dict__.update(parse.Spell.parse(node))
+
+    def __repr__(self):
+        return f"Spell({self.oneline()})"
 
     @staticmethod
     def abbrev_class(char_class):
@@ -127,7 +124,7 @@ class Spell(dict):
                 '1 action or 8 hours': 'A/8h',
                 '12 hours': '12h',
                 '24 hours': '24h'}
-        return abbr[spell['time']]
+        return abbr[spell.time]
 
     def abbrev_range(spell):
         """Abbreviate range.
@@ -166,7 +163,7 @@ class Spell(dict):
                 '1 mile': "1mi",
                 '500 miles': "500mi",
                 'Unlimited': "Unlimited"}
-        return abbr[spell['range']]
+        return abbr[spell.range]
 
     def abbrev_duration(spell):
         """Abbreviate spell duration.
@@ -204,15 +201,15 @@ class Spell(dict):
                 'Until dispelled or triggered': 'UD/T',
                 'Until dispelled': "UD"}
 
-        c = 'C' if spell['concentration'] else ''
-        return c + abbr[spell['duration']]
+        c = 'C' if spell.concentration else ''
+        return c + abbr[spell.duration]
 
     def abbrev_classes(spell):
         """Abbreviate the classes which have access to a given spell.
 
         Return values are those from abbrev_class, joined with '+'.
         """
-        return '+'.join(Spell.abbrev_class(c) for c in spell['classes'])
+        return '+'.join(Spell.abbrev_class(c) for c in spell.classes)
 
 
     def oneline(spell):
@@ -234,12 +231,12 @@ class Spell(dict):
         'Identify (rit.) 1m/T/I (1:A+B+Wz)'
         """
         f = {
-            'name': spell['name'],
-            'rit': ' (rit.)' if spell['ritual'] else '',
+            'name': spell.name,
+            'rit': ' (rit.)' if spell.ritual else '',
             't': spell.abbrev_time(),
             'r': spell.abbrev_range(),
             'd': spell.abbrev_duration(),
-            'l': spell['level'],
+            'l': spell.level,
             'classes': spell.abbrev_classes()}
 
         return "{name}{rit} {t}/{r}/{d} ({l}:{classes})".format(**f)
@@ -251,10 +248,10 @@ class Spell(dict):
         Returns '-' if none do
         Returns eg 'CO+CLf' if Order and Life clerics get the spell.
         """
-        if class_ in spell['classes']:
+        if class_ in spell.classes:
             return '*'
         else:
-            subclasses = [c for c in spell['classes']
+            subclasses = [c for c in spell.classes
                           if c.startswith(class_)]
             if subclasses:
                 return '+'.join(Spell.abbrev_class(c) for c in subclasses)
@@ -266,11 +263,11 @@ class Spell(dict):
 
         Uses CSV format and column set compatible with Spells.csv_table().
         """
-        components = [spell['name'],
+        components = [spell.name,
                       spell.abbrev_time(),
                       spell.abbrev_range(),
                       spell.abbrev_duration(),
-                      str(spell['level']) ]
+                      str(spell.level) ]
         components += [spell.subclass_set(c) for c in classes]
 
         return ', '.join(components)
@@ -438,6 +435,7 @@ class Collection(list):
         >>> Monsters().search('AAR')[0]
         Monster({'name': Aarakocra, 'type': humanoid (aarakocra)})
         >>> Spells().search('smite')[0]
+        Spell(Banishing Smite B/S/C<=1m (5:P+WlH))
         """
         def lc_in(term):
             return str(val).lower() in str(getattr(term, field, '')).lower()
@@ -503,7 +501,7 @@ class Spells(Collection):
     def csv_table(self):
         """Returns CSV tabular data with a header for the contents of this list."""
         fields = ['name', 't', 'r', 'd', 'l']
-        fields += [Spell.abbrev_class(c) for c in classes]
+        fields += [Spell.abbrev_class(c) for c in Spell.char_classes]
         lines = [', '.join(fields)]
 
         lines += [Spell.summary_class_columns(s, Spell.char_classes)
