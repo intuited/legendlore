@@ -1035,7 +1035,7 @@ class Spell():
         r"""Split strings with newlines into multiple strings.
 
         >>> l = ["1\n2\n3", None, "4\n5\n6"]
-        >>> list(expand_newlines(l))
+        >>> list(Spell.expand_newlines(l))
         ['1', '2', '3', None, '4', '5', '6']
         """
         return chainfi([None] if l is None else l.split('\n') for l in lines)

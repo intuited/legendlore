@@ -1,5 +1,5 @@
 from functools import partial
-from dnd5edb import parse
+from dnd5edb import parse, predicates
 
 class Spell(dict):
     """A dictionary from the DB with details on a given spell.
@@ -30,15 +30,15 @@ class Spell(dict):
     def abbrev_class(char_class):
         """Abbreviate a given class name.
 
-        >>> abbrev_class("Ranger")
+        >>> Spell.abbrev_class("Ranger")
         'Ra'
-        >>> abbrev_class("Warlock")
+        >>> Spell.abbrev_class("Warlock")
         'Wl'
-        >>> abbrev_class("Warlock (Great Old One)")
+        >>> Spell.abbrev_class("Warlock (Great Old One)")
         'WlG'
-        >>> abbrev_class("Rogue (Arcane Trickster)")
+        >>> Spell.abbrev_class("Rogue (Arcane Trickster)")
         'AT'
-        >>> abbrev_class("Fighter (Eldritch Knight)")
+        >>> Spell.abbrev_class("Fighter (Eldritch Knight)")
         'FEK'
         """
         abbr = {'Artificer': "A",
@@ -432,14 +432,16 @@ class Collection(list):
             self.__class__._parsed = self
 
     def search(self, val, field='name'):
-        """Case-insensitive search over the data set
+        """Case-insensitive contents search over the data set
 
         Returns items where `field` contains `val`.
         >>> Monsters().search('AAR')[0]
         Monster({'name': Aarakocra, 'type': humanoid (aarakocra)})
+        >>> Spells().search('smite')[0]
         """
-        return self._type(i for i in self
-                          if str(val).lower() in str(getattr(i, field, '')).lower())
+        def lc_in(term):
+            return str(val).lower() in str(getattr(term, field, '')).lower()
+        return self.__class__(i for i in self if lc_in(i))
 
     def filter(self, pred):
         """Returns Collection of the appropriate subclass.
