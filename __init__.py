@@ -539,6 +539,41 @@ class Spells(Collection):
         """Returns one-line summaries of all spells with `string` in their descriptions."""
         return '\n'.join(Spell.fmt_oneline(s) for s in self.search_desc(string))
 
+    # TODO: move this into Collection and add Monsters doctests
+    def fmt(self, method='oneline', **kwargs):
+        """Returns newline-separated results of calling `method` for each item.
+
+        By default, uses the one-line format method for the given item type.
+
+        >>> from dnd5edb import predicates as p
+        >>> print(Spells().where(name=p.in_('Circle')).fmt())
+        Circle of Death A/150'/I (6:S+Wl+Wz)
+        Circle of Power A/S(30'r)/C<=10m (5:P)
+        Circle of Power* A/S(30'r)/C<=10m (5:PCr)
+        Magic Circle 1m/10'/1h (3:C+FEK+P+RMS+Wl+Wz)
+        Magic Circle* 1m/10'/1h (3:CA)
+        Teleportation Circle 1m/10'/1r (5:B+RHW+S+Wz)
+        Teleportation Circle* 1m/10'/1r (5:CA)
+        >>> print(Spells().where(name=p.in_('Find')).where(name=p.in_('Steed')).fmt('xlist'))
+        * Find Steed 10m/30'/I (2:P)
+          " You summon a spirit that assumes the form of an unusually intelligent, strong, and loyal steed, creating a long-lasting bond with it. Appearing in an unoccupied space within range, the steed takes on a form that you choose: a warhorse, a pony, a camel, an elk, or a mastiff. (Your DM might allow other animals to be summoned as steeds.) The steed has the statistics of the chosen form, though it is a celestial, fey, or fiend (your choice) instead of its normal type. Additionally, if your steed has an Intelligence of 5 or less, its Intelligence becomes 6, and it gains the ability to understand one language of your choice that you speak.
+          " Your steed serves you as a mount, both in combat and out, and you have an instinctive bond with it that allows you to fight as a seamless unit. While mounted on your steed, you can make any spell you cast that targets only you also target your steed.
+          " When the steed drops to 0 hit points, it disappears, leaving behind no physical form. You can also dismiss your steed at any time as an action, causing it to disappear. In either case, casting this spell again summons the same steed, restored to its hit point maximum.
+          " While your steed is within 1 mile of you, you can communicate with it telepathically.
+          " You can't have more than one steed bonded by this spell at a time. As an action, you can release the steed from its bond at any time, causing it to disappear.
+        * Find Greater Steed 10m/30'/I (4:P)
+          " You summon a spirit that assumes the form of a loyal, majestic mount. Appearing in an unoccupied space within range, the spirit takes on a form you choose: a griffon, a pegasus, a peryton, a dire wolf, a rhinoceros, or a saber-toothed tiger. The creature has the statistics provided in the Monster Manual for the chosen form, though it is a celestial, a fey, or a fiend (your choice) instead of its normal creature type. Additionally, if it has an Intelligence score of 5 or lower, its Intelligence becomes 6, and it gains the ability to understand one language of your choice that you speak.
+          " 
+          " You control the mount in combat. While the mount is within 1 mile of you, you can communicate with it telepathically. While mounted on it, you can make any spell you cast that targets only you also target the mount.
+          " 
+          " The mount disappears temporarily when it drops to 0 hit points or when you dismiss it as an action. Casting this spell again re-summons the bonded mount, with all its hit points restored and any conditions removed.
+          " 
+          " You can’t have more than one mount bonded by this spell or find steed at the same time. As an action, you can release a mount from its bond, causing it to disappear permanently.
+          " 
+          " Whenever the mount disappears, it leaves behind any objects it was wearing or carrying.
+        """
+        return '\n'.join(getattr(i, 'fmt_' + method)(**kwargs) for i in self)
+
     def csv_table(self):
         """Returns CSV tabular data with a header for the contents of this list."""
         fields = ['name', 't', 'r', 'd', 'l']
