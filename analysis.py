@@ -214,5 +214,4 @@ def print_spell_list(spells):
         return '\n'.join('  " ' + line for line in text.split('\n'))
 
     for s in spells:
-        print('* ' + s.oneline())
-        print(indent(s.text))
+        print s.fmt_pointform()

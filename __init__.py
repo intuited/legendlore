@@ -21,7 +21,7 @@ class Spell:
         self.__dict__.update(parse.Spell.parse(node))
 
     def __repr__(self):
-        return f"Spell({self.oneline()})"
+        return f"Spell({self.fmt_oneline()})"
 
     @staticmethod
     def abbrev_class(char_class):
@@ -212,7 +212,7 @@ class Spell:
         return '+'.join(Spell.abbrev_class(c) for c in spell.classes)
 
 
-    def oneline(spell):
+    def fmt_oneline(spell):
         """Return a string summarizing the spell.
 
         Format:
@@ -224,7 +224,7 @@ class Spell:
             D = Duration
             L = Level
 
-        >>> test = lambda name: Spells().search(name)[0].oneline()
+        >>> test = lambda name: Spells().search(name)[0].fmt_oneline()
         >>> test('Banishing Smite')
         'Banishing Smite B/S/C<=1m (5:P+WlH)'
         >>> test('Identify')
@@ -240,6 +240,47 @@ class Spell:
             'classes': spell.abbrev_classes()}
 
         return "{name}{rit} {t}/{r}/{d} ({l}:{classes})".format(**f)
+
+    def fmt_pointform(spell, header='-', text='-', tabstop=2):
+        """Return multiline string containing all spell information.
+
+        The top line is a one-line header via self.fmt_oneline.
+        The remaining lines are the spell text.
+        `header` and `text` are single-character bullets
+            used for their respective types of lines.
+        `tabstop` determines the depth to which the text lines are indented.
+
+        >>> print(Spells().search('Magic Missile')[0].fmt_pointform())
+        - Magic Missile A/120'/I (1:FEK+S+Wz)
+          - You create three glowing darts of magical force. Each dart hits a creature of your choice that you can see within range. A dart deals 1d4+1 force damage to its target. The darts all strike simultaneously and you can direct them to hit one creature or several.
+          - 
+          - At Higher Levels: When you cast this spell using a spell slot of 2nd level or higher, the spell creates one more dart for each slot above 1st.
+        >>> print(Spells().search('Magic Missile')[0].fmt_pointform(tabstop=4))
+        - Magic Missile A/120'/I (1:FEK+S+Wz)
+            - You create three glowing darts of magical force. Each dart hits a creature of your choice that you can see within range. A dart deals 1d4+1 force damage to its target. The darts all strike simultaneously and you can direct them to hit one creature or several.
+            - 
+            - At Higher Levels: When you cast this spell using a spell slot of 2nd level or higher, the spell creates one more dart for each slot above 1st.
+        >>> print(Spells().search('Magic Missile')[0].fmt_pointform(header='*', text='"'))
+        * Magic Missile A/120'/I (1:FEK+S+Wz)
+          " You create three glowing darts of magical force. Each dart hits a creature of your choice that you can see within range. A dart deals 1d4+1 force damage to its target. The darts all strike simultaneously and you can direct them to hit one creature or several.
+          " 
+          " At Higher Levels: When you cast this spell using a spell slot of 2nd level or higher, the spell creates one more dart for each slot above 1st.
+        """
+        ret = [f'{header} {spell.fmt_oneline()}']
+        ret += [f'{" " * tabstop}{text} {line}' for line in spell.text.split('\n')]
+        return '\n'.join(ret)
+
+    def fmt_xlist(spell, tabstop=2):
+        """Pointform output in xlist format.
+
+        >>> print(Spells().search('Magic Missile')[0].fmt_xlist())
+        * Magic Missile A/120'/I (1:FEK+S+Wz)
+          " You create three glowing darts of magical force. Each dart hits a creature of your choice that you can see within range. A dart deals 1d4+1 force damage to its target. The darts all strike simultaneously and you can direct them to hit one creature or several.
+          " 
+          " At Higher Levels: When you cast this spell using a spell slot of 2nd level or higher, the spell creates one more dart for each slot above 1st.
+        """
+        return spell.fmt_pointform(header='*', text='"', tabstop=tabstop)
+
 
     def subclass_set(spell, class_):
         """Returns a terse indicator of which subclasses of `class` get the spell.
@@ -496,7 +537,7 @@ class Spells(Collection):
     # kind of an example function.
     def oneline_desc(self, string):
         """Returns one-line summaries of all spells with `string` in their descriptions."""
-        return '\n'.join(Spell.oneline(s) for s in self.search_desc(string))
+        return '\n'.join(Spell.fmt_oneline(s) for s in self.search_desc(string))
 
     def csv_table(self):
         """Returns CSV tabular data with a header for the contents of this list."""
