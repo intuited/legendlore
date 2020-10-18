@@ -574,6 +574,10 @@ class Spells(Collection):
         """
         return '\n'.join(getattr(i, 'fmt_' + method)(**kwargs) for i in self)
 
+    def print(self, *args, **kwargs):
+        """Passes args to self.fmt, prints result."""
+        print(self.fmt(*args, **kwargs))
+
     def csv_table(self):
         """Returns CSV tabular data with a header for the contents of this list."""
         fields = ['name', 't', 'r', 'd', 'l']
