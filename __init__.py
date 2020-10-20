@@ -321,7 +321,25 @@ class Monster:
     def __repr__(self):
         return f"Monster({{'name': {self.name}, 'type': {self.type}}})"
 
-    def fulltext(self):
+    def fmt_oneline(self):
+        """Returns a one-line summary of the item.
+
+        >>> Monsters().where(name='Giant Crab')[0].fmt_oneline()
+        Giant Crab (unaligned beast)  Size: M  CR: 0.125
+        HP: 13(3d8)  AC: 15 (natural armor)(15)  Speed: {'walk': 30, 'swim': 30}
+        STR:13 DEX:15 CON:11 INT:1 WIS:9 CHA:3
+        skills: {'Stealth': 4}
+        passive perception: 9
+        senses: {'blindsight': 30}
+        armor: natural armor
+        Crab Folk (Neutral giant)  Size: L  CR: 3.0
+        HP: 68(8d10+24)  AC: 16 (natural armor)(16)  Speed: {'walk': 40, 'swim': 40}
+        STR:19 DEX:10 CON:17 INT:7 WIS:9 CHA:9
+        passive perception: 9
+        armor: natural armor
+        The crab folk are the r
+        """
+    def fmt_full(self):
         def render_text(name=None, alignment=None, type=None,
                         size=None, cr=None, hp=None, hitdice=None,
                         ac=None, ac_num=None, speed=None,
@@ -521,24 +539,6 @@ class Collection(list):
 
         return result
 
-class Spells(Collection):
-    """A list of spells from the db.
-
-    If passed a list of spells, wraps it with formatting methods.
-    If not, uses the full set of spells from the DB instead.
-    """
-
-    _xpath = '//spell'
-    _type = Spell
-
-    def search_desc(self, val):
-        return self.search(val, field='text')
-
-    # kind of an example function.
-    def oneline_desc(self, string):
-        """Returns one-line summaries of all spells with `string` in their descriptions."""
-        return '\n'.join(Spell.fmt_oneline(s) for s in self.search_desc(string))
-
     # TODO: move this into Collection and add Monsters doctests
     def fmt(self, method='oneline', **kwargs):
         """Returns newline-separated results of calling `method` for each item.
@@ -577,6 +577,24 @@ class Spells(Collection):
     def print(self, *args, **kwargs):
         """Passes args to self.fmt, prints result."""
         print(self.fmt(*args, **kwargs))
+
+class Spells(Collection):
+    """A list of spells from the db.
+
+    If passed a list of spells, wraps it with formatting methods.
+    If not, uses the full set of spells from the DB instead.
+    """
+
+    _xpath = '//spell'
+    _type = Spell
+
+    def search_desc(self, val):
+        return self.search(val, field='text')
+
+    # kind of an example function.
+    def oneline_desc(self, string):
+        """Returns one-line summaries of all spells with `string` in their descriptions."""
+        return '\n'.join(Spell.fmt_oneline(s) for s in self.search_desc(string))
 
     def csv_table(self):
         """Returns CSV tabular data with a header for the contents of this list."""
