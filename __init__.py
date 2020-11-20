@@ -1,5 +1,5 @@
 from functools import partial
-from dnd5edb import parse, predicates
+from dnd5edb import parse, predicates, reflect
 
 class Spell:
     """Object with spell db object fields mapped as attributes."""
@@ -538,6 +538,8 @@ class Collection(list):
             result = result.filter(partial(pred, field))
 
         return result
+
+    where_fields = reflect.collection_attribs
 
     # TODO: move this into Collection and add Monsters doctests
     def fmt(self, method='oneline', **kwargs):
