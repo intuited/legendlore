@@ -64,13 +64,13 @@ class XML:
         return tree
 
     @classmethod
-    def get_tree(cls):
+    def get_tree(cls, db_file='FC5eXML/CoreOnly.xml'):
         """Returns a tree at the top level of the parsed DB.
 
         Parses it if it has not already been processed.
         """
         if not cls.tree:
-            cls.tree = cls.parse_db()
+            cls.tree = cls.parse_db(db_file)
         return cls.tree
 
 class Monster():
