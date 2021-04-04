@@ -574,6 +574,13 @@ class Collection(list):
         copy.sort(key=lambda o: getattr(o, field, None))
         return copy
 
+    def extend(self, new_items):
+        """Adds to `self` any items from `new_items` not already in `self`."""
+        for i in new_items:
+            if i not in self:
+                self.append(i)
+        return self
+
     # TODO: move this into Collection and add Monsters doctests
     def fmt(self, method='oneline', **kwargs):
         """Returns newline-separated results of calling `method` for each item.
