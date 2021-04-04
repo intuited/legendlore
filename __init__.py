@@ -517,11 +517,13 @@ class Collection(list):
         >>> Monsters().where(name='Aarakocra')
         [Monster({'name': Aarakocra, 'type': humanoid (aarakocra)})]
         >>> names = lambda mlist: [m.name for m in mlist]
-        >>> names(Monsters().where(cr=p.gt(28.0)))
+        >>> names(Monsters().where(cr=p.gte(28.0)))
         ['Tarrasque', 'Rak Tulkhesh', 'Sul Khatesh', 'Tiamat']
+        >>> names(Monsters().where(cr=p.gt(28.0)))
+        ['Tarrasque', 'Tiamat']
         >>> names(Monsters().where(cr=3.0, senses=p.key('blindsight')))[0:4]
         ['Blue Dragon Wyrmling', 'Giant Scorpion', 'Gold Dragon Wyrmling', 'Grell']
-        >>> Monsters().where(cr=3.0, int=p.gte(16)).where(int=p.lte(17))
+        >>> Monsters().where(cr=3.0, int=p.gt(16)).where(int=p.lte(17))
         [Monster({'name': Merrenoloth, 'type': fiend (yugoloth)})]
         >>> Monsters().where(speed=p.key('swim'))[0]
         Monster({'name': Aboleth, 'type': aberration})
