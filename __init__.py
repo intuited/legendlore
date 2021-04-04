@@ -575,7 +575,35 @@ class Collection(list):
         return copy
 
     def extend(self, new_items):
-        """Adds to `self` any items from `new_items` not already in `self`."""
+        """Adds to `self` any items from `new_items` not already in `self`.
+
+        >>> from dnd5edb import predicates as p
+        >>> s = Spells()
+        >>> # Celestial Warlock spells containing "adiant" or case-insensitive "fire"
+        >>> (s.where(text=p.in_('adiant')).extend(s.where(text=p.in_('fire')))
+        ...   .extend(s.where(text=p.in_('Fire'))).where(classes=p.or_(p.in_('Warlock'),
+        ...                                                            p.in_('Warlock (Celestial)')))
+        ...   .sorted('name').sorted('level').print())
+        Create Bonfire A/60'/C<=1m (0:A+D+FEK+AT+S+Wl+Wz)
+        Greenflame Blade A/5'/I (0:FEK+AT+S+Wl+Wz)
+        Prestidigitation A/10'/<=1h (0:A+B+FEK+AT+S+Wl+Wz)
+        Guiding Bolt A/120'/1r (1:C+WlC)
+        Hellish Rebuke R/60'/I (1:Wl)
+        Unseen Servant (rit.) A/60'/1h (1:B+Wl+Wz)
+        Flaming Sphere A/60'/C<=1m (2:D+WlC+Wz)
+        Elemental Bane A/90'/C<=1m (4:A+D+Wl+Wz)
+        Guardian of Faith A/30'/8h (4:C+WlC)
+        Shadow of Moil A/S/C<=1m (4:Wl)
+        Sickening Radiance A/120'/C<=10m (4:FEK+S+Wl+Wz)
+        Wall of Fire A/120'/C<=1m (4:D+FEK+S+WlC+WlF+Wz)
+        Flame Strike A/60'/I (5:C+WlC+WlF)
+        Wall of Light A/120'/C<=10m (5:S+Wl+Wz)
+        Investiture of Flame A/S/C<=10m (6:D+S+Wl+Wz)
+        Investiture of Ice A/S/C<=10m (6:D+S+Wl+Wz)
+        Mental Prison A/60'/C<=1m (6:S+Wl+Wz)
+        Crown of Stars A/S/1h (7:S+Wl+Wz)
+        Plane Shift A/T/I (7:C+D+S+Wl+Wz)
+        """
         for i in new_items:
             if i not in self:
                 self.append(i)
