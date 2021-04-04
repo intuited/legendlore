@@ -541,6 +541,37 @@ class Collection(list):
 
     where_fields = reflect.collection_attribs
 
+    def sorted(self, field='name'):
+        """Copies self, sorts the internal data using key `name`; returns copy.
+
+        >>> s = Spells()
+        >>> from dnd5edb import predicates as p
+        >>> s = s.where(text=p.in_('adiant')).where(classes=p.in_('Warlock'))
+        >>> s = s.sorted('name')
+        >>> s.sorted('level').print()
+        Shadow of Moil A/S/C<=1m (4:Wl)
+        Sickening Radiance A/120'/C<=10m (4:FEK+S+Wl+Wz)
+        Wall of Light A/120'/C<=10m (5:S+Wl+Wz)
+        Crown of Stars A/S/1h (7:S+Wl+Wz)
+        >>> s.sorted('classes').print()
+        Sickening Radiance A/120'/C<=10m (4:FEK+S+Wl+Wz)
+        Crown of Stars A/S/1h (7:S+Wl+Wz)
+        Wall of Light A/120'/C<=10m (5:S+Wl+Wz)
+        Shadow of Moil A/S/C<=1m (4:Wl)
+        >>> s.sorted('sources').print() # still sorted by name
+        Crown of Stars A/S/1h (7:S+Wl+Wz)
+        Shadow of Moil A/S/C<=1m (4:Wl)
+        Sickening Radiance A/120'/C<=10m (4:FEK+S+Wl+Wz)
+        Wall of Light A/120'/C<=10m (5:S+Wl+Wz)
+        >>> s.sorted('blipdebloop').print()
+        Traceback (most recent call last):
+          ...
+        TypeError: '<' not supported between instances of 'NoneType' and 'NoneType'
+        """
+        copy = Spells(self.copy())
+        copy.sort(key=lambda o: getattr(o, field, None))
+        return copy
+
     # TODO: move this into Collection and add Monsters doctests
     def fmt(self, method='oneline', **kwargs):
         """Returns newline-separated results of calling `method` for each item.
