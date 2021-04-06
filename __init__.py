@@ -1,7 +1,23 @@
 from functools import partial
 from dnd5edb import parse, predicates, reflect
 
-class Spell:
+class DBItem:
+    """Abstract base class for Spell, Monster, and other database entries."""
+    def fmt_xlist(self, tabstop=2):
+        """Pointform output in xlist format.
+
+        DBItem subclass must implement fmt_pointform for this to work.
+
+        >>> print(Spells().search('Magic Missile')[0].fmt_xlist())
+        * Magic Missile A/120'/I (1:FEK+S+Wz)
+          " You create three glowing darts of magical force. Each dart hits a creature of your choice that you can see within range. A dart deals 1d4+1 force damage to its target. The darts all strike simultaneously and you can direct them to hit one creature or several.
+          " 
+          " At Higher Levels: When you cast this spell using a spell slot of 2nd level or higher, the spell creates one more dart for each slot above 1st.
+        """
+        return self.fmt_pointform(header='*', text='"', tabstop=tabstop)
+
+
+class Spell(DBItem):
     """Object with spell db object fields mapped as attributes."""
     schools = {'EV': "Evocation",
                'T': "Transmutation",
@@ -270,17 +286,6 @@ class Spell:
         ret += [f'{" " * tabstop}{text} {line}' for line in spell.text.split('\n')]
         return '\n'.join(ret)
 
-    def fmt_xlist(spell, tabstop=2):
-        """Pointform output in xlist format.
-
-        >>> print(Spells().search('Magic Missile')[0].fmt_xlist())
-        * Magic Missile A/120'/I (1:FEK+S+Wz)
-          " You create three glowing darts of magical force. Each dart hits a creature of your choice that you can see within range. A dart deals 1d4+1 force damage to its target. The darts all strike simultaneously and you can direct them to hit one creature or several.
-          " 
-          " At Higher Levels: When you cast this spell using a spell slot of 2nd level or higher, the spell creates one more dart for each slot above 1st.
-        """
-        return spell.fmt_pointform(header='*', text='"', tabstop=tabstop)
-
 
     def subclass_set(spell, class_):
         """Returns a terse indicator of which subclasses of `class` get the spell.
@@ -313,7 +318,7 @@ class Spell:
 
         return ', '.join(components)
 
-class Monster:
+class Monster(DBItem):
     def __init__(self, node):
         """Instantiates this instance using data from the XML `node`."""
         self.__dict__.update(parse.Monster.parse(node))
@@ -446,6 +451,26 @@ class Monster:
         m = [(f, getattr(self, f, None)) for f in dir(self) if f in fields]
         return render_text(**dict(m))
 
+    def fmt_pointform(self, header='-', body='-', tabstop=2):
+        """Multiline string containing point-form summary of item.
+
+        Similar to `Spell.fmt_pointform`.
+
+        First line is simply output of `self.fmt_oneline()`.
+        Subsequent lines are any remaining lines after the first two
+        in the output of `self.fmt_full()`.
+
+        >>> Monsters().where(name='Goblin').print('pointform')
+        - Goblin: S neutral evil humanoid (goblinoid), 1/4CR 7HP/2d6 15AC (walk 30)
+          - STR:8 DEX:14 CON:10 INT:10 WIS:8 CHA:8
+          - skills: {'Stealth': 6}
+          - passive perception: 9
+          - senses: {'darkvision': 60}
+          - armor: leather armor, shield
+        """
+        ret = [f'{header} {self.fmt_oneline()}']
+        ret += [f'{" " * tabstop}{body} {line}' for line in self.fmt_full().split('\n')[2:]]
+        return '\n'.join(ret)
 
 class Collection(list):
     """Virtual superclass for a list of DB items.
