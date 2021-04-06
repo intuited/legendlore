@@ -81,3 +81,43 @@ def or_(*preds):
         return False
 
     return or_closure
+
+def and_(*preds):
+    """Check if all of the passed predicates are true.
+
+    >>> from dnd5edb.test import aobj
+    >>> numand = and_(in_(1), in_(2), in_(3))
+    >>> numand('a', aobj([1, 2, 3]))
+    True
+    >>> numand('a', aobj([4, 5, 6]))
+    False
+    >>> numand('a', aobj([1, 5, 6]))
+    False
+    >>> numand('a', aobj([6, 2, 6]))
+    False
+    >>> numand('a', aobj([8, 7, 1]))
+    False
+    >>> numand('a', aobj([]))
+    False
+    >>> numand('a', aobj([3, 2, 1]))
+    True
+
+    >>> ranges = and_(gte(4), lte(7)) #tests that numbers are within the range 4-7
+    >>> ranges('a', aobj(4))
+    True
+    >>> ranges('a', aobj(3))
+    False
+    >>> ranges('a', aobj(-4.7))
+    False
+    >>> ranges('a', aobj(7))
+    True
+    >>> ranges('a', aobj(8))
+    False
+    """
+    def and_closure(*args, **kwargs):
+        for p in preds:
+            if not p(*args, **kwargs):
+                return False
+        return True
+
+    return and_closure
