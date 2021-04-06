@@ -319,7 +319,7 @@ class Monster:
         self.__dict__.update(parse.Monster.parse(node))
 
     def __repr__(self):
-        return f"Monster({{'name': {self.name}, 'type': {self.type}}})"
+        return f"Monster({self.fmt_oneline()})"
 
     def fmt_oneline(self):
         """Returns a one-line summary of the item.
