@@ -498,7 +498,7 @@ class Collection(list):
 
         Returns items where `field` contains `val`.
         >>> Monsters().search('AAR')[0]
-        Monster({'name': Aarakocra, 'type': humanoid (aarakocra)})
+        Monster(Aarakocra: M neutral good humanoid (aarakocra), 1/4CR 13HP/3d8 12AC (walk 20, fly 50))
         >>> Spells().search('smite')[0]
         Spell(Banishing Smite B/S/C<=1m (5:P+WlH))
         """
@@ -521,7 +521,7 @@ class Collection(list):
 
         >>> from dnd5edb import predicates as p
         >>> Monsters().where(name='Aarakocra')
-        [Monster({'name': Aarakocra, 'type': humanoid (aarakocra)})]
+        [Monster(Aarakocra: M neutral good humanoid (aarakocra), 1/4CR 13HP/3d8 12AC (walk 20, fly 50))]
         >>> names = lambda mlist: [m.name for m in mlist]
         >>> names(Monsters().where(cr=p.gte(28.0)))
         ['Tarrasque', 'Rak Tulkhesh', 'Sul Khatesh', 'Tiamat']
@@ -530,9 +530,9 @@ class Collection(list):
         >>> names(Monsters().where(cr=3.0, senses=p.key('blindsight')))[0:4]
         ['Blue Dragon Wyrmling', 'Giant Scorpion', 'Gold Dragon Wyrmling', 'Grell']
         >>> Monsters().where(cr=3.0, int=p.gt(16)).where(int=p.lte(17))
-        [Monster({'name': Merrenoloth, 'type': fiend (yugoloth)})]
+        [Monster(Merrenoloth: M neutral evil fiend (yugoloth), 3.0CR 40HP/9d8 13AC (walk 30, swim 40))]
         >>> Monsters().where(speed=p.key('swim'))[0]
-        Monster({'name': Aboleth, 'type': aberration})
+        Monster(Aboleth: L lawful evil aberration, 10.0CR 135HP/18d10+36 17AC (walk 10, swim 40))
         >>> Monsters().where(spells=p.in_('conjure animals'))[0].name
         'Drow Priestess of Lolth'
         """
@@ -705,13 +705,13 @@ class Monsters(Collection):
     >>> monster('Astral Dreadnought').speed
     {'walk': 15, 'fly': 80}
     >>> monster('Aarakocra')
-    Monster({'name': Aarakocra, 'type': humanoid (aarakocra)})
+    Monster(Aarakocra: M neutral good humanoid (aarakocra), 1/4CR 13HP/3d8 12AC (walk 20, fly 50))
     >>> monster('Duergar Warlord')
-    Monster({'name': Duergar Warlord, 'type': humanoid (dwarf)})
+    Monster(Duergar Warlord: M lawful evil humanoid (dwarf), 6.0CR 75HP/10d8+30 20AC (walk 25))
     >>> monster('War Priest')
-    Monster({'name': War Priest, 'type': humanoid (any race)})
+    Monster(War Priest: M any alignment humanoid (any race), 9.0CR 117HP/18d8+36 18AC (walk 30))
     >>> Monsters(m for m in Monsters() if getattr(m, 'name').startswith('C'))[0]
-    Monster({'name': Cambion, 'type': fiend})
+    Monster(Cambion: M any evil alignment fiend, 5.0CR 82HP/11d8+33 19AC (walk 30, fly 60))
     """
     _xpath = '//monster'
     _type = Monster
