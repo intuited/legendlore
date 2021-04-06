@@ -651,7 +651,10 @@ class Collection(list):
         return '\n'.join(getattr(i, 'fmt_' + method)(**kwargs) for i in self)
 
     def print(self, *args, **kwargs):
-        """Passes args to self.fmt, prints result."""
+        """CLI convenience function.
+
+        Passes args to self.fmt, prints result.
+        """
         print(self.fmt(*args, **kwargs))
 
 class Spells(Collection):
