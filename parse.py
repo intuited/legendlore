@@ -1015,8 +1015,12 @@ class Spell():
         >>> Spell.parse_spell_source(source)
         Reference(book="Player's Handbook", page=277)
         >>> source = "Xanathar's Guide to Everything, p. 20 (class feature)"
-        >>> Spell.parse_spell_source(source)
+        >>> Spell.parse_spell_source(source) # ignored because is class feature
+        >>> Spell.parse_spell_source("")     # ignored because blank line
         """
+        if source == "":
+            # There are occasional blank lines, which we ignore
+            return None
         m = re.match('^(?P<book>.*?),?\s*p\.?\s*(?P<page>\d+)\s*(?P<extra>.*).*$', source)
         if m is None:
             warning(f"parse_spell_source: failed match on line '{source}'")
