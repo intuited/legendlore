@@ -325,20 +325,26 @@ class Monster:
         """Returns a one-line summary of the item.
 
         >>> Monsters().where(name='Giant Crab')[0].fmt_oneline()
-        Giant Crab (unaligned beast)  Size: M  CR: 0.125
-        HP: 13(3d8)  AC: 15 (natural armor)(15)  Speed: {'walk': 30, 'swim': 30}
-        STR:13 DEX:15 CON:11 INT:1 WIS:9 CHA:3
-        skills: {'Stealth': 4}
-        passive perception: 9
-        senses: {'blindsight': 30}
-        armor: natural armor
-        Crab Folk (Neutral giant)  Size: L  CR: 3.0
-        HP: 68(8d10+24)  AC: 16 (natural armor)(16)  Speed: {'walk': 40, 'swim': 40}
-        STR:19 DEX:10 CON:17 INT:7 WIS:9 CHA:9
-        passive perception: 9
-        armor: natural armor
-        The crab folk are the r
+        'Giant Crab: M unaligned beast, 1/8CR 13HP/3d8 15AC (walk 30, swim 30)'
+        >>> Monsters().where(name='Crab Folk')[0].fmt_oneline()
+        'Crab Folk: L Neutral giant, 3.0CR 68HP/8d10+24 16AC (walk 40, swim 40)'
         """
+        fmt = '{name}: {size} {alignment} {type}, {cr}CR {hp}HP/{hitdice} {ac_num}AC ({speeds})'
+
+        fields = ['name', 'size', 'alignment', 'type', 'hp', 'hitdice', 'ac_num']
+        # fill `fields` from attributes of `self`
+        fields = dict((field, getattr(self, field, '--')) for field in fields)
+
+        cr_table = {0.125: '1/8', 0.25: '1/4', 0.5: '1/2'}
+        cr = getattr(self, 'cr', None)
+        fields['cr'] = '--' if cr is None else cr_table[cr] if cr % 1 else str(cr)
+
+        speed = getattr(self, 'speed', {'NO': 'MOVEMENT'})
+        fields['speeds'] = ', '.join(' '.join([mode, str(dist)]) for mode, dist in speed.items())
+
+        # inject the fields from `self` into the format string
+        return fmt.format(**fields)
+
     def fmt_full(self):
         def render_text(name=None, alignment=None, type=None,
                         size=None, cr=None, hp=None, hitdice=None,
