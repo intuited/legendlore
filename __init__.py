@@ -13,8 +13,14 @@ class DBItem:
           " You create three glowing darts of magical force. Each dart hits a creature of your choice that you can see within range. A dart deals 1d4+1 force damage to its target. The darts all strike simultaneously and you can direct them to hit one creature or several.
           " 
           " At Higher Levels: When you cast this spell using a spell slot of 2nd level or higher, the spell creates one more dart for each slot above 1st.
+        >>> print(Monsters().search('Griffon')[0].fmt_xlist())
+        * Griffon: L unaligned monstrosity, 2.0CR 59HP/7d10+21 12AC (walk 30, fly 80)
+          " STR:18 DEX:15 CON:16 INT:2 WIS:13 CHA:8
+          " skills: {'Perception': 5}
+          " passive perception: 15
+          " senses: {'darkvision': 60}
         """
-        return self.fmt_pointform(header='*', text='"', tabstop=tabstop)
+        return self.fmt_pointform(header='*', body='"', tabstop=tabstop)
 
 
 class Spell(DBItem):
@@ -257,14 +263,14 @@ class Spell(DBItem):
 
         return "{name}{rit} {t}/{r}/{d} ({l}:{classes})".format(**f)
 
-    def fmt_pointform(spell, header='-', text='-', tabstop=2):
+    def fmt_pointform(spell, header='-', body='-', tabstop=2):
         """Return multiline string containing all spell information.
 
         The top line is a one-line header via self.fmt_oneline.
         The remaining lines are the spell text.
-        `header` and `text` are single-character bullets
+        `header` and `body` are single-character bullets
             used for their respective types of lines.
-        `tabstop` determines the depth to which the text lines are indented.
+        `tabstop` determines the depth to which the body lines are indented.
 
         >>> print(Spells().search('Magic Missile')[0].fmt_pointform())
         - Magic Missile A/120'/I (1:FEK+S+Wz)
@@ -276,14 +282,14 @@ class Spell(DBItem):
             - You create three glowing darts of magical force. Each dart hits a creature of your choice that you can see within range. A dart deals 1d4+1 force damage to its target. The darts all strike simultaneously and you can direct them to hit one creature or several.
             - 
             - At Higher Levels: When you cast this spell using a spell slot of 2nd level or higher, the spell creates one more dart for each slot above 1st.
-        >>> print(Spells().search('Magic Missile')[0].fmt_pointform(header='*', text='"'))
+        >>> print(Spells().search('Magic Missile')[0].fmt_pointform(header='*', body='"'))
         * Magic Missile A/120'/I (1:FEK+S+Wz)
           " You create three glowing darts of magical force. Each dart hits a creature of your choice that you can see within range. A dart deals 1d4+1 force damage to its target. The darts all strike simultaneously and you can direct them to hit one creature or several.
           " 
           " At Higher Levels: When you cast this spell using a spell slot of 2nd level or higher, the spell creates one more dart for each slot above 1st.
         """
         ret = [f'{header} {spell.fmt_oneline()}']
-        ret += [f'{" " * tabstop}{text} {line}' for line in spell.text.split('\n')]
+        ret += [f'{" " * tabstop}{body} {line}' for line in spell.text.split('\n')]
         return '\n'.join(ret)
 
 
