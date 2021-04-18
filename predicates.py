@@ -121,3 +121,27 @@ def and_(*preds):
         return True
 
     return and_closure
+
+def not_(*preds):
+    """Check if none of the passed predicates are true.
+
+    >>> from dnd5edb.test import aobj
+    >>> not_(lt(4))('a', aobj(7))
+    True
+    >>> not_(lt(4))('a', aobj(2))
+    False
+    >>> numnot = not_(in_(1), in_(2), in_(3))
+    >>> numnot('a', aobj([1, 2, 3]))
+    False
+    >>> numnot('a', aobj([4, 5, 6]))
+    True
+    >>> numnot('a', aobj([1, 6, 9]))
+    False
+    """
+    def not_closure(*args, **kwargs):
+        for p in preds:
+            if p(*args, **kwargs):
+                return False
+        return True
+
+    return not_closure
