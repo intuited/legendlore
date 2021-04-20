@@ -28,9 +28,9 @@ def beasts(cr, fly=True, swim=True, crpred=p.lte):
 elementals = ['Air Elemental', 'Earth Elemental', 'Fire Elemental', 'Water Elemental']
 elementals = m.where(name=lambda attr, obj: getattr(obj, attr, '') in elementals)
 moonws = {
-    2:  beasts(1),
-    4:  beasts(1, swim=True),
-    6:  beasts(2, swim=True),
+    2:  beasts(1, swim=False, fly=False),
+    4:  beasts(1, swim=True, fly=False),
+    6:  beasts(2, swim=True, fly=False),
     8:  beasts(2, swim=True, fly=True),
     9:  beasts(3, swim=True, fly=True),
     10: beasts(3, swim=True, fly=True).extend(elementals),
