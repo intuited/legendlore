@@ -580,8 +580,11 @@ class Collection(list):
 
     where_fields = reflect.collection_attribs
 
-    def sorted(self, field='name'):
-        """Copies self, sorts the internal data using key `name`; returns copy.
+    def sorted(self, field='name', key=None, reverse=False):
+        """Copies self, sorts the internal data using field `name` by default; returns copy.
+
+        If `key` is specified, uses that key function instead of the default getter.
+        Key functions take a single parameter, the object whose key is being retrieved.
 
         >>> s = Spells()
         >>> from dnd5edb import predicates as p
@@ -592,6 +595,11 @@ class Collection(list):
         Sickening Radiance A/120'/C<=10m (4:FEK+S+Wl+Wz)
         Wall of Light A/120'/C<=10m (5:S+Wl+Wz)
         Crown of Stars A/S/1h (7:S+Wl+Wz)
+        >>> s.sorted('level', reverse=True).print()
+        Crown of Stars A/S/1h (7:S+Wl+Wz)
+        Wall of Light A/120'/C<=10m (5:S+Wl+Wz)
+        Shadow of Moil A/S/C<=1m (4:Wl)
+        Sickening Radiance A/120'/C<=10m (4:FEK+S+Wl+Wz)
         >>> s.sorted('classes').print()
         Sickening Radiance A/120'/C<=10m (4:FEK+S+Wl+Wz)
         Crown of Stars A/S/1h (7:S+Wl+Wz)
@@ -607,9 +615,9 @@ class Collection(list):
           ...
         TypeError: '<' not supported between instances of 'NoneType' and 'NoneType'
         """
-        copy = Spells(self.copy())
-        copy.sort(key=lambda o: getattr(o, field, None))
-        return copy
+        if key == None:
+            key = lambda o: getattr(o, field, None)
+        return Spells(sorted(self, key=key, reverse=reverse))
 
     def extend(self, new_items):
         """Adds to `self` any items from `new_items` not already in `self`.
