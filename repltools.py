@@ -1,3 +1,6 @@
+from simpleeval import simple_eval
+import re
+
 class Blank:
     """Blank class used as basis for attribute-based structures."""
     None
@@ -42,3 +45,27 @@ moonws = { k: v.sorted('cr') for k, v in moonws.items() }
 # AC evaluation for druid mc
 bearbarian_ac = lambda c: max(c.ac_num if 'natural armor' in c.ac.lower() else 0, asbonus(10 + c.dex + c.con))
 drunk_ac = lambda c, wis: max(c.ac_num if 'natural armor' in c.ac.lower() else 0, asbonus(10 + c.dex + wis))
+
+# average die roll calculations
+def calc_avg(expression):
+    """Calculates the average total of `expression`.
+
+    `expression can contain die-roll notation of the form [0-9]+d[0-9]+.
+
+    >>> calc_avg('1')
+    1
+    >>> calc_avg('1 - 2')
+    -1
+    >>> calc_avg('1d4')
+    2.5
+    >>> calc_avg('1d10+5') # So anyway, I started blasting
+    10.5
+    >>> calc_avg('1d10+5 + 1d6') # I put a spell on you...
+    14.0
+    >>> calc_avg('2d10+10 + 2d6') # Level 5 at last
+    28.0
+    """
+    #d_re = r'\b([0-9]+)d([0-9]+)\b'
+    d_re = r'\b([0-9]+)d([0-9]+)\b'
+    subbed = re.sub(d_re, r'(float(\1)*\2 + \1)/2', expression)
+    return simple_eval(subbed)
