@@ -42,6 +42,19 @@ def contains(val):
     """
     return lambda attr, obj: _hasvalue(obj, attr) and val in getattr(obj, attr)
 
+def in_(val):
+    """Check if `val` is in the value of `attr`.
+
+    >>> from dnd5edb.repltools import s
+    >>> s.where(classes=contains("Wizard"), level=in_([2, 3, 4]), text=contains('spell attack')).print()
+    Melf's Acid Arrow A/90'/I (2:FEK+Wz)
+    Ray of Enfeeblement A/60'/C<=1m (2:Wl+Wz)
+    Scorching Ray A/120'/I (2:FEK+S+WlF+Wz)
+    Vampiric Touch A/S/C<=1m (3:Wl+Wz)
+    Storm Sphere A/150'/C<=1m (4:FEK+S+Wz)
+    """
+    return lambda attr, obj: _hasvalue(obj, attr) and getattr(obj, attr) in val
+
 def or_(*preds):
     """Check if any of the passed predicates return true.
 
