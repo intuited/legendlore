@@ -69,3 +69,7 @@ def calc_avg(expression):
     d_re = r'\b([0-9]+)d([0-9]+)\b'
     subbed = re.sub(d_re, r'(float(\1)*\2 + \1)/2', expression)
     return simple_eval(subbed)
+
+# die roll odds
+meetorbeat = lambda minimum: 1 - (float(minimum) - 1) / 20
+adv = lambda odds: 1 - ((1 - odds) * (1 - odds))
