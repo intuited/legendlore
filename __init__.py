@@ -503,7 +503,7 @@ class Collection(list):
         If tree was not given, stores the parsed tree in a class
             variable (`_parsed`)
         """
-        if l:
+        if l is not None:
             super().__init__(l)
             return
 
@@ -614,6 +614,10 @@ class Collection(list):
         Traceback (most recent call last):
           ...
         TypeError: '<' not supported between instances of 'NoneType' and 'NoneType'
+
+        Test that we're handling empty sets correctly
+        >>> len(s.where(classes=p.contains('gobbledegook')).sorted())
+        0
         """
         if key == None:
             key = lambda o: getattr(o, field, None)
