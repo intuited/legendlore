@@ -22,9 +22,9 @@ def beasts(cr, fly=True, swim=True, crpred=p.lte):
     """Returns beast-type creatures matching the other conditions."""
     ret = m.where(type='beast', cr=crpred(cr))
     if not fly:
-        ret = ret.where(speed=p.not_(p.in_('fly')))
+        ret = ret.where(speed=p.not_(p.contains('fly')))
     if not swim:
-        ret = ret.where(speed=p.not_(p.in_('swim')))
+        ret = ret.where(speed=p.not_(p.contains('swim')))
     return ret
 
 # moon druid wildshape options at various levels

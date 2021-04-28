@@ -564,7 +564,7 @@ class Collection(list):
         [Monster(Merrenoloth: M neutral evil fiend (yugoloth), 3.0CR 40HP/9d8 13AC (walk 30, swim 40))]
         >>> Monsters().where(speed=p.key('swim'))[0]
         Monster(Aboleth: L lawful evil aberration, 10.0CR 135HP/18d10+36 17AC (walk 10, swim 40))
-        >>> Monsters().where(spells=p.in_('conjure animals'))[0].name
+        >>> Monsters().where(spells=p.contains('conjure animals'))[0].name
         'Drow Priestess of Lolth'
         """
         result = self
@@ -588,7 +588,7 @@ class Collection(list):
 
         >>> s = Spells()
         >>> from dnd5edb import predicates as p
-        >>> s = s.where(text=p.in_('adiant')).where(classes=p.in_('Warlock'))
+        >>> s = s.where(text=p.contains('adiant')).where(classes=p.contains('Warlock'))
         >>> s = s.sorted('name')
         >>> s.sorted('level').print()
         Shadow of Moil A/S/C<=1m (4:Wl)
@@ -625,9 +625,9 @@ class Collection(list):
         >>> from dnd5edb import predicates as p
         >>> s = Spells()
         >>> # Celestial Warlock spells containing "adiant" or case-insensitive "fire"
-        >>> (s.where(text=p.in_('adiant')).extend(s.where(text=p.in_('fire')))
-        ...   .extend(s.where(text=p.in_('Fire'))).where(classes=p.or_(p.in_('Warlock'),
-        ...                                                            p.in_('Warlock (Celestial)')))
+        >>> (s.where(text=p.contains('adiant')).extend(s.where(text=p.contains('fire')))
+        ...   .extend(s.where(text=p.contains('Fire'))).where(classes=p.or_(p.contains('Warlock'),
+        ...                                                                 p.contains('Warlock (Celestial)')))
         ...   .sorted('name').sorted('level').print())
         Create Bonfire A/60'/C<=1m (0:A+D+FEK+AT+S+Wl+Wz)
         Greenflame Blade A/5'/I (0:FEK+AT+S+Wl+Wz)
@@ -661,7 +661,7 @@ class Collection(list):
         By default, uses the one-line format method for the given item type.
 
         >>> from dnd5edb import predicates as p
-        >>> print(Spells().where(name=p.in_('Circle')).fmt())
+        >>> print(Spells().where(name=p.contains('Circle')).fmt())
         Circle of Death A/150'/I (6:S+Wl+Wz)
         Circle of Power A/S(30'r)/C<=10m (5:P)
         Circle of Power* A/S(30'r)/C<=10m (5:PCr)
@@ -669,7 +669,7 @@ class Collection(list):
         Magic Circle* 1m/10'/1h (3:CA)
         Teleportation Circle 1m/10'/1r (5:B+RHW+S+Wz)
         Teleportation Circle* 1m/10'/1r (5:CA)
-        >>> print(Spells().where(name=p.in_('Find')).where(name=p.in_('Steed')).fmt('xlist'))
+        >>> print(Spells().where(name=p.contains('Find')).where(name=p.contains('Steed')).fmt('xlist'))
         * Find Steed 10m/30'/I (2:P)
           " You summon a spirit that assumes the form of an unusually intelligent, strong, and loyal steed, creating a long-lasting bond with it. Appearing in an unoccupied space within range, the steed takes on a form that you choose: a warhorse, a pony, a camel, an elk, or a mastiff. (Your DM might allow other animals to be summoned as steeds.) The steed has the statistics of the chosen form, though it is a celestial, fey, or fiend (your choice) instead of its normal type. Additionally, if your steed has an Intelligence of 5 or less, its Intelligence becomes 6, and it gains the ability to understand one language of your choice that you speak.
           " Your steed serves you as a mount, both in combat and out, and you have an instinctive bond with it that allows you to fight as a seamless unit. While mounted on your steed, you can make any spell you cast that targets only you also target your steed.

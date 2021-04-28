@@ -31,10 +31,10 @@ def key(val):
                     return True
         return False
     return keypred
-def in_(val):
-    """Check if `val` is in the value of `attr`.
+def contains(val):
+    """Check if `attr` contains `val`.
     >>> from dnd5edb.test import s
-    >>> s.where(components=in_('pearl')).sorted('level').print()
+    >>> s.where(components=contains('pearl')).sorted('level').print()
     Identify (rit.) 1m/T/I (1:A+B+Wz)
     Identify* (rit.) 1m/T/I (1:CF+CK)
     Identify (Ritual Only) (rit.) 1m/T/I (1:Rit)
@@ -46,7 +46,7 @@ def or_(*preds):
     """Check if any of the passed predicates return true.
 
     >>> from dnd5edb.test import aobj
-    >>> numor = or_(in_(1), in_(2), in_(3))
+    >>> numor = or_(contains(1), contains(2), contains(3))
     >>> numor('a', aobj([1, 2, 3]))
     True
     >>> numor('a', aobj([4, 5, 6]))
@@ -86,7 +86,7 @@ def and_(*preds):
     """Check if all of the passed predicates are true.
 
     >>> from dnd5edb.test import aobj
-    >>> numand = and_(in_(1), in_(2), in_(3))
+    >>> numand = and_(contains(1), contains(2), contains(3))
     >>> numand('a', aobj([1, 2, 3]))
     True
     >>> numand('a', aobj([4, 5, 6]))
@@ -130,7 +130,7 @@ def not_(*preds):
     True
     >>> not_(lt(4))('a', aobj(2))
     False
-    >>> numnot = not_(in_(1), in_(2), in_(3))
+    >>> numnot = not_(contains(1), contains(2), contains(3))
     >>> numnot('a', aobj([1, 2, 3]))
     False
     >>> numnot('a', aobj([4, 5, 6]))
