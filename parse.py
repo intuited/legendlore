@@ -1007,6 +1007,24 @@ class Spell():
         classes = [c.strip() for c in classes]
         return sorted(classes)
 
+    valid_sources = [
+        'Acquisitions Incorporated',
+        "Elemental Evil Player's Companion",
+        "Guildmasters' Guide to Ravnica",
+        'Lost Laboratory of Kwalish',
+        "Player's Handbook",
+        'Princes of the Apocalypse',
+        "Sword Coast Adventurer's Guide",
+        "Volo's Guide to Monsters",
+        "Xanathar's Guide to Everything",
+        "Explorer's Guide to Wildemount",
+        "Wayfinder's Guide to Eberron",
+        "Eberron: Rising from the Last War",
+        "Guildmasters' Guide to Ravnica",
+        'Mythic Odysseys of Theros',
+        "Icewind Dale: Rime of the Frostmaiden",
+        "Tasha's Cauldron of Everything" ]
+
     @classmethod
     def parse_spell_source(cls, source):
         """Breaks source line into Reference(book, page) components.
@@ -1021,17 +1039,32 @@ class Spell():
         >>> source = "Xanathar's Guide to Everything p. 157, Elemental Evil Player's Companion p. 19, Wayfinder's Guide to Eberron p. 107, Eberron: Rising from the Last War p. 50"
         >>> Spell.parse_spell_source(source)
         [Reference(book="Xanathar's Guide to Everything", page=157), Reference(book="Elemental Evil Player's Companion", page=19), Reference(book="Wayfinder's Guide to Eberron", page=107), Reference(book='Eberron: Rising from the Last War', page=50)]
+        >>> source = "Guildmasters' Guide to Ravnica"
+        >>> Spell.parse_spell_source(source)
+        [Reference(book="Guildmasters' Guide to Ravnica", page=None)]
         """
+        source = source.strip()  # we're doing this more times than needed but nbd
+
         if source == "":
             # There are occasional blank lines, which we ignore
             return []
+
         m = re.match('^\s*(?P<book>.*?),?\s*p\.?\s*(?P<page>\d+)\s*(?P<extra>.*).*$', source)
-        if m is None:
+        if m:
+            book = m.groupdict()['book']
+            if book not in cls.valid_sources:
+                warning(f"parse_spell_source: invalid source '{book}' parsed on line '{source}'")
+            this_reference = [Reference(m.groupdict()['book'], int(m.groupdict()['page']))]
+            extra = m.groupdict()['extra']
+        elif source in cls.valid_sources:  # some entries don't give page numbers
+            this_reference = [Reference(source, None)]
+            # Currently, pageless references only occur at the end of lines, so we can do this for now.
+            extra = None
+        else:
             warning(f"parse_spell_source: failed match on line '{source}'")
             return []
         #debug(book)
-        extra = m.groupdict()['extra']
-        this_reference = [Reference(m.groupdict()['book'], int(m.groupdict()['page']))]
+
         if not extra:
             return this_reference
         if extra[0] == ',':
