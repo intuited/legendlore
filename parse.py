@@ -11,6 +11,8 @@ from dnd5edb import predicates
 from itertools import groupby, chain
 chainfi = chain.from_iterable
 
+default_db_file = 'FC5eXML/Collections/CoreOnly.xml'
+
 def yield_args(*args):
     yield args
 
@@ -48,12 +50,12 @@ class XML:
     @classmethod
     def apply_errata(cls, tree):
         """Corrects errors that have been discovered in the XML file."""
-        darkling = tree.xpath("//monster[name/text() = 'Darkling']")[0]
-        con = darkling.find('con')
-        con.text = '12'
+        #darkling = tree.xpath("//monster[name/text() = 'Darkling']")[0]
+        #con = darkling.find('con')
+        #con.text = '12'
 
     @classmethod
-    def parse_db(cls, db_file='FC5eXML/CoreOnly.xml'):
+    def parse_db(cls, db_file=default_db_file):
         """Parse XML file with lxml parser."""
         debug('Parsing xml...')
         parser = etree.XMLParser()
@@ -64,7 +66,7 @@ class XML:
         return tree
 
     @classmethod
-    def get_tree(cls, db_file='FC5eXML/CoreOnly.xml'):
+    def get_tree(cls, db_file=default_db_file):
         """Returns a tree at the top level of the parsed DB.
 
         Parses it if it has not already been processed.
@@ -103,6 +105,7 @@ class Monster():
         yield from cls.yield_if_present(node, 'cr', cls.yield_fraction)
         yield from cls.yield_if_present(node, 'spells', cls.yield_text)
         yield from cls.yield_if_present(node, 'slots', cls.yield_text)
+        # remaining: ['action', 'environment', 'languages', 'legendary', 'reaction', 'trait']
 
     @classmethod
     def yield_if_present(cls, node, field, fn=yield_args):
@@ -1008,31 +1011,33 @@ class Spell():
     def parse_spell_source(cls, source):
         """Breaks source line into Reference(book, page) components.
 
+        Returns a list of Reference objects.
+
         >>> source = "Xanathar's Guide to Everything, p. 152"
         >>> Spell.parse_spell_source(source)
-        Reference(book="Xanathar's Guide to Everything", page=152)
-        >>> source = "Player's Handbook, p. 277 (spell)"
-        >>> Spell.parse_spell_source(source)
-        Reference(book="Player's Handbook", page=277)
-        >>> source = "Xanathar's Guide to Everything, p. 20 (class feature)"
-        >>> Spell.parse_spell_source(source) # ignored because is class feature
+        [Reference(book="Xanathar's Guide to Everything", page=152)]
         >>> Spell.parse_spell_source("")     # ignored because blank line
+        []
+        >>> source = "Xanathar's Guide to Everything p. 157, Elemental Evil Player's Companion p. 19, Wayfinder's Guide to Eberron p. 107, Eberron: Rising from the Last War p. 50"
+        >>> Spell.parse_spell_source(source)
+        [Reference(book="Xanathar's Guide to Everything", page=157), Reference(book="Elemental Evil Player's Companion", page=19), Reference(book="Wayfinder's Guide to Eberron", page=107), Reference(book='Eberron: Rising from the Last War', page=50)]
         """
         if source == "":
             # There are occasional blank lines, which we ignore
-            return None
-        m = re.match('^(?P<book>.*?),?\s*p\.?\s*(?P<page>\d+)\s*(?P<extra>.*).*$', source)
+            return []
+        m = re.match('^\s*(?P<book>.*?),?\s*p\.?\s*(?P<page>\d+)\s*(?P<extra>.*).*$', source)
         if m is None:
             warning(f"parse_spell_source: failed match on line '{source}'")
-            return None
+            return []
         #debug(book)
         extra = m.groupdict()['extra']
-        if extra == '(spell)' or not extra:
-            return Reference(m.groupdict()['book'], int(m.groupdict()['page']))
-        if extra == '(class feature)':
-            return None
+        this_reference = [Reference(m.groupdict()['book'], int(m.groupdict()['page']))]
+        if not extra:
+            return this_reference
+        if extra[0] == ',':
+            return this_reference + cls.parse_spell_source(extra[1:].strip())
         else:
-            warning(f"parse_spell_source: unknown extra '{extra}'")
+            warning(f"parse_spell_source: source '{source}': unknown extra '{extra}'")
 
     @staticmethod
     def expand_newlines(lines):
@@ -1070,6 +1075,7 @@ class Spell():
         • The creature has disadvantage on attack rolls.
         <BLANKLINE>
         • An attack roll against the creature has advantage if the attacker is within 5 feet of the creature. Otherwise, the attack roll has disadvantage.
+
         >>> parsed[1] == (Reference("Xanathar's Guide to Everything", 168),
         ...               Reference("Elemental Evil Player's Companion", 22),
         ...               Reference("Princes of the Apocalypse", 240))
@@ -1084,28 +1090,33 @@ class Spell():
         ...     "* Oath, Domain, or Circle of the Land spell (always prepared)"]
         >>> print(Spell.parse_spell_text(text)[1])
         (Reference(book="Player's Handbook", page=211),)
+
+        >>> text = [
+        ...     "Source: Xanathar's Guide to Everything p. 157, Elemental Evil Player's Companion p. 19", 
+        ...     "Wayfinder's Guide to Eberron p. 107, Eberron: Rising from the Last War p. 50"]
+        >>> print(Spell.parse_spell_text(text)[1])
+        (Reference(book="Xanathar's Guide to Everything", page=157), Reference(book="Elemental Evil Player's Companion", page=19), Reference(book="Wayfinder's Guide to Eberron", page=107), Reference(book='Eberron: Rising from the Last War', page=50))
         """
-        sources = []
-        def process(lines):
-            in_sources = False # State that tracks if we're recording sources
-            lines = list(Spell.expand_newlines(lines))
+        text_lines = []    # Accumulates lines of spell text in the for loop
+        sources = []       # Accumulates Reference objects in the for loop
+        in_sources = False # State that tracks if we're recording sources
 
-            for line in lines:
-                if line is None:
-                    if in_sources:
-                        in_sources = False
-                    continue
+        # Break out newlines in the list of strings
+        lines = list(Spell.expand_newlines(lines))
 
-                line = line.strip()
-                if line[:8] == 'Source: ':
-                    in_sources = True
-                    parsed = cls.parse_spell_source(line[8:])
-                elif in_sources:
-                    parsed = cls.parse_spell_source(line)
-                else:
-                    yield line
-                    continue
-                if parsed is not None:
-                    sources.append(parsed)
-        text = '\n'.join(process(lines))
-        return text, tuple(sources)
+        for line in lines:
+            if line is None:
+                if in_sources:
+                    in_sources = False
+                continue
+
+            line = line.strip()
+            if line[:8] == 'Source: ':
+                in_sources = True
+                sources += cls.parse_spell_source(line[8:])
+            elif in_sources:
+                sources += cls.parse_spell_source(line)
+            else:
+                text_lines.append(line)
+
+        return '\n'.join(text_lines), tuple(sources)
