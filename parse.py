@@ -7,7 +7,7 @@ from pprint import pprint, pformat
 from textwrap import dedent
 from fractions import Fraction
 import dnd5edb
-from dnd5edb import predicates
+from dnd5edb import predicates, datatypes
 from itertools import groupby, chain
 chainfi = chain.from_iterable
 
@@ -1050,6 +1050,7 @@ class Spell():
 
         return spell
 
+    casting_times = set()
     @classmethod
     def parse_casting_time(cls, time):
         #TODO: write this, validate
@@ -1058,8 +1059,7 @@ class Spell():
 
     @classmethod
     def parse_spell_range(cls, r):
-        #TODO: write this, validate
-        return r
+        return datatypes.SpellRange(r)
 
     @classmethod
     def parse_spell_components(cls, text):

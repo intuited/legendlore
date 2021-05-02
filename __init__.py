@@ -153,39 +153,7 @@ class Spell(DBItem):
 
         Possible return values: 10', 120', 500mi, S, S(30'cone), Unlimited, etc
         """
-        abbr = {None: "N",
-                'Self': 'S',
-                'Self (10-foot radius)': "S(10'r)",
-                'Self (10-foot-radius sphere)': "S(10'r-sphere)",
-                'Self (10-foot-radius hemisphere)': "S(10'r-hemisphere)",
-                'Self (15-foot-radius)': "S(15'r)",
-                'Self (15-foot cone)': "S(15'cone)",
-                'Self (15-foot cube)': "S(15'cube)",
-                'Self (30-foot radius)': "S(30'r)",
-                'Self (30-foot cone)': "S(30'cone)",
-                'Self (60-foot line)': "S(60'line)",
-                'Self (60 foot cone)': "S(60'cone)",
-                'Self (60-foot cone)': "S(60'cone)",
-                'Self (100-foot line)': "S(100'line)",
-                'Self (5-mile radius)': "S(5mi.r)",
-                'Touch': "T",
-                'Special': "Special",
-                'Sight': "Sight",
-                '5 feet': "5'",
-                '10 feet': "10'",
-                '15 feet': "15'",
-                '30 feet': "30'",
-                '60 feet': "60'",
-                '90 feet': "90'",
-                '100 feet': "100'",
-                '120 feet': "120'",
-                '150 feet': "150'",
-                '300 feet': "300'",
-                '500 feet': "500'",
-                '1 mile': "1mi",
-                '500 miles': "500mi",
-                'Unlimited': "Unlimited"}
-        return abbr[spell.range]
+        return spell.range.abbr()
 
     def abbrev_duration(spell):
         """Abbreviate spell duration.
