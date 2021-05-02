@@ -218,15 +218,19 @@ class Monster():
         >>> result = test('30 ft., 30 ft. swim')
         >>> result == {'walk': 30, 'swim': 30}
         True
+        >>> test("12 miles per hour (288 miles per day)")
+        {'mph': 12}
         """
         movement_types = ['walk', 'fly', 'swim', 'climb', 'burrow']
-        mtre = '(?:' + '|'.join(movement_types) + ')'
-        vector_re_basic = f'(?:{mtre} )?\d+ ?ft\.?' # [movement_type] speed
+        mt_re = '(?:' + '|'.join(movement_types) + ')'
+        vector_re_basic = f'(?:{mt_re} )?\d+ ?ft\.?' # [movement_type] speed
         vector_re_hover = f'fly \d+ ft. \([Hh]over\)'
-        vector_re_speed_first = f'\d+ ?ft\.? {mtre}'
+        vector_re_speed_first = f'\d+ ?ft\.? {mt_re}'
         vector_just_a_number = f'\d+'
+        vector_vehicle_speed = r'^\d+ miles per hour \(\d+ miles per day\)$'
         vector_re = (f'(?:{vector_re_basic}|{vector_re_hover}|'
-                      + f'{vector_re_speed_first}|{vector_just_a_number})')
+                      + f'{vector_re_speed_first}|{vector_just_a_number}|'
+                      + f'{vector_vehicle_speed})')
 
         csv_match_re = f'^({vector_re})(?:, ({vector_re}))*$' # list of speeds, no ()
 
@@ -240,14 +244,17 @@ class Monster():
             >>> parse_vector('climb 30 ft.')
             ('climb', 30)
             >>> parse_vector('yeet 10000 ft.')
-            These don't work because it's an inner function.
+            These doctests don't run because parse_vector is an internal function
             >>> parse_vector('fly 30 ft. (hover)')
             ('fly', 30)
+            >>> parse_vector("12 miles per hour (288 miles per day)")
+            ('mph', 12)
             """
             # capture groups for type and speed
-            parse_re = f'^(?:({mtre}) )?(\d+) ?ft\.?(?: \([Hh]over\))?$'
-            parse_re_speed_first = f'^(\d+) ?ft\.? ({mtre})$'
+            parse_re = f'^(?:({mt_re}) )?(\d+) ?ft\.?(?: \([Hh]over\))?$'
+            parse_re_speed_first = f'^(\d+) ?ft\.? ({mt_re})$'
             parse_re_just_a_number = '^(\d+)$'
+            parse_re_vehicle_speed = '^(\d+) miles per hour \(\d+ miles per day\)$'
 
             m = re.match(parse_re, vector)
             if m:
@@ -265,8 +272,12 @@ class Monster():
             m = re.match(parse_re_just_a_number, vector)
             if m:
                 return ('walk', int(m.group(1)))
-            else:
-                raise Exception(f'parse_vector: invalid match on "{vector}"')
+
+            m = re.match(parse_re_vehicle_speed, vector)
+            if m:
+                return ('mph', int(m.group(1)))
+
+            raise Exception(f'parse_vector: invalid match on "{vector}"')
 
         if re.match(csv_match_re, text):
             csv_iter_re = f'^({vector_re})(?:, ({vector_re}(?:, {vector_re})*))?$'
@@ -404,7 +415,7 @@ class Monster():
         "one of the following: acid, cold, fire, lightning or poison",
         "one of the following: acid, cold, fire, lightning, or poison",
     }
-    damage_mappings = { # translation of complex fields
+    damage_mappings = { # translation of complex expressions and simple expressions compounded with commas
         'bludgeoning, piercing, and slashing from nonmagical attacks': {
             'types': {
                 'nonmagical bludgeoning',
@@ -478,6 +489,28 @@ class Monster():
                     'nonmagical bludgeoning',
                     'nonmagical piercing',
                     'nonmagical slashing']}},
+        "nonmagical bludgeoning, piercing, slashing (from stoneskin), poison": {
+            'types': {
+                'nonmagical bludgeoning',
+                'nonmagical piercing',
+                'nonmagical slashing',
+                'poison'},
+            'notes': {
+                'from stoneskin': [
+                    'nonmagical bludgeoning',
+                    'nonmagical piercing',
+                    'nonmagical slashing']}},
+        "nonmagical bludgeoning, piercing, slashing (from stoneskin), fire": {
+            'types': {
+                'nonmagical bludgeoning',
+                'nonmagical piercing',
+                'nonmagical slashing',
+                'fire'},
+            'notes': {
+                'from stoneskin': [
+                    'nonmagical bludgeoning',
+                    'nonmagical piercing',
+                    'nonmagical slashing']}},
 
         "bludgeoning, piercing, and slashing from nonmagical attacks that aren't silvered": {
             'types': {
@@ -519,8 +552,23 @@ class Monster():
                 'nonmagical nonsilver bludgeoning',
                 'nonmagical nonsilver piercing',
                 'nonmagical nonsilver slashing'}},
+        "bludgeoning, piercing, slashing from nonmagical attacks not made with silvered weapons": {
+            'types': {
+                'nonmagical nonsilver bludgeoning',
+                'nonmagical nonsilver piercing',
+                'nonmagical nonsilver slashing'}},
+
         "slashing damage from nonmagical attacks not made with silvered weapons": {
             'types': {
+                'nonmagical nonsilver slashing'}},
+        "slashing from nonmagical attacks not made with silvered weapons": {
+            'types': {
+                'nonmagical nonsilver slashing'}},
+
+        "bludgeoning, piercing, slashing from nonmagical attacks that aren't adamantine or silvered": {
+            'types': {
+                'nonmagical nonsilver bludgeoning',
+                'nonmagical nonsilver piercing',
                 'nonmagical nonsilver slashing'}},
 
         "lightning, poison, bludgeoning, piercing, sand slashing from non-magical attacks that aren't adamantine or silvered": {
@@ -556,6 +604,15 @@ class Monster():
                 'nonmagical nonadamantine bludgeoning',
                 'nonmagical nonadamantine piercing',
                 'nonmagical nonadamantine slashing'}},
+        "bludgeoning, piercing, slashing from nonmagical attacks not made with adamantine weapons": {
+            'types': {
+                'nonmagical nonadamantine bludgeoning',
+                'nonmagical nonadamantine piercing',
+                'nonmagical nonadamantine slashing'}},
+        "piercing, slashing from nonmagical attacks that aren't adamantine": {
+            'types': {
+                'nonmagical nonadamantine piercing',
+                'nonmagical nonadamantine slashing'}},
         "piercing and slashing from nonmagical attacks that aren't adamantine": {
             'types': {
                 'nonmagical nonadamantine piercing',
@@ -573,8 +630,18 @@ class Monster():
                 'magical bludgeoning',
                 'magical piercing',
                 'magical slashing'}},
+         "bludgeoning, piercing, slashing from magic weapons": {
+            'types': {
+                'magical bludgeoning',
+                'magical piercing',
+                'magical slashing'}},
 
         "bludgeoning, piercing, and slashing while in dim light or darkness": {
+            'types': {
+                'bludgeoning while in dim light or darkness',
+                'piercing while in dim light or darkness',
+                'slashing while in dim light or darkness'}},
+        "bludgeoning, piercing, slashing while in dim light or darkness": {
             'types': {
                 'bludgeoning while in dim light or darkness',
                 'piercing while in dim light or darkness',
@@ -584,6 +651,17 @@ class Monster():
                 'nonmagical bludgeoning while in dim light or darkness',
                 'nonmagical piercing while in dim light or darkness',
                 'nonmagical slashing while in dim light or darkness'}},
+        "bludgeoning, piercing, slashing from nonmagical attacks while in dim light or darkness": {
+            'types': {
+                'nonmagical bludgeoning while in dim light or darkness',
+                'nonmagical piercing while in dim light or darkness',
+                'nonmagical slashing while in dim light or darkness'}},
+
+        "bludgeoning, piercing, slashing from metal weapons": {
+            'types': {
+                'bludgeoning from metal weapons',
+                'piercing from metal weapons',
+                'slashing from metal weapons'}},
 
         "while wearing the mask of the dragon queen: acid, cold, lightning, poison": {
             'types': {
@@ -601,9 +679,39 @@ class Monster():
         "cold (while wearing the ring of winter)": {
             'types': {'cold'},
             'notes': {'while wearing the ring of winter': 'cold'}},
+        "while wearing the ring of winter: cold": {
+            'types': {'cold'},
+            'notes': {'while wearing the ring of winter': 'cold'}},
 
         'posion': {
             'types': {'poison'}},
+
+        # Elemental Spirit damage types from the Summon Elemental spell in TCoE
+        "lightning, thunder (air only), piercing": {    # this seems to be a mistranscription: this "piercing" is absent from the stat block in TCoE.
+            'types': {'lightning', 'thunder'},
+            'notes': {'air form only': ['lightning', 'thunder']}},
+        "piercing, slashing (earth only)": {
+            'types': {'piercing', 'slashing'},
+            'notes': {'earth form only': ['piercing, slashing']}},
+        "acid (water only)": {
+            'types': {'acid'},
+            'notes': {'water form only': 'acid'}},
+        "fire (fire only)": {
+            'types': {'fire'},
+            'notes': {'fire form only': 'fire'}},
+
+        # choose-one damage types from Rise of Tiamat
+        "one of the following: acid, cold, fire, lightning, poison": {
+            'types': {'acid', 'cold', 'fire', 'lightning', 'poison'},
+            'notes': {'choose one from acid, cold, fire, lightning, poison': ['acid', 'cold', 'fire', 'lightning', 'poison']}},
+        "one of the following: acid, cold, fire, lightning, poison, poison": {  # not sure what happened here
+            'types': {'acid', 'cold', 'fire', 'lightning', 'poison'},
+            'notes': {'choose one from acid, cold, fire, lightning, poison': ['acid', 'cold', 'fire', 'lightning', 'poison']}},
+
+        # Halaster Blackcloak from Waterdeep: Dungeon of the Mad Mage
+        'lightning (granted by the blast scepter, see "special equipment" below)': {
+            'types': {'lightning'},
+            'notes': {'granted by the blast scepter': 'lightning'}},
     }
 
     @classmethod
@@ -817,7 +925,13 @@ class Monster():
                  'senses_notes': 'darkvision while wearing the Mask of the Dragon Queen'},
             'darkvision 60 ft. (can see invisible creatures out to the same range)':
                 {'senses': {'darkvision': 60},
-                 'senses_notes': {'darkvision': 'can see invisible creatures to same range'}}
+                 'senses_notes': {'darkvision': 'can see invisible creatures to same range'}},
+            'blindsight 120 ft. (blind beyond this radius); see also "detect sentience" below':
+                {'senses': {'blindsight': 120},
+                 'senses_notes': {'blindsight': 'blind beyond this radius'}},
+            'darkvision 60ft. (beast form only)':
+                {'senses': {'darkvision': 60},
+                 'senses_notes': {'darkvision': 'beast form only'}},
         }
 
         def map_component(c):
