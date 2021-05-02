@@ -35,9 +35,8 @@ def contains(val):
     """Check if `attr` contains `val`.
     >>> from dnd5edb.test import s
     >>> s.where(components=contains('pearl')).sorted('level').print()
-    Identify (rit.) 1m/T/I (1:A+B+Wz)
-    Identify* (rit.) 1m/T/I (1:CF+CK)
-    Identify (Ritual Only) (rit.) 1m/T/I (1:Rit)
+    Identify (rit.) 1m/T/I (1:A+B+CF+CK+Wz)
+    Fortune's Favor 1m/T/1h (2:WzC+WzG)
     Circle of Death A/150'/I (6:S+Wl+Wz)
     """
     return lambda attr, obj: _hasvalue(obj, attr) and val in getattr(obj, attr)
@@ -47,11 +46,11 @@ def in_(val):
 
     >>> from dnd5edb.repltools import s
     >>> s.where(classes=contains("Wizard"), level=in_([2, 3, 4]), text=contains('spell attack')).print()
-    Melf's Acid Arrow A/90'/I (2:FEK+Wz)
-    Ray of Enfeeblement A/60'/C<=1m (2:Wl+Wz)
-    Scorching Ray A/120'/I (2:FEK+S+WlF+Wz)
-    Vampiric Touch A/S/C<=1m (3:Wl+Wz)
-    Storm Sphere A/150'/C<=1m (4:FEK+S+Wz)
+    Melf's Acid Arrow A/90'/I (2:AAl+DL+Wz)
+    Ray of Enfeeblement A/60'/C<=1m (2:CD+CG+Wl+Wz)
+    Scorching Ray A/120'/I (2:AArt+CLt+DW+S+WlF+WlGe+Wz)
+    Vampiric Touch A/S/C<=1m (3:CD+CG+Wl+Wz)
+    Storm Sphere A/150'/C<=1m (4:S+Wz)
     """
     return lambda attr, obj: _hasvalue(obj, attr) and getattr(obj, attr) in val
 

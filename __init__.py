@@ -9,16 +9,17 @@ class DBItem:
         DBItem subclass must implement fmt_pointform for this to work.
 
         >>> print(Spells().search('Magic Missile')[0].fmt_xlist())
-        * Magic Missile A/120'/I (1:FEK+S+Wz)
-          " You create three glowing darts of magical force. Each dart hits a creature of your choice that you can see within range. A dart deals 1d4+1 force damage to its target. The darts all strike simultaneously and you can direct them to hit one creature or several.
-          " 
-          " At Higher Levels: When you cast this spell using a spell slot of 2nd level or higher, the spell creates one more dart for each slot above 1st.
-        >>> print(Monsters().search('Griffon')[0].fmt_xlist())
-        * Griffon: L unaligned monstrosity, 2.0CR 59HP/7d10+21 12AC (walk 30, fly 80)
+        * Magic Missile A/120'/I (1:AArm+CA+S+Wz)
+          " You create three glowing darts of magical force. Each dart hits a creature of your choice that you can see within range. A dart deals 1d4 + 1 force damage to its target. The darts all strike simultaneously, and you can direct them to hit one creature or several.
+          " At Higher Levels:
+          " When you cast this spell using a spell slot of 2nd level or higher, the spell creates one more dart for each slot level above 1st.
+        >>> print(Monsters().search('Griffon')[0].fmt_xlist()) # doctest: +ELLIPSIS
+        * Griffon: L Unaligned monstrosity, 2.0CR 59HP/7d10+21 12AC (walk 30, fly 80)
           " STR:18 DEX:15 CON:16 INT:2 WIS:13 CHA:8
           " skills: {'Perception': 5}
           " passive perception: 15
           " senses: {'darkvision': 60}
+        ...
         """
         return self.fmt_pointform(header='*', body='"', tabstop=tabstop)
 
@@ -54,13 +55,17 @@ class Spell(DBItem):
         >>> Spell.abbrev_class("Warlock")
         'Wl'
         >>> Spell.abbrev_class("Warlock (Great Old One)")
-        'WlG'
+        'WlGOO'
         >>> Spell.abbrev_class("Rogue (Arcane Trickster)")
         'AT'
         >>> Spell.abbrev_class("Fighter (Eldritch Knight)")
         'FEK'
         """
         abbr = {'Artificer': "A",
+                'Artificer (Alchemist)': 'AAl',
+                'Artificer (Armorer)': "AArm",
+                'Artificer (Artillerist)': "AArt",
+                'Artificer (Battle Smith)': "ABS",
                 'Bard': "B",
                 'Cleric (Arcana)': "CA",
                 'Cleric (Death)': "CD",
@@ -73,17 +78,20 @@ class Spell(DBItem):
                 'Cleric (Order)': "CO",
                 'Cleric (Protection)': "CP",
                 'Cleric (Tempest)': "CTm",
+                'Cleric (Twilight)': "CTw",
                 'Cleric (Trickery)': "CTr",
                 'Cleric (War)': "CW",
                 'Cleric': "C",
-                'Druid (Arctic)': "DA",
-                'Druid (Coast)': "DC",
-                'Druid (Desert)': "DD",
-                'Druid (Forest)': "DF",
-                'Druid (Grassland)': "DG",
-                'Druid (Mountain)': "DM",
-                'Druid (Swamp)': "DS",
-                'Druid (Underdark)': "DU",
+                'Druid (Arctic)': "DLA",
+                'Druid (Coast)': "DLC",
+                'Druid (Desert)': "DLD",
+                'Druid (Forest)': "DLF",
+                'Druid (Grassland)': "DLG",
+                'Druid (Mountain)': "DLM",
+                'Druid (Swamp)': "DLS",
+                'Druid (Underdark)': "DLU",
+                'Druid (Land)': "DL",
+                'Druid (Wildfire)': "DW",
                 'Druid': "D",
                 'Eldritch Invocations': "EI",
                 'Fighter': "F",
@@ -97,6 +105,7 @@ class Spell(DBItem):
                 'Paladin (Conquest)': "PCn",
                 'Paladin (Crown)': "PCr",
                 'Paladin (Devotion)': "PD",
+                'Paladin (Glory)': "PG",
                 'Paladin (Oathbreaker)': "PO",
                 'Paladin (Redemption)': "PR",
                 'Paladin (Treachery)': "PT",
@@ -116,12 +125,15 @@ class Spell(DBItem):
                 'Warlock (Archfey)': "WlA",
                 'Warlock (Celestial)': "WlC",
                 'Warlock (Fiend)': "WlF",
-                'Warlock (Great Old One)': "WlG",
+                'Warlock (Genie)': "WlGe",
+                'Warlock (Great Old One)': "WlGOO",
                 'Warlock (Hexblade)': "WlH",
                 'Warlock (Raven Queen)': "WlR",
                 'Warlock (Seeker)': "WlS",
                 'Warlock (Undying)': "WlU",
                 'Warlock': "Wl",
+                'Wizard (Chronurgy)': "WzC",
+                'Wizard (Graviturgy)': "WzG",
                 'Wizard': "Wz"}
 
         return abbr[char_class]
@@ -216,9 +228,9 @@ class Spell(DBItem):
 
         >>> test = lambda name: Spells().search(name)[0].fmt_oneline()
         >>> test('Banishing Smite')
-        'Banishing Smite B/S/C<=1m (5:P+WlH)'
+        'Banishing Smite B/S/C<=1m (5:ABS+P+WlH)'
         >>> test('Identify')
-        'Identify (rit.) 1m/T/I (1:A+B+Wz)'
+        'Identify (rit.) 1m/T/I (1:A+B+CF+CK+Wz)'
         """
         f = {
             'name': spell.name,
@@ -241,20 +253,20 @@ class Spell(DBItem):
         `tabstop` determines the depth to which the body lines are indented.
 
         >>> print(Spells().search('Magic Missile')[0].fmt_pointform())
-        - Magic Missile A/120'/I (1:FEK+S+Wz)
-          - You create three glowing darts of magical force. Each dart hits a creature of your choice that you can see within range. A dart deals 1d4+1 force damage to its target. The darts all strike simultaneously and you can direct them to hit one creature or several.
-          - 
-          - At Higher Levels: When you cast this spell using a spell slot of 2nd level or higher, the spell creates one more dart for each slot above 1st.
+        - Magic Missile A/120'/I (1:AArm+CA+S+Wz)
+          - You create three glowing darts of magical force. Each dart hits a creature of your choice that you can see within range. A dart deals 1d4 + 1 force damage to its target. The darts all strike simultaneously, and you can direct them to hit one creature or several.
+          - At Higher Levels:
+          - When you cast this spell using a spell slot of 2nd level or higher, the spell creates one more dart for each slot level above 1st.
         >>> print(Spells().search('Magic Missile')[0].fmt_pointform(tabstop=4))
-        - Magic Missile A/120'/I (1:FEK+S+Wz)
-            - You create three glowing darts of magical force. Each dart hits a creature of your choice that you can see within range. A dart deals 1d4+1 force damage to its target. The darts all strike simultaneously and you can direct them to hit one creature or several.
-            - 
-            - At Higher Levels: When you cast this spell using a spell slot of 2nd level or higher, the spell creates one more dart for each slot above 1st.
+        - Magic Missile A/120'/I (1:AArm+CA+S+Wz)
+            - You create three glowing darts of magical force. Each dart hits a creature of your choice that you can see within range. A dart deals 1d4 + 1 force damage to its target. The darts all strike simultaneously, and you can direct them to hit one creature or several.
+            - At Higher Levels:
+            - When you cast this spell using a spell slot of 2nd level or higher, the spell creates one more dart for each slot level above 1st.
         >>> print(Spells().search('Magic Missile')[0].fmt_pointform(header='*', body='"'))
-        * Magic Missile A/120'/I (1:FEK+S+Wz)
-          " You create three glowing darts of magical force. Each dart hits a creature of your choice that you can see within range. A dart deals 1d4+1 force damage to its target. The darts all strike simultaneously and you can direct them to hit one creature or several.
-          " 
-          " At Higher Levels: When you cast this spell using a spell slot of 2nd level or higher, the spell creates one more dart for each slot above 1st.
+        * Magic Missile A/120'/I (1:AArm+CA+S+Wz)
+          " You create three glowing darts of magical force. Each dart hits a creature of your choice that you can see within range. A dart deals 1d4 + 1 force damage to its target. The darts all strike simultaneously, and you can direct them to hit one creature or several.
+          " At Higher Levels:
+          " When you cast this spell using a spell slot of 2nd level or higher, the spell creates one more dart for each slot level above 1st.
         """
         ret = [f'{header} {spell.fmt_oneline()}']
         ret += [f'{" " * tabstop}{body} {line}' for line in spell.text.split('\n')]
@@ -304,7 +316,7 @@ class Monster(DBItem):
         """Returns a one-line summary of the item.
 
         >>> Monsters().where(name='Giant Crab')[0].fmt_oneline()
-        'Giant Crab: M unaligned beast, 1/8CR 13HP/3d8 15AC (walk 30, swim 30)'
+        'Giant Crab: M Unaligned beast, 1/8CR 13HP/3d8 15AC (walk 30, swim 30)'
         >>> Monsters().where(name='Crab Folk')[0].fmt_oneline()
         'Crab Folk: L Neutral giant, 3.0CR 68HP/8d10+24 16AC (walk 40, swim 40)'
         """
@@ -434,13 +446,14 @@ class Monster(DBItem):
         Subsequent lines are any remaining lines after the first two
         in the output of `self.fmt_full()`.
 
-        >>> Monsters().where(name='Goblin').print('pointform')
-        - Goblin: S neutral evil humanoid (goblinoid), 1/4CR 7HP/2d6 15AC (walk 30)
+        >>> Monsters().where(name='Goblin').print('pointform') # doctest: +ELLIPSIS
+        - Goblin: S Neutral Evil humanoid (goblinoid), 1/4CR 7HP/2d6 15AC (walk 30)
           - STR:8 DEX:14 CON:10 INT:10 WIS:8 CHA:8
           - skills: {'Stealth': 6}
           - passive perception: 9
           - senses: {'darkvision': 60}
           - armor: leather armor, shield
+        ...
         """
         ret = [f'{header} {self.fmt_oneline()}']
         ret += [f'{" " * tabstop}{body} {line}' for line in self.fmt_full().split('\n')[2:]]
@@ -489,17 +502,22 @@ class Collection(list):
 
         objects = tree.xpath(self._xpath)
         super().__init__(self._type(i) for i in objects)
+        self._apply_errata()
         if store_tree:
             self.__class__._parsed = self
+
+    def _apply_errata(self):
+        """Subclass hook to make changes to the DB after parsing."""
+        return
 
     def search(self, val, field='name'):
         """Case-insensitive contents search over the data set
 
         Returns items where `field` contains `val`.
         >>> Monsters().search('AAR')[0]
-        Monster(Aarakocra: M neutral good humanoid (aarakocra), 1/4CR 13HP/3d8 12AC (walk 20, fly 50))
+        Monster(Aarakocra: M Neutral Good humanoid (aarakocra), 1/4CR 13HP/3d8 12AC (walk 20, fly 50))
         >>> Spells().search('smite')[0]
-        Spell(Banishing Smite B/S/C<=1m (5:P+WlH))
+        Spell(Banishing Smite B/S/C<=1m (5:ABS+P+WlH))
         """
         def lc_in(term):
             return str(val).lower() in str(getattr(term, field, '')).lower()
@@ -520,7 +538,7 @@ class Collection(list):
 
         >>> from dnd5edb import predicates as p
         >>> Monsters().where(name='Aarakocra')
-        [Monster(Aarakocra: M neutral good humanoid (aarakocra), 1/4CR 13HP/3d8 12AC (walk 20, fly 50))]
+        [Monster(Aarakocra: M Neutral Good humanoid (aarakocra), 1/4CR 13HP/3d8 12AC (walk 20, fly 50))]
         >>> names = lambda mlist: [m.name for m in mlist]
         >>> names(Monsters().where(cr=p.gte(28.0)))
         ['Tarrasque', 'Rak Tulkhesh', 'Sul Khatesh', 'Tiamat']
@@ -529,9 +547,9 @@ class Collection(list):
         >>> names(Monsters().where(cr=3.0, senses=p.key('blindsight')))[0:4]
         ['Blue Dragon Wyrmling', 'Giant Scorpion', 'Gold Dragon Wyrmling', 'Grell']
         >>> Monsters().where(cr=3.0, int=p.gt(16)).where(int=p.lte(17))
-        [Monster(Merrenoloth: M neutral evil fiend (yugoloth), 3.0CR 40HP/9d8 13AC (walk 30, swim 40))]
+        [Monster(Merrenoloth: M Neutral Evil fiend (yugoloth), 3.0CR 40HP/9d8 13AC (walk 30, swim 40))]
         >>> Monsters().where(speed=p.key('swim'))[0]
-        Monster(Aboleth: L lawful evil aberration, 10.0CR 135HP/18d10+36 17AC (walk 10, swim 40))
+        Monster(Aboleth: L Lawful Evil aberration, 10.0CR 135HP/18d10+36 17AC (walk 10, swim 40))
         >>> Monsters().where(spells=p.contains('conjure animals'))[0].name
         'Drow Priestess of Lolth'
         """
@@ -559,24 +577,32 @@ class Collection(list):
         >>> s = s.where(text=p.contains('adiant')).where(classes=p.contains('Warlock'))
         >>> s = s.sorted('name')
         >>> s.sorted('level').print()
+        Spirit Shroud B/S/C<=1m (3:C+P+Wl+Wz)
         Shadow of Moil A/S/C<=1m (4:Wl)
-        Sickening Radiance A/120'/C<=10m (4:FEK+S+Wl+Wz)
+        Sickening Radiance A/120'/C<=10m (4:S+Wl+Wz)
         Wall of Light A/120'/C<=10m (5:S+Wl+Wz)
+        Tasha's Otherworldly Guise B/S/C<=1m (6:S+Wl+Wz)
         Crown of Stars A/S/1h (7:S+Wl+Wz)
         >>> s.sorted('level', reverse=True).print()
         Crown of Stars A/S/1h (7:S+Wl+Wz)
+        Tasha's Otherworldly Guise B/S/C<=1m (6:S+Wl+Wz)
         Wall of Light A/120'/C<=10m (5:S+Wl+Wz)
         Shadow of Moil A/S/C<=1m (4:Wl)
-        Sickening Radiance A/120'/C<=10m (4:FEK+S+Wl+Wz)
+        Sickening Radiance A/120'/C<=10m (4:S+Wl+Wz)
+        Spirit Shroud B/S/C<=1m (3:C+P+Wl+Wz)
         >>> s.sorted('classes').print()
-        Sickening Radiance A/120'/C<=10m (4:FEK+S+Wl+Wz)
+        Spirit Shroud B/S/C<=1m (3:C+P+Wl+Wz)
         Crown of Stars A/S/1h (7:S+Wl+Wz)
+        Sickening Radiance A/120'/C<=10m (4:S+Wl+Wz)
+        Tasha's Otherworldly Guise B/S/C<=1m (6:S+Wl+Wz)
         Wall of Light A/120'/C<=10m (5:S+Wl+Wz)
         Shadow of Moil A/S/C<=1m (4:Wl)
         >>> s.sorted('sources').print() # still sorted by name
+        Spirit Shroud B/S/C<=1m (3:C+P+Wl+Wz)
+        Tasha's Otherworldly Guise B/S/C<=1m (6:S+Wl+Wz)
         Crown of Stars A/S/1h (7:S+Wl+Wz)
         Shadow of Moil A/S/C<=1m (4:Wl)
-        Sickening Radiance A/120'/C<=10m (4:FEK+S+Wl+Wz)
+        Sickening Radiance A/120'/C<=10m (4:S+Wl+Wz)
         Wall of Light A/120'/C<=10m (5:S+Wl+Wz)
         >>> s.sorted('blipdebloop').print()
         Traceback (most recent call last):
@@ -601,23 +627,26 @@ class Collection(list):
         ...   .extend(s.where(text=p.contains('Fire'))).where(classes=p.or_(p.contains('Warlock'),
         ...                                                                 p.contains('Warlock (Celestial)')))
         ...   .sorted('name').sorted('level').print())
-        Create Bonfire A/60'/C<=1m (0:A+D+FEK+AT+S+Wl+Wz)
-        Greenflame Blade A/5'/I (0:FEK+AT+S+Wl+Wz)
-        Prestidigitation A/10'/<=1h (0:A+B+FEK+AT+S+Wl+Wz)
-        Guiding Bolt A/120'/1r (1:C+WlC)
-        Hellish Rebuke R/60'/I (1:Wl)
+        Create Bonfire A/60'/C<=1m (0:A+D+S+Wl+Wz)
+        Green-Flame Blade A/S(5'r)/I (0:A+S+Wl+Wz)
+        Prestidigitation A/10'/1h (0:A+B+FAA+S+Wl+Wz)
+        Sacred Flame A/60'/I (0:C+WlC)
+        Guiding Bolt A/120'/1r (1:C+PG+WlC)
+        Hellish Rebuke R/60'/I (1:PO+Wl)
         Unseen Servant (rit.) A/60'/1h (1:B+Wl+Wz)
-        Flaming Sphere A/60'/C<=1m (2:D+WlC+Wz)
+        Flaming Sphere A/60'/C<=1m (2:AAl+CLt+D+DW+S+WlC+Wz)
+        Spirit Shroud B/S/C<=1m (3:C+P+Wl+Wz)
         Elemental Bane A/90'/C<=1m (4:A+D+Wl+Wz)
-        Guardian of Faith A/30'/8h (4:C+WlC)
+        Guardian of Faith A/30'/8h (4:C+CLf+CLt+PCr+PD+WlC)
         Shadow of Moil A/S/C<=1m (4:Wl)
-        Sickening Radiance A/120'/C<=10m (4:FEK+S+Wl+Wz)
-        Wall of Fire A/120'/C<=1m (4:D+FEK+S+WlC+WlF+Wz)
-        Flame Strike A/60'/I (5:C+WlC+WlF)
+        Sickening Radiance A/120'/C<=10m (4:S+Wl+Wz)
+        Wall of Fire A/120'/C<=1m (4:AArt+CF+CLt+D+S+WlC+WlF+Wz)
+        Flame Strike A/60'/I (5:C+CLt+CW+DW+PD+PG+WlC+WlF+WlGe)
         Wall of Light A/120'/C<=10m (5:S+Wl+Wz)
         Investiture of Flame A/S/C<=10m (6:D+S+Wl+Wz)
         Investiture of Ice A/S/C<=10m (6:D+S+Wl+Wz)
         Mental Prison A/60'/C<=1m (6:S+Wl+Wz)
+        Tasha's Otherworldly Guise B/S/C<=1m (6:S+Wl+Wz)
         Crown of Stars A/S/1h (7:S+Wl+Wz)
         Plane Shift A/T/I (7:C+D+S+Wl+Wz)
         """
@@ -635,28 +664,21 @@ class Collection(list):
         >>> from dnd5edb import predicates as p
         >>> print(Spells().where(name=p.contains('Circle')).fmt())
         Circle of Death A/150'/I (6:S+Wl+Wz)
-        Circle of Power A/S(30'r)/C<=10m (5:P)
-        Circle of Power* A/S(30'r)/C<=10m (5:PCr)
-        Magic Circle 1m/10'/1h (3:C+FEK+P+RMS+Wl+Wz)
-        Magic Circle* 1m/10'/1h (3:CA)
-        Teleportation Circle 1m/10'/1r (5:B+RHW+S+Wz)
-        Teleportation Circle* 1m/10'/1r (5:CA)
+        Circle of Power A/S(30'r)/C<=10m (5:CTw+P+PCr)
+        Magic Circle 1m/10'/1h (3:C+CA+P+RMS+Wl+Wz)
+        Teleportation Circle 1m/10'/1r (5:B+CA+RHW+S+Wz)
         >>> print(Spells().where(name=p.contains('Find')).where(name=p.contains('Steed')).fmt('xlist'))
         * Find Steed 10m/30'/I (2:P)
           " You summon a spirit that assumes the form of an unusually intelligent, strong, and loyal steed, creating a long-lasting bond with it. Appearing in an unoccupied space within range, the steed takes on a form that you choose: a warhorse, a pony, a camel, an elk, or a mastiff. (Your DM might allow other animals to be summoned as steeds.) The steed has the statistics of the chosen form, though it is a celestial, fey, or fiend (your choice) instead of its normal type. Additionally, if your steed has an Intelligence of 5 or less, its Intelligence becomes 6, and it gains the ability to understand one language of your choice that you speak.
           " Your steed serves you as a mount, both in combat and out, and you have an instinctive bond with it that allows you to fight as a seamless unit. While mounted on your steed, you can make any spell you cast that targets only you also target your steed.
           " When the steed drops to 0 hit points, it disappears, leaving behind no physical form. You can also dismiss your steed at any time as an action, causing it to disappear. In either case, casting this spell again summons the same steed, restored to its hit point maximum.
-          " While your steed is within 1 mile of you, you can communicate with it telepathically.
+          " While your steed is within 1 mile of you, you can communicate with each other telepathically.
           " You can't have more than one steed bonded by this spell at a time. As an action, you can release the steed from its bond at any time, causing it to disappear.
         * Find Greater Steed 10m/30'/I (4:P)
           " You summon a spirit that assumes the form of a loyal, majestic mount. Appearing in an unoccupied space within range, the spirit takes on a form you choose: a griffon, a pegasus, a peryton, a dire wolf, a rhinoceros, or a saber-toothed tiger. The creature has the statistics provided in the Monster Manual for the chosen form, though it is a celestial, a fey, or a fiend (your choice) instead of its normal creature type. Additionally, if it has an Intelligence score of 5 or lower, its Intelligence becomes 6, and it gains the ability to understand one language of your choice that you speak.
-          " 
           " You control the mount in combat. While the mount is within 1 mile of you, you can communicate with it telepathically. While mounted on it, you can make any spell you cast that targets only you also target the mount.
-          " 
           " The mount disappears temporarily when it drops to 0 hit points or when you dismiss it as an action. Casting this spell again re-summons the bonded mount, with all its hit points restored and any conditions removed.
-          " 
-          " You can’t have more than one mount bonded by this spell or find steed at the same time. As an action, you can release a mount from its bond, causing it to disappear permanently.
-          " 
+          " You can't have more than one mount bonded by this spell or find steed at the same time. As an action, you can release a mount from its bond, causing it to disappear permanently.
           " Whenever the mount disappears, it leaves behind any objects it was wearing or carrying.
         """
         return '\n'.join(getattr(i, 'fmt_' + method)(**kwargs) for i in self)
@@ -677,6 +699,36 @@ class Spells(Collection):
 
     _xpath = '//spell'
     _type = Spell
+
+    def _apply_errata(self):
+        """Some spells are in the DB twice.
+
+        The entries appear to be identical except that the `sources` attribute of one is a superset of the other's.
+
+        These five spells each have two copies in the CoreOnly XML file.
+        >>> dupspells = ['Booming Blade', 'Green-Flame Blade', 'Lightning Lure', 'Sword Burst', 'Blade of Disaster']
+
+        With this method in place, there should be 1 of each in the Spells DB.
+        >>> [len(Spells().where(name=spellname)) for spellname in dupspells]
+        [1, 1, 1, 1, 1]
+
+        And there should be 2 sources for each of these spells.
+        >>> [len(Spells().where(name=spellname)[0].sources) for spellname in dupspells]
+        [2, 2, 2, 2, 2]
+        """
+
+        # find the duplicates
+        dupspells = []
+        for i in range(0, len(self)):
+            if self[i].name in [j.name for j in self[i+1:]]:
+                dupspells += [self[i].name]
+
+        for spellname in dupspells:
+            dupes = self.where(name=spellname)
+            # sort by # of sources, leave the highest
+            dupes_to_delete = sorted(dupes, key=lambda spell: len(spell.sources))[:-1]
+            for dupe in dupes_to_delete:
+                self.remove(dupe)
 
     def search_desc(self, val):
         return self.search(val, field='text')
@@ -704,7 +756,7 @@ class Monsters(Collection):
     >>> monster('Champion').ac_num
     18
     >>> monster('Champion').armor
-    'plate'
+    'plate armor'
     >>> monster('Cow').armor
     Traceback (most recent call last):
         ...
@@ -716,13 +768,13 @@ class Monsters(Collection):
     >>> monster('Astral Dreadnought').speed
     {'walk': 15, 'fly': 80}
     >>> monster('Aarakocra')
-    Monster(Aarakocra: M neutral good humanoid (aarakocra), 1/4CR 13HP/3d8 12AC (walk 20, fly 50))
+    Monster(Aarakocra: M Neutral Good humanoid (aarakocra), 1/4CR 13HP/3d8 12AC (walk 20, fly 50))
     >>> monster('Duergar Warlord')
-    Monster(Duergar Warlord: M lawful evil humanoid (dwarf), 6.0CR 75HP/10d8+30 20AC (walk 25))
+    Monster(Duergar Warlord: M Lawful Evil humanoid (dwarf), 6.0CR 75HP/10d8+30 20AC (walk 25))
     >>> monster('War Priest')
-    Monster(War Priest: M any alignment humanoid (any race), 9.0CR 117HP/18d8+36 18AC (walk 30))
+    Monster(War Priest: M Any alignment humanoid (any race), 9.0CR 117HP/18d8+36 18AC (walk 30))
     >>> Monsters(m for m in Monsters() if getattr(m, 'name').startswith('C'))[0]
-    Monster(Cambion: M any evil alignment fiend, 5.0CR 82HP/11d8+33 19AC (walk 30, fly 60))
+    Monster(Cambion: M Any Evil Alignment fiend, 5.0CR 82HP/11d8+33 19AC (walk 30, fly 60))
     """
     _xpath = '//monster'
     _type = Monster

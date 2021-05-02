@@ -56,7 +56,7 @@ class SpellRange:
         >>> SpellRange('Self')._ord()
         1
         >>> SpellRange('90 feet')._ord()
-        23
+        26
         """
         for i, r in enumerate(self._ranges.keys()):
             if r == self.string:
@@ -107,40 +107,3 @@ class SpellRange:
             "Self (15-foot-radius)": "Self (15-foot radius)",
             "Self (10-foot hemisphere)": "Self (10-foot-radius hemisphere)",
             }
-
-#TODO: delet this
-spell_ranges = {
-    'Unlimited',
-    '60 feet',
-    '120 feet',
-    '300 feet',
-    'Self (15-foot radius)',
-    'Self (30-foot radius)',
-    'Self (5-foot radius)',
-    '20 feet',
-    'Self (10-foot sphere)',
-    'Self (10-foot radius)',
-    '500 miles',
-    '150 feet',
-    'Self (10-foot hemisphere)',
-    'Self (30-foot line)',
-    'Self (60-foot cone)',
-    '500 feet',
-    'Touch',
-    'Self',
-    '100 feet',
-    '90 feet',
-    '5 feet',
-    'Self (15-foot cone)',
-    '1 mile',
-    'Self (60-foot line)',
-    '10 feet',
-    '30 feet',
-    'Self (30-foot cone)',
-    'Self (5-mile radius)',
-    'Sight',
-    'Self (15-foot cube)',
-    'Self (100-foot line)',
-    'Special',
-    '1000 feet',
-    }

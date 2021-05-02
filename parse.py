@@ -1044,6 +1044,8 @@ class Spell():
         spell['components'] = cls.parse_spell_components(node.find('components').text)
         spell['concentration'], spell['duration'] = cls.parse_spell_duration(node.find('duration').text)
         spell['classes'] = cls.parse_spell_classes(node.find('classes').text)
+        # Some classes appear twice; eliminate this issue
+        spell['classes'] = sorted(list(set(spell['classes'])))
         spell['text'], spell['sources'] = cls.parse_spell_text(n.text for n in node.findall('text'))
         spell['roll'] = getattr(node.find('roll'), 'text', None)
         #TODO: figure out what to do with this property
