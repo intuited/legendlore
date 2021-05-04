@@ -35,7 +35,7 @@ def contains(val):
     """Check if `attr` contains `val`.
     >>> from dnd5edb.test import s
     >>> s.where(components=contains('pearl')).sorted('level').print()
-    Identify (rit.) 1m/T/I (1:A+B+CF+CK+Wz)
+    Identify (rit.) 1m/T/I (1:A+Bd+CF+CK+Wz)
     Fortune's Favor 1m/T/1h (2:WzC+WzG)
     Circle of Death A/150'/I (6:S+Wl+Wz)
     """
@@ -48,7 +48,7 @@ def in_(val):
     >>> s.where(classes=contains("Wizard"), level=in_([2, 3, 4]), text=contains('spell attack')).print()
     Melf's Acid Arrow A/90'/I (2:AAl+DL+Wz)
     Ray of Enfeeblement A/60'/C<=1m (2:CD+CG+Wl+Wz)
-    Scorching Ray A/120'/I (2:AArt+CLt+DW+S+WlF+WlGe+Wz)
+    Scorching Ray A/120'/I (2:AArt+CLt+DW+S+WlFi+WlGe+Wz)
     Vampiric Touch A/S/C<=1m (3:CD+CG+Wl+Wz)
     Storm Sphere A/150'/C<=1m (4:S+Wz)
     """

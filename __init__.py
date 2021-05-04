@@ -1,5 +1,5 @@
 from functools import partial
-from dnd5edb import parse, predicates, reflect
+from dnd5edb import parse, predicates, reflect, datatypes
 
 class DBItem:
     """Abstract base class for Spell, Monster, and other database entries."""
@@ -56,87 +56,12 @@ class Spell(DBItem):
         'Wl'
         >>> Spell.abbrev_class("Warlock (Great Old One)")
         'WlGOO'
-        >>> Spell.abbrev_class("Rogue (Arcane Trickster)")
-        'AT'
+        >>> Spell.abbrev_class("Rogue (Arcane Trickster)") # not actually used any more in the XML
+        'RoAT'
         >>> Spell.abbrev_class("Fighter (Eldritch Knight)")
         'FEK'
         """
-        abbr = {'Artificer': "A",
-                'Artificer (Alchemist)': 'AAl',
-                'Artificer (Armorer)': "AArm",
-                'Artificer (Artillerist)': "AArt",
-                'Artificer (Battle Smith)': "ABS",
-                'Bard': "B",
-                'Cleric (Arcana)': "CA",
-                'Cleric (Death)': "CD",
-                'Cleric (Forge)': "CF",
-                'Cleric (Grave)': "CG",
-                'Cleric (Knowledge)': "CK",
-                'Cleric (Life)': "CLf",
-                'Cleric (Light)': "CLt",
-                'Cleric (Nature)': "CN",
-                'Cleric (Order)': "CO",
-                'Cleric (Protection)': "CP",
-                'Cleric (Tempest)': "CTm",
-                'Cleric (Twilight)': "CTw",
-                'Cleric (Trickery)': "CTr",
-                'Cleric (War)': "CW",
-                'Cleric': "C",
-                'Druid (Arctic)': "DLA",
-                'Druid (Coast)': "DLC",
-                'Druid (Desert)': "DLD",
-                'Druid (Forest)': "DLF",
-                'Druid (Grassland)': "DLG",
-                'Druid (Mountain)': "DLM",
-                'Druid (Swamp)': "DLS",
-                'Druid (Underdark)': "DLU",
-                'Druid (Land)': "DL",
-                'Druid (Wildfire)': "DW",
-                'Druid': "D",
-                'Eldritch Invocations': "EI",
-                'Fighter': "F",
-                'Fighter (Arcane Archer)': "FAA",
-                'Fighter (Battle Master)': "FBM",
-                'Fighter (Eldritch Knight)': "FEK",
-                'Martial Adept': "MA",
-                'Monk': "M",
-                'Monk (Way of the Four Elements)': "M4",
-                'Paladin (Ancients)': "PA",
-                'Paladin (Conquest)': "PCn",
-                'Paladin (Crown)': "PCr",
-                'Paladin (Devotion)': "PD",
-                'Paladin (Glory)': "PG",
-                'Paladin (Oathbreaker)': "PO",
-                'Paladin (Redemption)': "PR",
-                'Paladin (Treachery)': "PT",
-                'Paladin (Vengeance)': "PV",
-                'Paladin': "P",
-                'Ranger (Gloom Stalker)': "RGS",
-                'Ranger (Horizon Walker)': "RHW",
-                'Ranger (Monster Slayer)': "RMS",
-                'Ranger (No Spells)': "R",
-                'Ranger (Primeval Guardian)': "RPG",
-                'Ranger': "Ra",
-                'Ritual Caster': "Rit",
-                'Rogue': "Ro",
-                'Rogue (Arcane Trickster)': "AT",
-                'Sorcerer (Stone Sorcery)': "SSS",
-                'Sorcerer': "S",
-                'Warlock (Archfey)': "WlA",
-                'Warlock (Celestial)': "WlC",
-                'Warlock (Fiend)': "WlF",
-                'Warlock (Genie)': "WlGe",
-                'Warlock (Great Old One)': "WlGOO",
-                'Warlock (Hexblade)': "WlH",
-                'Warlock (Raven Queen)': "WlR",
-                'Warlock (Seeker)': "WlS",
-                'Warlock (Undying)': "WlU",
-                'Warlock': "Wl",
-                'Wizard (Chronurgy)': "WzC",
-                'Wizard (Graviturgy)': "WzG",
-                'Wizard': "Wz"}
-
-        return abbr[char_class]
+        return datatypes.caster_classes[char_class]
     
     def abbrev_time(spell):
         """Abbreviate time.
@@ -230,7 +155,7 @@ class Spell(DBItem):
         >>> test('Banishing Smite')
         'Banishing Smite B/S/C<=1m (5:ABS+P+WlH)'
         >>> test('Identify')
-        'Identify (rit.) 1m/T/I (1:A+B+CF+CK+Wz)'
+        'Identify (rit.) 1m/T/I (1:A+Bd+CF+CK+Wz)'
         """
         f = {
             'name': spell.name,
@@ -629,19 +554,19 @@ class Collection(list):
         ...   .sorted('name').sorted('level').print())
         Create Bonfire A/60'/C<=1m (0:A+D+S+Wl+Wz)
         Green-Flame Blade A/S(5'r)/I (0:A+S+Wl+Wz)
-        Prestidigitation A/10'/1h (0:A+B+FAA+S+Wl+Wz)
+        Prestidigitation A/10'/1h (0:A+Bd+FAA+S+Wl+Wz)
         Sacred Flame A/60'/I (0:C+WlC)
         Guiding Bolt A/120'/1r (1:C+PG+WlC)
         Hellish Rebuke R/60'/I (1:PO+Wl)
-        Unseen Servant (rit.) A/60'/1h (1:B+Wl+Wz)
+        Unseen Servant (rit.) A/60'/1h (1:Bd+Wl+Wz)
         Flaming Sphere A/60'/C<=1m (2:AAl+CLt+D+DW+S+WlC+Wz)
         Spirit Shroud B/S/C<=1m (3:C+P+Wl+Wz)
         Elemental Bane A/90'/C<=1m (4:A+D+Wl+Wz)
         Guardian of Faith A/30'/8h (4:C+CLf+CLt+PCr+PD+WlC)
         Shadow of Moil A/S/C<=1m (4:Wl)
         Sickening Radiance A/120'/C<=10m (4:S+Wl+Wz)
-        Wall of Fire A/120'/C<=1m (4:AArt+CF+CLt+D+S+WlC+WlF+Wz)
-        Flame Strike A/60'/I (5:C+CLt+CW+DW+PD+PG+WlC+WlF+WlGe)
+        Wall of Fire A/120'/C<=1m (4:AArt+CF+CLt+D+S+WlC+WlFi+Wz)
+        Flame Strike A/60'/I (5:C+CLt+CW+DW+PD+PG+WlC+WlFi+WlGe)
         Wall of Light A/120'/C<=10m (5:S+Wl+Wz)
         Investiture of Flame A/S/C<=10m (6:D+S+Wl+Wz)
         Investiture of Ice A/S/C<=10m (6:D+S+Wl+Wz)
@@ -665,8 +590,8 @@ class Collection(list):
         >>> print(Spells().where(name=p.contains('Circle')).fmt())
         Circle of Death A/150'/I (6:S+Wl+Wz)
         Circle of Power A/S(30'r)/C<=10m (5:CTw+P+PCr)
-        Magic Circle 1m/10'/1h (3:C+CA+P+RMS+Wl+Wz)
-        Teleportation Circle 1m/10'/1r (5:B+CA+RHW+S+Wz)
+        Magic Circle 1m/10'/1h (3:C+CA+P+RaMS+Wl+Wz)
+        Teleportation Circle 1m/10'/1r (5:Bd+CA+RaHW+S+Wz)
         >>> print(Spells().where(name=p.contains('Find')).where(name=p.contains('Steed')).fmt('xlist'))
         * Find Steed 10m/30'/I (2:P)
           " You summon a spirit that assumes the form of an unusually intelligent, strong, and loyal steed, creating a long-lasting bond with it. Appearing in an unoccupied space within range, the steed takes on a form that you choose: a warhorse, a pony, a camel, an elk, or a mastiff. (Your DM might allow other animals to be summoned as steeds.) The steed has the statistics of the chosen form, though it is a celestial, fey, or fiend (your choice) instead of its normal type. Additionally, if your steed has an Intelligence of 5 or less, its Intelligence becomes 6, and it gains the ability to understand one language of your choice that you speak.
@@ -701,7 +626,15 @@ class Spells(Collection):
     _type = Spell
 
     def _apply_errata(self):
-        """Some spells are in the DB twice.
+        """Fix errors from the XML file that can be handled at the object level.
+
+        ### Errata 1: some classes appear twice in <spell> classes lists.
+
+        With this method in place, this should be fixed.
+        >>> Spells().where(name="Acid Splash")[0].classes
+        ['Artificer', 'Sorcerer', 'Wizard']
+
+        ### Errata 2: Some spells are in the DB twice.
 
         The entries appear to be identical except that the `sources` attribute of one is a superset of the other's.
 
@@ -716,6 +649,9 @@ class Spells(Collection):
         >>> [len(Spells().where(name=spellname)[0].sources) for spellname in dupspells]
         [2, 2, 2, 2, 2]
         """
+        # Some classes appear twice; eliminate this issue
+        for spell in self:
+            spell.classes = sorted(list(set(spell.classes)))
 
         # find the duplicates
         dupspells = []
