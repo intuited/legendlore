@@ -168,6 +168,21 @@ class Spell(DBItem):
 
         return "{name}{rit} {t}/{r}/{d} ({l}:{classes})".format(**f)
 
+    def fmt_plop(spell):
+        """Return spell information for use with Tableplop messages."""
+        f = {
+            'name': spell.name,
+            'rit': ' (rit.)' if spell.ritual else '',
+            't': spell.abbrev_time(),
+            'r': spell.abbrev_range(),
+            'd': spell.abbrev_duration(),
+            'l': spell.level,
+            }
+
+        header = "{name}{rit} {t}/{r}/{d} (L{l})".format(**f)
+        body = spell.text
+        return "\n".join([header, body])
+
     def fmt_pointform(spell, header='-', body='-', tabstop=2):
         """Return multiline string containing all spell information.
 
