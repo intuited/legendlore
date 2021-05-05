@@ -10,8 +10,9 @@ from dnd5edb import predicates as p
 s = dnd5edb.Spells()
 m = dnd5edb.Monsters()
 
-# Spell Print in a convenient format
+# quick Spell Print in commonly used formats
 sp = lambda name: s.search(name).print('xlist')
+pl = lambda name: s.search(name).print('plop')
 
 ### just druid stuff
 
