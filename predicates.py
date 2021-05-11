@@ -13,6 +13,8 @@ def _hasvalue(obj, attr):
 
 def eq(val):
     return lambda attr, obj: _hasvalue(obj, attr) and getattr(obj, attr) == val
+def ne(val):
+    return lambda attr, obj: _hasvalue(obj, attr) and getattr(obj, attr) != val
 def lt(val):
     return lambda attr, obj: _hasvalue(obj, attr) and getattr(obj, attr) < val
 def lte(val):
