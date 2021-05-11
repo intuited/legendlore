@@ -98,38 +98,8 @@ class Spell(DBItem):
         Some possible return values:
         N (none), S (special), 1r (1 round), 1m, 1h, <=1h, C1h (1h concentration)
         """
-        abbr = {None: 'N',
-                'Instantaneous': 'I',
-                'Instantaneous or 1 hour (see below)': 'I/1h',
-                'Special': "S",
-                '1 turn': '1t',
-                'up to 1 round': '<=1r',
-                '1 round': '1r',
-                'up to 6 rounds': '<=6r',
-                'up to 1 minute': "<=1m",
-                'Up to 1 minute': '<=1m',
-                '1 minute': '1m',
-                'up to 10 minutes': "<=10m",
-                '10 minutes': '10m',
-                'up to 1 hour': "<=1h",
-                'Up to 1 hour': '<=1h',
-                '1 hour': "1h",
-                'up to 2 hours': '<=2h',
-                'up to 8 hours': '<=8h',
-                'Up to 8 hours': '<=8h',
-                '8 hours': "8h",
-                'up to 1 day': '<=1d',
-                '1 day': '1d',
-                '10 days': "10d",
-                '24 hours': "24h",
-                'up to 24 hours': "<=24h",
-                '30 days': '30d',
-                '7 days': '7d',
-                'Until dispelled or triggered': 'UD/T',
-                'Until dispelled': "UD"}
-
         c = 'C' if spell.concentration else ''
-        return c + abbr[spell.duration]
+        return c + datatypes.spell_durations[spell.duration]
 
     def abbrev_classes(spell):
         """Abbreviate the classes which have access to a given spell.

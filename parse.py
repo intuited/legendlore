@@ -1104,14 +1104,20 @@ class Spell():
     @classmethod
     def parse_spell_duration(cls, duration):
         """Return: concentration, duration = ({True, False}, [STRING])"""
-        #TODO: add validation
         if duration is None:
             return False, None
 
         if duration[:15] == 'Concentration, ':
-            return True, duration[15:]
+            conc, time = True, duration[15:]
+        elif duration[:15] == 'Instantaneous, ':
+            conc, time = False, duration[15:]
         else:
-            return False, duration
+            conc, time = False, duration
+
+        if time not in datatypes.spell_durations:
+            warning(f'parse_spell_duration: unknown spell duration in "{duration}".  Parsed conc: {conc}, time: {time}')
+
+        return conc, time
 
     @classmethod
     def parse_spell_classes(cls, classes):
