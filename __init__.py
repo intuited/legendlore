@@ -81,6 +81,7 @@ class Spell(DBItem):
                 '1 hour': '1h',
                 '8 hours': '8h',
                 '1 action or 8 hours': 'A/8h',
+                '1 action, 8 hours': 'A/8h',
                 '12 hours': '12h',
                 '24 hours': '24h'}
         return abbr[spell.time]
