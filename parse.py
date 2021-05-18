@@ -1055,11 +1055,19 @@ class Spell():
     def parse_casting_time(cls, time):
         #TODO: write this, validate
         # Why are there None values for this?
-        return time
+        try:
+            return datatypes.CastingTime(time)
+        except KeyError as e:
+            warning(e)
+            return time
 
     @classmethod
     def parse_spell_range(cls, r):
-        return datatypes.SpellRange(r)
+        try:
+            return datatypes.SpellRange(r)
+        except KeyError as e:
+            warning(e)
+            return r
 
     @classmethod
     def parse_spell_components(cls, text):

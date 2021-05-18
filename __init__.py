@@ -68,23 +68,7 @@ class Spell(DBItem):
 
         Possible return values: A, R, 1m, C1h, etc.
         """
-        abbr = {None: 'N',
-                'None': 'N',
-                '1 action': 'A',
-                'part of the Attack action to fire a magic arrow': 'A*',
-                '1 bonus action': 'B',
-                '1 reaction': 'R',
-                '1 reaction, which you take when you take acid, cold, fire, lightning, or thunder damage': 'R*',
-                '1 reaction, which you take when a humanoid you can see within 60 feet of you dies': 'R*',
-                '1 minute': '1m',
-                '10 minutes': '10m',
-                '1 hour': '1h',
-                '8 hours': '8h',
-                '1 action or 8 hours': 'A/8h',
-                '1 action, 8 hours': 'A/8h',
-                '12 hours': '12h',
-                '24 hours': '24h'}
-        return abbr[spell.time]
+        return spell.time.abbr()
 
     def abbrev_range(spell):
         """Abbreviate range.
