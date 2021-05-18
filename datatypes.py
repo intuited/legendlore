@@ -4,9 +4,12 @@ from logging import warning
 
 @total_ordering
 class OrderedField:
-    """Base class for fields which have a predefined set of values with a predefined order."""
-    def __init__(self, string):
-        """Attempt to remap the string if it's not in our known value set.
+    """Base class for fields which have a predefined set of values with a predefined order.
+
+    Also provides abbreviation functionality.
+    """
+    def __init__(self, value):
+        """Attempt to remap the value if it's not in our known value set.
 
         >>> SpellRange('Self (10-foot sphere)')
         SpellRange('Self (10-foot-radius sphere)')
@@ -15,9 +18,9 @@ class OrderedField:
         ...
         KeyError: 'Total gibberish.'
         """
-        if string not in self._values.keys():
-            string = self._value_aliases[string]
-        self.string = string
+        if value not in self._values.keys():
+            value = self._value_aliases[value]
+        self.value = value
 
     def __repr__(self):
         """Make it look offical.
@@ -25,12 +28,22 @@ class OrderedField:
         >>> SpellRange('90 feet')
         SpellRange('90 feet')
         """
-        return f'{type(self).__name__}({repr(self.string)})'
+        return f'{type(self).__name__}({repr(self.value)})'
+    def __str__(self):
+        """Just converts the underlying data to a string.
+
+        This is apparently Not The Way you're supposed to handle this, but it seems like it should work.
+
+        >>> str(SpellRange('90 feet'))
+        '90 feet'
+        """
+        return str(self.value)
 
     def __eq__(self, other):
         """`True` if this range is equal to `other`.
 
-        `other` can be either another SpellRange object or a string.
+        `other` can be either another SpellRange object
+        or a value of a type compatible with that of self.value.
         
         >>> SpellRange('Self') == SpellRange('Self')
         True
@@ -46,7 +59,8 @@ class OrderedField:
     def __lt__(self, other):
         """`True` if this range is lower in the sort order than `other`.
 
-        `other` can be either another SpellRange object or a string.
+        `other` can be either another SpellRange object
+        or a value of a type compatible with that of self.value.
 
         >>> SpellRange('Touch') < SpellRange('60 feet')
         True
@@ -61,7 +75,7 @@ class OrderedField:
 
     def abbr(self):
         """Returns the abbreviation used for this range in one-line descriptions."""
-        return self._values[self.string]
+        return self._values[self.value]
 
     def _ord(self):
         """Returns the ordinal position of this range in the full set of ranges.
@@ -74,12 +88,12 @@ class OrderedField:
         26
         """
         for i, r in enumerate(self._values.keys()):
-            if r == self.string:
+            if r == self.value:
                 return i
-        raise ValueError(f'SpellRange._ord: self.string "{self.string}" not found in self._values')
+        raise ValueError(f'SpellRange._ord: self.value "{self.value}" not found in self._values')
 
 class SpellRange(OrderedField):
-    # Ordered set of all ranges and their abbreviated form.
+    """Ordered set of all ranges and their abbreviated form."""
     _values = {
         None: "N",
         'Self': 'S',
@@ -123,6 +137,25 @@ class SpellRange(OrderedField):
             "Self (15-foot-radius)": "Self (15-foot radius)",
             "Self (10-foot hemisphere)": "Self (10-foot-radius hemisphere)",
             }
+
+class CastingTime(OrderedField):
+    _values = {
+        None: 'N',
+        'None': 'N',
+        '1 action': 'A',
+        'part of the Attack action to fire a magic arrow': 'A*',
+        '1 bonus action': 'B',
+        '1 reaction': 'R',
+        '1 reaction, which you take when you take acid, cold, fire, lightning, or thunder damage': 'R*',
+        '1 reaction, which you take when a humanoid you can see within 60 feet of you dies': 'R*',
+        '1 minute': '1m',
+        '10 minutes': '10m',
+        '1 hour': '1h',
+        '8 hours': '8h',
+        '1 action or 8 hours': 'A/8h',
+        '1 action, 8 hours': 'A/8h',
+        '12 hours': '12h',
+        '24 hours': '24h'}
 
 
 # Maps caster classes as found in <spell> tags to abbreviations used in one-line descriptions.
