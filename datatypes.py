@@ -158,6 +158,9 @@ class CastingTime(OrderedField):
         '1 action, 8 hours': 'A/8h',
         '12 hours': '12h',
         '24 hours': '24h'}
+    _value_aliases = {
+        '1 action, 8 hours': '1 action or 8 hours',
+        }
 
 
 # Maps caster classes as found in <spell> tags to abbreviations used in one-line descriptions.
