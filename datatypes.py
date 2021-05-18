@@ -16,10 +16,12 @@ class OrderedField:
         >>> SpellRange('Total gibberish.') # doctest: +ELLIPSIS
         Traceback (most recent call last):
         ...
-        KeyError: 'Total gibberish.'
+        KeyError: "SpellRange: unknown value 'Total gibberish.' could not be instantiated."
         """
-        if value not in self._values.keys():
+        if value in self._value_aliases:
             value = self._value_aliases[value]
+        if value not in self._values:
+            raise KeyError(f'{type(self).__name__}: unknown value {repr(value)} could not be instantiated.')
         self.value = value
 
     def __repr__(self):
