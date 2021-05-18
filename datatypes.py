@@ -135,10 +135,10 @@ class SpellRange(OrderedField):
         'Unlimited': "Unlimited"}
 
     _value_aliases = {
-            "Self (10-foot sphere)": "Self (10-foot-radius sphere)",
-            "Self (15-foot-radius)": "Self (15-foot radius)",
-            "Self (10-foot hemisphere)": "Self (10-foot-radius hemisphere)",
-            }
+        "Self (10-foot sphere)": "Self (10-foot-radius sphere)",
+        "Self (15-foot-radius)": "Self (15-foot radius)",
+        "Self (10-foot hemisphere)": "Self (10-foot-radius hemisphere)",
+        }
 
 class CastingTime(OrderedField):
     _values = {
