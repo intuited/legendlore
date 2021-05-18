@@ -1122,10 +1122,11 @@ class Spell():
         else:
             conc, time = False, duration
 
-        if time not in datatypes.spell_durations:
+        try:
+            return conc, datatypes.SpellDuration(time)
+        except KeyError as e:
             warning(f'parse_spell_duration: unknown spell duration in "{duration}".  Parsed conc: {conc}, time: {time}')
-
-        return conc, time
+            return conc, time
 
     @classmethod
     def parse_spell_classes(cls, classes):

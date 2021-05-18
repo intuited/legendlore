@@ -84,7 +84,7 @@ class Spell(DBItem):
         N (none), S (special), 1r (1 round), 1m, 1h, <=1h, C1h (1h concentration)
         """
         c = 'C' if spell.concentration else ''
-        return c + datatypes.spell_durations[spell.duration]
+        return c + spell.duration.abbr()
 
     def abbrev_classes(spell):
         """Abbreviate the classes which have access to a given spell.
