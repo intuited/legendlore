@@ -3,14 +3,29 @@ from functools import total_ordering
 from logging import warning
 
 @total_ordering
-class SpellRange:
+class OrderedField:
+    """Base class for fields which have a predefined set of values with a predefined order."""
     def __init__(self, string):
-        if string not in self._ranges.keys():
-            string = self._range_aliases[string]
+        """Attempt to remap the string if it's not in our known value set.
+
+        >>> SpellRange('Self (10-foot sphere)')
+        SpellRange('Self (10-foot-radius sphere)')
+        >>> SpellRange('Total gibberish.') # doctest: +ELLIPSIS
+        Traceback (most recent call last):
+        ...
+        KeyError: 'Total gibberish.'
+        """
+        if string not in self._values.keys():
+            string = self._value_aliases[string]
         self.string = string
 
     def __repr__(self):
-        return self.string
+        """Make it look offical.
+
+        >>> SpellRange('90 feet')
+        SpellRange('90 feet')
+        """
+        return f'{type(self).__name__}({repr(self.string)})'
 
     def __eq__(self, other):
         """`True` if this range is equal to `other`.
@@ -46,7 +61,7 @@ class SpellRange:
 
     def abbr(self):
         """Returns the abbreviation used for this range in one-line descriptions."""
-        return self._ranges[self.string]
+        return self._values[self.string]
 
     def _ord(self):
         """Returns the ordinal position of this range in the full set of ranges.
@@ -58,13 +73,14 @@ class SpellRange:
         >>> SpellRange('90 feet')._ord()
         26
         """
-        for i, r in enumerate(self._ranges.keys()):
+        for i, r in enumerate(self._values.keys()):
             if r == self.string:
                 return i
-        raise ValueError(f'SpellRange._ord: self.string "{self.string}" not found in _ranges')
+        raise ValueError(f'SpellRange._ord: self.string "{self.string}" not found in self._values')
 
+class SpellRange(OrderedField):
     # Ordered set of all ranges and their abbreviated form.
-    _ranges = {
+    _values = {
         None: "N",
         'Self': 'S',
         "Self (5-foot radius)": "S(5'r)",
@@ -102,7 +118,7 @@ class SpellRange:
         '500 miles': "500mi",
         'Unlimited': "Unlimited"}
 
-    _range_aliases = {
+    _value_aliases = {
             "Self (10-foot sphere)": "Self (10-foot-radius sphere)",
             "Self (15-foot-radius)": "Self (15-foot radius)",
             "Self (10-foot hemisphere)": "Self (10-foot-radius hemisphere)",
