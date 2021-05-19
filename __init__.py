@@ -442,9 +442,16 @@ class Collection(list):
 
             result = result.filter(partial(pred, field))
 
-        return result
+        return self._post_process_where(result)
 
     where_fields = reflect.collection_attribs
+
+    def _post_process_where(self, result):
+        """Hook to, for example, change sort order for results returned by Collection.where
+
+        Default implementation simply returns `result`.
+        """
+        return result
 
     def sorted(self, field='name', key=None, reverse=False):
         """Copies self, sorts the internal data using field `name` by default; returns copy.
@@ -543,10 +550,10 @@ class Collection(list):
 
         >>> from dnd5edb import predicates as p
         >>> print(Spells().where(name=p.contains('Circle')).fmt())
-        Circle of Death A/150'/I (6:S+Wl+Wz)
-        Circle of Power A/S(30'r)/C<=10m (5:CTw+P+PCr)
         Magic Circle 1m/10'/1h (3:C+CA+P+RaMS+Wl+Wz)
+        Circle of Power A/S(30'r)/C<=10m (5:CTw+P+PCr)
         Teleportation Circle 1m/10'/1r (5:Bd+CA+RaHW+S+Wz)
+        Circle of Death A/150'/I (6:S+Wl+Wz)
         >>> print(Spells().where(name=p.contains('Find')).where(name=p.contains('Steed')).fmt('xlist'))
         * Find Steed 10m/30'/I (2:P)
           " You summon a spirit that assumes the form of an unusually intelligent, strong, and loyal steed, creating a long-lasting bond with it. Appearing in an unoccupied space within range, the steed takes on a form that you choose: a warhorse, a pony, a camel, an elk, or a mastiff. (Your DM might allow other animals to be summoned as steeds.) The steed has the statistics of the chosen form, though it is a celestial, fey, or fiend (your choice) instead of its normal type. Additionally, if your steed has an Intelligence of 5 or less, its Intelligence becomes 6, and it gains the ability to understand one language of your choice that you speak.
@@ -623,6 +630,10 @@ class Spells(Collection):
 
     def search_desc(self, val):
         return self.search(val, field='text')
+
+    def _post_process_where(self, result):
+        """Sort by name and level."""
+        return result.sorted('name').sorted('level')
 
     # kind of an example function.
     def oneline_desc(self, string):
