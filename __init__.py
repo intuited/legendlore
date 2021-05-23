@@ -94,7 +94,7 @@ class Spell(DBItem):
         return '+'.join(Spell.abbrev_class(c) for c in spell.classes)
 
 
-    def fmt_oneline(spell):
+    def fmt_oneline(self):
         """Return a string summarizing the spell.
 
         Format:
@@ -112,16 +112,22 @@ class Spell(DBItem):
         >>> test('Identify')
         'Identify (rit.) 1m/T/I (1:A+Bd+CF+CK+Wz)'
         """
-        f = {
-            'name': spell.name,
-            'rit': ' (rit.)' if spell.ritual else '',
-            't': spell.abbrev_time(),
-            'r': spell.abbrev_range(),
-            'd': spell.abbrev_duration(),
-            'l': spell.level,
-            'classes': spell.abbrev_classes()}
-
+        f = self._abbrev_fields()
         return "{name}{rit} {t}/{r}/{d} ({l}:{classes})".format(**f)
+
+    def _abbrev_fields(self):
+        """Returns dict with field names and abbreviations of their values.
+
+        Used by fmt_oneline and other formatting functions.
+        """
+        return {
+            'name': self.name,
+            'rit': ' (rit.)' if self.ritual else '',
+            't': self.abbrev_time(),
+            'r': self.abbrev_range(),
+            'd': self.abbrev_duration(),
+            'l': self.level,
+            'classes': self.abbrev_classes()}
 
     def fmt_pointform(spell, header='-', body='-', tabstop=2):
         """Return multiline string containing all spell information.
@@ -152,6 +158,14 @@ class Spell(DBItem):
         ret += [f'{" " * tabstop}{body} {line}' for line in spell.text.split('\n')]
         return '\n'.join(ret)
 
+    def fmt_plop(self):
+        """Output in a format useful for plugging into Tableplop VTT."""
+        f = self._abbrev_fields()
+        ret = ["{t}: {name}{rit} {t}/{r}/{d} (L{l})".format(**f)]
+        ret += ["{name}: range: {r}, duration: {d}; level {l}".format(**f)]
+        ret += self.text.split("\n")
+        ret = "\n".join(line for line in ret if line.strip() != '')
+        return ret
 
     def subclass_set(spell, class_):
         """Returns a terse indicator of which subclasses of `class` get the spell.
