@@ -459,8 +459,7 @@ class Collection(list):
         If `key` is specified, uses that key function instead of the default getter.
         Key functions take a single parameter, the object whose key is being retrieved.
 
-        >>> s = Spells()
-        >>> from dnd5edb import predicates as p
+        >>> from repltools import m, s, p
         >>> s = s.where(text=p.contains('adiant')).where(classes=p.contains('Warlock'))
         >>> s = s.sorted('name')
         >>> s.sorted('level').print()
@@ -484,25 +483,62 @@ class Collection(list):
         Tasha's Otherworldly Guise B/S/C<=1m (6:S+Wl+Wz)
         Wall of Light A/120'/C<=10m (5:S+Wl+Wz)
         Shadow of Moil A/S/C<=1m (4:Wl)
-        >>> s.sorted('sources').print() # still sorted by name
+
+        # Sorting by level does not disturb previous sort by name
+        >>> s.sorted('sources').print()
         Spirit Shroud B/S/C<=1m (3:C+P+Wl+Wz)
         Tasha's Otherworldly Guise B/S/C<=1m (6:S+Wl+Wz)
         Crown of Stars A/S/1h (7:S+Wl+Wz)
         Shadow of Moil A/S/C<=1m (4:Wl)
         Sickening Radiance A/120'/C<=10m (4:S+Wl+Wz)
         Wall of Light A/120'/C<=10m (5:S+Wl+Wz)
+
+        Invalid sort fields have no effect
         >>> s.sorted('blipdebloop').print()
-        Traceback (most recent call last):
-          ...
-        TypeError: '<' not supported between instances of 'NoneType' and 'NoneType'
+        Crown of Stars A/S/1h (7:S+Wl+Wz)
+        Shadow of Moil A/S/C<=1m (4:Wl)
+        Sickening Radiance A/120'/C<=10m (4:S+Wl+Wz)
+        Spirit Shroud B/S/C<=1m (3:C+P+Wl+Wz)
+        Tasha's Otherworldly Guise B/S/C<=1m (6:S+Wl+Wz)
+        Wall of Light A/120'/C<=10m (5:S+Wl+Wz)
 
         Test that we're handling empty sets correctly
         >>> len(s.where(classes=p.contains('gobbledegook')).sorted())
         0
+
+        Same stuff works for monsters
+        >>> m.where(type='beast', cr=4).sorted('hp').print()
+        Giant Subterranean Lizard: H Unaligned beast, 4.0CR 66HP/7d12+21 14AC (walk 30, swim 50)
+        Elephant: H Unaligned beast, 4.0CR 76HP/8d12+24 12AC (walk 40)
+        Stegosaurus: H Unaligned beast, 4.0CR 76HP/8d12+24 13AC (walk 40)
+        Giant Walrus: H Unaligned beast, 4.0CR 85HP/9d12+27 9AC (walk 20, swim 40)
+        Giant Coral Snake: L Unaligned beast, 4.0CR 90HP/12d10+24 13AC (walk 30, swim 30)
+        >>> m.where(speed=p.contains('swim'), type=p.eq('beast')).sorted('cr')[:6].print()
+        Crab: T Unaligned beast, 0.0CR 2HP/1d4 11AC (walk 20, swim 20)
+        Frog: T Unaligned beast, 0.0CR 1HP/1d4-1 11AC (walk 20, swim 20)
+        Octopus: S Unaligned beast, 0.0CR 3HP/1d6 12AC (walk 5, swim 30)
+        Quipper: T Unaligned beast, 0.0CR 1HP/1d4-1 13AC (swim 40)
+        Sea Horse: T Unaligned beast, 0.0CR 1HP/1d4-1 11AC (swim 20)
+        Sylgar: T Unaligned beast, 0.0CR 1HP/1d4-1 13AC (walk 0, swim 40)
+        >>> m.where(type='construct', name=p.contains('Animat')).sorted('cr').print()
         """
         if key == None:
             key = lambda o: getattr(o, field, None)
-        return Spells(sorted(self, key=key, reverse=reverse))
+
+        # pull out nodes that lack the field
+        without_field = [n for n in self if key(n) is None]
+        with_field = [n for n in self if key(n) is not None]
+
+        # sort the nodes that have the field
+        with_field.sort(key=key, reverse=reverse)
+
+        # return None values at the low end of the list
+        if not reverse:
+            ret = without_field + with_field
+        else:
+            ret = with_field + without_field
+
+        return type(self)(ret)
 
     def extend(self, new_items):
         """Adds to `self` any items from `new_items` not already in `self`.
