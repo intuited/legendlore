@@ -386,6 +386,24 @@ class Collection(list):
         if store_tree:
             self.__class__._parsed = self
 
+    def __getitem__(self, key):
+        """Return a collection of the same type if `key` is a slice.
+
+        >>> from repltools import s
+        >>> s.where(level=1)[:4].print()
+        Absorb Elements R/S/1r (1:A+D+Ra+S+Wz)
+        Alarm (rit.) 1m/30'/8h (1:A+PW+Ra+SCS+Wz)
+        Animal Friendship A/30'/24h (1:Bd+CN+D+Ra)
+        Armor of Agathys A/S/1h (1:PCo+Wl)
+        >>> type(s.where(level=1)[:4])
+        <class 'dnd5edb.Spells'>
+        """
+        ret = super().__getitem__(key)
+        if type(key) is slice:
+            return type(self)(ret)
+        else:
+            return ret
+
     def _apply_errata(self):
         """Subclass hook to make changes to the DB after parsing."""
         return
@@ -514,13 +532,21 @@ class Collection(list):
         Giant Walrus: H Unaligned beast, 4.0CR 85HP/9d12+27 9AC (walk 20, swim 40)
         Giant Coral Snake: L Unaligned beast, 4.0CR 90HP/12d10+24 13AC (walk 30, swim 30)
         >>> m.where(speed=p.contains('swim'), type=p.eq('beast')).sorted('cr')[:6].print()
+        Beast of the Sea: M Unaligned beast, --CR 5HP/-- 0AC (walk 5, swim 60)
+        Bestial Spirit: S Unaligned beast, --CR 20HP/-- 0AC (walk 30, climb 30, fly 60, swim 30)
         Crab: T Unaligned beast, 0.0CR 2HP/1d4 11AC (walk 20, swim 20)
         Frog: T Unaligned beast, 0.0CR 1HP/1d4-1 11AC (walk 20, swim 20)
         Octopus: S Unaligned beast, 0.0CR 3HP/1d6 12AC (walk 5, swim 30)
         Quipper: T Unaligned beast, 0.0CR 1HP/1d4-1 13AC (swim 40)
-        Sea Horse: T Unaligned beast, 0.0CR 1HP/1d4-1 11AC (swim 20)
-        Sylgar: T Unaligned beast, 0.0CR 1HP/1d4-1 13AC (walk 0, swim 40)
-        >>> m.where(type='construct', name=p.contains('Animat')).sorted('cr').print()
+        >>> m.where(speed=p.contains('swim'), type=p.eq('beast')).sorted('cr', reverse=True)[:2].print()
+        Huge Giant Crab: H Unaligned beast, 8.0CR 161HP/14d12+70 15AC (walk 30, swim 30)
+        Sperm Whale: G Unaligned beast, 8.0CR 189HP/14d20+42 13AC (walk 0, swim 60)
+        >>> animat = m.where(type='construct', name=p.contains('Animat')).sorted('cr')
+        >>> [getattr(n, 'cr', '--') for n in animat]
+        ['--', '--', '--', '--', '--', '--', '--', 0.25, 0.25, 0.25, 1.0, 1.0, 2.0, 2.0, 3.0, 6.0, 10.0]
+        >>> animat = m.where(type='construct', name=p.contains('Animat')).sorted('cr', reverse=True)
+        >>> [getattr(n, 'cr', '--') for n in animat]
+        [10.0, 6.0, 3.0, 2.0, 2.0, 1.0, 1.0, 0.25, 0.25, 0.25, '--', '--', '--', '--', '--', '--', '--']
         """
         if key == None:
             key = lambda o: getattr(o, field, None)
