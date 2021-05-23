@@ -46,6 +46,8 @@ moonws = { k: v.sorted('cr') for k, v in moonws.items() }
 bearbarian_ac = lambda c: max(c.ac_num if 'natural armor' in c.ac.lower() else 0, asbonus(10 + c.dex + c.con))
 drunk_ac = lambda c, wis: max(c.ac_num if 'natural armor' in c.ac.lower() else 0, asbonus(10 + c.dex + wis))
 
+### die roll stuff
+
 # average die roll calculations
 def calc_avg(expression):
     """Calculates the average total of `expression`.
