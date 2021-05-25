@@ -25,7 +25,7 @@ Actions are comprised of subnodes with these three tags
 
 All Actions have a name node; some have attack nodes; all/some have one or more text nodes.
 >>> [f'{tag} x{tag_count(actions, tag)}' for tag in action_tags]
-['attack x2220', 'name x3399', 'text x7472']
+['attack x3701', 'name x5594', 'text x6409']
 
 Turns out all Actions have at least one text node.
 >>> len([n for n in actions if len([c for c in n if c.tag == 'text']) == 0])
@@ -33,18 +33,18 @@ Turns out all Actions have at least one text node.
 
 Maximum child nodes per action: apparently a lot!
 >>> reduce(max, (len(list(n.iterchildren())) for n in actions))
-64
+26
 
-What has 64 child nodes??
->>> [f'{n.find("name").text}' for n in actions if len(list(n.iterchildren())) == 64]
-['Eye Rays', 'Eye Rays']
+What has 26 child nodes??
+>>> [f'{n.find("name").text}' for n in actions if len(list(n.iterchildren())) == 26]
+['Variant: Flesh Warping']
 
-"Eye Rays" actions of Beholders.  Got it.
+Uh, ..sure.  Seems legit.
 
 So one last thing to confirm for actions: are there any subnodes of subnodes of actions?
 >>> action_subnodes = list(c for n in actions for c in n.iterchildren())
 >>> len(action_subnodes)
-13091
+15704
 >>> action_subnode_subnodes = list(c for n in action_subnodes for c in n.iterchildren())
 >>> len(action_subnode_subnodes)
 0
