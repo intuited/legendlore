@@ -756,3 +756,7 @@ class Monsters(Collection):
     """
     _xpath = '//monster'
     _type = Monster
+
+    def _post_process_where(self, result):
+        """Sort by name and level."""
+        return result.sorted('name').sorted('cr')
