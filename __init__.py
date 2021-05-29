@@ -453,17 +453,17 @@ class Collection(list):
         [Monster(Aarakocra: M Neutral Good humanoid (aarakocra), 1/4CR 13HP/3d8 12AC (walk 20, fly 50))]
         >>> names = lambda mlist: [m.name for m in mlist]
         >>> names(Monsters().where(cr=p.gte(28.0)))
-        ['Tarrasque', 'Rak Tulkhesh', 'Sul Khatesh', 'Tiamat']
+        ['Rak Tulkhesh', 'Sul Khatesh', 'Tarrasque', 'Tiamat']
         >>> names(Monsters().where(cr=p.gt(28.0)))
         ['Tarrasque', 'Tiamat']
         >>> names(Monsters().where(cr=3.0, senses=p.key('blindsight')))[0:4]
-        ['Blue Dragon Wyrmling', 'Giant Scorpion', 'Gold Dragon Wyrmling', 'Grell']
+        ['Animated Stove', 'Assassin Vine', 'Blue Dragon Wyrmling', 'Brain in a Jar']
         >>> Monsters().where(cr=3.0, int=p.gt(16)).where(int=p.lte(17))
         [Monster(Merrenoloth: M Neutral Evil fiend (yugoloth), 3.0CR 40HP/9d8 13AC (walk 30, swim 40))]
         >>> Monsters().where(speed=p.key('swim'))[0]
-        Monster(Aboleth: L Lawful Evil aberration, 10.0CR 135HP/18d10+36 17AC (walk 10, swim 40))
+        Monster(Beast of the Sea: M Unaligned beast, --CR 5HP/-- 0AC (walk 5, swim 60))
         >>> Monsters().where(spells=p.contains('conjure animals'))[0].name
-        'Drow Priestess of Lolth'
+        'Horncaller'
         """
         result = self
         for field, value in kwargs.items():
@@ -549,9 +549,9 @@ class Collection(list):
         Beast of the Sea: M Unaligned beast, --CR 5HP/-- 0AC (walk 5, swim 60)
         Bestial Spirit: S Unaligned beast, --CR 20HP/-- 0AC (walk 30, climb 30, fly 60, swim 30)
         Crab: T Unaligned beast, 0.0CR 2HP/1d4 11AC (walk 20, swim 20)
+        Fish: T Unaligned beast, 0.0CR 1HP/1d4-1 13AC (swim 40)
         Frog: T Unaligned beast, 0.0CR 1HP/1d4-1 11AC (walk 20, swim 20)
-        Octopus: S Unaligned beast, 0.0CR 3HP/1d6 12AC (walk 5, swim 30)
-        Quipper: T Unaligned beast, 0.0CR 1HP/1d4-1 13AC (swim 40)
+        Kingsport: M Unaligned beast, 0.0CR 5HP/1d8+1 11AC (walk 20, swim 40)
         >>> m.where(speed=p.contains('swim'), type=p.eq('beast')).sorted('cr', reverse=True)[:2].print()
         Huge Giant Crab: H Unaligned beast, 8.0CR 161HP/14d12+70 15AC (walk 30, swim 30)
         Sperm Whale: G Unaligned beast, 8.0CR 189HP/14d20+42 13AC (walk 0, swim 60)
