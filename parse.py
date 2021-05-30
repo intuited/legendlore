@@ -75,955 +75,6 @@ class XML:
             cls.tree = cls.parse_db(db_file)
         return cls.tree
 
-class Monster():
-    """Collection of class functions for parsing monster nodes."""
-
-    @classmethod
-    def parse(cls, node):
-        """Returns iterable of (field, value) pairs.
-
-        The monster object dictionary can be updated with that iterable.
-        """
-        yield from cls.yield_if_present(node, 'name')
-        yield from cls.yield_if_present(node, 'size')
-        yield from cls.yield_if_present(node, 'type')
-        yield from cls.yield_if_present(node, 'alignment')
-        yield from cls.yield_if_present(node, 'ac', cls.yield_ac)
-        yield from cls.yield_if_present(node, 'hp', cls.yield_hp)
-        yield from cls.yield_if_present(node, 'speed', cls.yield_speed)
-        for stat in ('str', 'dex', 'con', 'int', 'wis', 'cha'):
-            yield from cls.yield_if_present(node, stat, cls.yield_int)
-        yield from cls.yield_if_present(node, 'save', cls.yield_saves)
-        yield from cls.yield_if_present(node, 'skill', cls.yield_skills)
-        yield from cls.yield_if_present(node, 'resist', cls.yield_damage_types)
-        yield from cls.yield_if_present(node, 'vulnerable', cls.yield_damage_types)
-        yield from cls.yield_if_present(node, 'immune', cls.yield_damage_types)
-        yield from cls.yield_if_present(node, 'conditionImmune', cls.yield_condition)
-        yield from cls.yield_if_present(node, 'senses', cls.yield_senses)
-        yield from cls.yield_if_present(node, 'passive', cls.yield_int)
-        yield from cls.yield_if_present(node, 'description', cls.yield_text)
-        yield from cls.yield_if_present(node, 'cr', cls.yield_fraction)
-        yield from cls.yield_if_present(node, 'spells', cls.yield_text)
-        yield from cls.yield_if_present(node, 'slots', cls.yield_text)
-        # remaining: ['action', 'environment', 'languages', 'legendary', 'reaction', 'trait']
-
-    @classmethod
-    def yield_if_present(cls, node, field, fn=yield_args):
-        field_node = node.find(field)
-        if hasattr(field_node, 'text'):
-            yield from fn(field, field_node.text)
-
-    @classmethod
-    def yield_ac(cls, field, text):
-        """Yield ac attributes.
-
-        If a numeric AC is parsed, it is yielded as `ac_num`.
-        If information on armor is parsed in the parentheses following the AC,
-        it is yielded as `armor`.
-        In any case, the full text of the field is yielded as `ac`.
-        """
-        yield ('ac', text)
-
-        #m = re.match('^(\d+)(?: \(.*)?$', text)
-        m = re.match('^(\d+)(?: \(([^)]*)\))?$', text)
-        if m is None:
-            debug(f'Failed match for AC text "{text}"')
-            return
-        g = m.groups()
-        if g[0]:
-            yield ('ac_num', int(g[0]))
-        if g[1]:
-            yield ('armor', g[1])
-
-    @classmethod
-    def yield_hp(cls, field, text):
-        """Assign to hp attributes.
-
-        Similar to _assign_ac but assigns to `hp` and `hitdice` attributes.
-
-        >>> d = dict(Monster.yield_hp('hp', '135 (18d10+36)'))
-        >>> d['hp']
-        135
-        >>> d['hitdice']
-        '18d10+36'
-        >>> d = dict(Monster.yield_hp('hp', '0'))
-        >>> d['hp']
-        0
-        >>> d['hitdice']
-        Traceback (most recent call last):
-            ...
-        KeyError: 'hitdice'
-        """
-        m = re.match('^(\d+)(?: \(([^)]*)\))?$', text)
-        if m is None:
-            debug(f'Failed match for HP text "{text}"')
-            return
-        g = m.groups()
-        yield ('hp', int(g[0]))
-        if g[1]:
-            yield ('hitdice', g[1])
-
-    @classmethod
-    def yield_speed(cls, field, text):
-        """Parse speed fields into a dictionary.
-
-        >>> test = lambda t: dict(Monster.yield_speed('', t))['speed']
-        >>> test('25 ft.')
-        {'walk': 25}
-        >>> result = test('40 ft., fly 80 ft., swim 40 ft.')
-        >>> result == {'walk': 40, 'fly': 80, 'swim': 40}
-        True
-        >>> result = test('40 ft., burrow 30 ft., fly 80 ft., swim 40 ft.')
-        >>> result == {'walk': 40, 'burrow': 30, 'fly': 80, 'swim': 40}
-        True
-        >>> result = test('30 ft., climb 30 ft.')
-        >>> result == {'walk': 30, 'climb': 30}
-        True
-        >>> result = test('swim 50 ft.')
-        >>> result == {'swim': 50}
-        True
-        >>> result = test('60 ft. (30 ft.in goblin form)')
-        >>> result == {'walk': 60, 'walk (in goblin form)': 30}
-        True
-        >>> result = test('30 ft. (20 ft. and swim 40 ft. in hybrid form)')
-        >>> result == {'walk': 30, 'walk (in hybrid form)': 20,
-        ...                        'swim (in hybrid form)': 40}
-        True
-        >>> result = test('60 ft., fly 120 ft. (hover)')
-        >>> result == {'walk': 60, 'fly': 120}
-        True
-        >>> result = test('30 ft. (60 ft. with boots of speed)')
-        >>> result == {'walk': 30, 'walk (with boots of speed)': 60}
-        True
-        >>> result = test('15 ft. (30 ft. when rolling, 60 ft. rolling downhill)')
-        >>> result == {'walk': 15, 'walk (when rolling)': 30,
-        ...                        'walk (when rolling downhill)': 60}
-        True
-        >>> result = test('30 ft. (climb 30 ft., fly 60 ft., in bat or hybrid form)')
-        >>> result == {'walk': 30, 'climb (in bat or hybrid form)': 30,
-        ...                        'fly (in bat or hybrid form)': 60}
-        True
-        >>> result = test('50 ft. (in one direction chosen at the start of its turn)')
-        >>> result == {'walk (in one direction chosen at the start of its turn)': 50}
-        True
-        >>> result = test('30 ft., fly 50 ft. in raven and hybrid forms')
-        >>> result == {'walk': 30, 'fly (in raven and hybrid forms)': 50}
-        True
-        >>> result = test('walk 40 ft., climb 30 ft., fly 40 ft.')
-        >>> result == {'walk': 40, 'climb': 30, 'fly': 40}
-        True
-        >>> result = test('30 ft. swim')
-        >>> result == {'swim': 30}
-        True
-        >>> result = test('30 ft., 30 ft. swim')
-        >>> result == {'walk': 30, 'swim': 30}
-        True
-        >>> test("12 miles per hour (288 miles per day)")
-        {'mph': 12}
-        """
-        movement_types = ['walk', 'fly', 'swim', 'climb', 'burrow']
-        mt_re = '(?:' + '|'.join(movement_types) + ')'
-        vector_re_basic = f'(?:{mt_re} )?\d+ ?ft\.?' # [movement_type] speed
-        vector_re_hover = f'fly \d+ ft. \([Hh]over\)'
-        vector_re_speed_first = f'\d+ ?ft\.? {mt_re}'
-        vector_just_a_number = f'\d+'
-        vector_vehicle_speed = r'^\d+ miles per hour \(\d+ miles per day\)$'
-        vector_re = (f'(?:{vector_re_basic}|{vector_re_hover}|'
-                      + f'{vector_re_speed_first}|{vector_just_a_number}|'
-                      + f'{vector_vehicle_speed})')
-
-        csv_match_re = f'^({vector_re})(?:, ({vector_re}))*$' # list of speeds, no ()
-
-        def parse_vector(vector):
-            """Parse a movement vector and return (type, speed).
-
-            Used by Monster._assign_speed().
-            
-            >>> parse_vector('60 ft.')
-            ('walk', 60)
-            >>> parse_vector('climb 30 ft.')
-            ('climb', 30)
-            >>> parse_vector('yeet 10000 ft.')
-            These doctests don't run because parse_vector is an internal function
-            >>> parse_vector('fly 30 ft. (hover)')
-            ('fly', 30)
-            >>> parse_vector("12 miles per hour (288 miles per day)")
-            ('mph', 12)
-            """
-            # capture groups for type and speed
-            parse_re = f'^(?:({mt_re}) )?(\d+) ?ft\.?(?: \([Hh]over\))?$'
-            parse_re_speed_first = f'^(\d+) ?ft\.? ({mt_re})$'
-            parse_re_just_a_number = '^(\d+)$'
-            parse_re_vehicle_speed = '^(\d+) miles per hour \(\d+ miles per day\)$'
-
-            m = re.match(parse_re, vector)
-            if m:
-                g = m.groups()
-                if g[0] is None:  # the movement type was implied
-                    mtype = 'walk'
-                else:
-                    mtype = g[0]
-                return (mtype, int(g[1]))
-
-            m = re.match(parse_re_speed_first, vector)
-            if m:
-                return (m.group(2), int(m.group(1)))
-
-            m = re.match(parse_re_just_a_number, vector)
-            if m:
-                return ('walk', int(m.group(1)))
-
-            m = re.match(parse_re_vehicle_speed, vector)
-            if m:
-                return ('mph', int(m.group(1)))
-
-            raise Exception(f'parse_vector: invalid match on "{vector}"')
-
-        if re.match(csv_match_re, text):
-            csv_iter_re = f'^({vector_re})(?:, ({vector_re}(?:, {vector_re})*))?$'
-            def iter_vectors(text):
-                while text:
-                    m = re.match(csv_iter_re, text)
-                    if m:
-                        yield m.group(1)
-                        text = m.group(2)
-                    else:
-                        raise Exception(f'iter_vectors failed to match text "{text}"')
-            yield('speed', dict(parse_vector(v) for v in iter_vectors(text)))
-        else:
-            # manually handle a bunch of special cases
-            irregulars = {
-                "60 ft. (30 ft.in goblin form)":
-                    {'walk': 60, 'walk (in goblin form)': 30},
-                "30 ft. (20 ft. and swim 40 ft. in hybrid form)":
-                    {'walk': 30, 'walk (in hybrid form)': 20,
-                                 'swim (in hybrid form)': 40},
-                "60 ft., fly 120 ft. (hover)":
-                    {'walk': 60, 'fly': 120},
-                "30 ft. (60 ft. with boots of speed)":
-                    {'walk': 30, 'walk (with boots of speed)': 60},
-                "15 ft. (30 ft. when rolling, 60 ft. rolling downhill)":
-                    {'walk': 15, 'walk (when rolling)': 30,
-                                 'walk (when rolling downhill)': 60},
-                "30 ft. (climb 30 ft., fly 60 ft., in bat or hybrid form)":
-                    {'walk': 30, 'climb (in bat or hybrid form)': 30,
-                                 'fly (in bat or hybrid form)': 60},
-                "50 ft. (in one direction chosen at the start of its turn)":
-                    {'walk (in one direction chosen at the start of its turn)':
-                     50},
-                "30 ft., fly 50 ft. in raven and hybrid forms":
-                    {'walk': 30, 'fly (in raven and hybrid forms)': 50},
-                "30 ft. (40 ft., climb 30 ft. in bear or hybrid form)":
-                    {'walk': 30, 'climb (in bear or hybrid form)': 30},
-                "30 ft. (40 ft. in boar form)":
-                    {'walk': 30, 'walk (in boar form)': 40},
-                "30 ft. (40 ft. in tiger form)":
-                    {'walk': 30, 'walk (in tiger form)': 40},
-                "30 ft. (40 ft. in wolf form)":
-                    {'walk': 30, 'walk (in wolf form)': 40},
-                "50 ft,":
-                    {'walk': 50} }
-
-            try:
-                yield ('speed', irregulars[text])
-            except KeyError:
-                warning(f'yield_speed failed to match "{text}"')
-
-    @classmethod
-    def yield_int(cls, field, text):
-        """Yield an integer that comprises the entirety of `text`."""
-        yield (field, int(text))
-
-    @classmethod
-    def yield_saves(cls, field, text):
-        """Yield ('saves', {..})
-
-        Dictionary entries are a stat (eg 'str') and an integer.
-
-        >>> test = lambda text: next(Monster.yield_saves('save', text))
-        >>> test(None)
-        Traceback (most recent call last):
-            ...
-        StopIteration
-        >>> test('Dex +5, Con +11, Wis +7, Cha +9')
-        ('saves', {'dex': 5, 'con': 11, 'wis': 7, 'cha': 9})
-        """
-        if text is None:
-            return
-
-        try:
-            saves = re.split(', ', text)
-            saves = (re.split(' +', save) for save in saves)
-            saves = ((stat.lower(), int(val)) for stat, val in saves)
-        except:
-            error(f'yield_saves: parsing error for text "{text}"')
-            return
-
-        yield ('saves', dict(saves))
-
-    @classmethod
-    def yield_skills(cls, field, text):
-        """Yield ('skills', {..})
-
-        Dictionary entries are a skill (eg 'Athletics') and an integer.
-
-        >>> test = lambda text: next(Monster.yield_skills('skill', text))
-        >>> test(None)
-        Traceback (most recent call last):
-            ...
-        StopIteration
-        >>> test('Perception +5')
-        ('skills', {'Perception': 5})
-        >>> test('History +7, Perception +11, Persuasion +8, Stealth +5')
-        ('skills', {'History': 7, 'Perception': 11, 'Persuasion': 8, 'Stealth': 5})
-        """
-        if text is None:
-            return
-
-        all_skills = [
-            'Athletics', 'Acrobatics', 'Sleight of Hand', 'Stealth', 'Arcana',
-            'History', 'Investigation', 'Nature', 'Religion', 'Animal Handling',
-            'Insight', 'Medicine', 'Perception', 'Survival', 'Deception',
-            'Intimidation', 'Performance', 'Persuasion' ]
-
-        def normalize(skill):
-            for s in all_skills:
-                if skill.lower() == s.lower():
-                    return s
-            raise Exception(f'Unknown skill "{skill}"')
-
-        try:
-            skills = re.split(', ?', text)
-            skills = (re.split(' \+', skill) for skill in skills)
-            skills = dict((normalize(skill), int(val)) for skill, val in skills)
-        except Exception as e:
-            error(f'yield_skills: {type(e)} "{e}" for text "{text}"')
-
-        yield ('skills', skills)
-
-    # damage types as they are used in the XML file
-    # for resistances, vulnerabilities, and immunities
-    damage_types = { # simple types which don't need remapping
-        'bludgeoning', 'piercing', 'slashing',
-        'poison', 'acid', 'fire', 'cold', 'radiant', 'necrotic',
-        'lightning', 'thunder', 'force', 'psychic',
-
-        'charmed', 'petrified', 'blinded', # should be in conditions but the DB is wrong
-
-        'damage from spells',
-        'piercing from magic weapons wielded by good creatures',
-        "one of the following: acid, cold, fire, lightning or poison",
-        "one of the following: acid, cold, fire, lightning, or poison",
-    }
-    damage_mappings = { # translation of complex expressions and simple expressions compounded with commas
-        'bludgeoning, piercing, and slashing from nonmagical attacks': {
-            'types': {
-                'nonmagical bludgeoning',
-                'nonmagical piercing',
-                'nonmagical slashing'}},
-        "bludgeoning, piercing, and slashing damage from nonmagical weapons": {
-            'types': {
-                'nonmagical bludgeoning',
-                'nonmagical piercing',
-                'nonmagical slashing'}},
-        "bludgeoning, piercing, slashing from nonmagical attacks": {
-            'types': {
-                'nonmagical bludgeoning',
-                'nonmagical piercing',
-                'nonmagical slashing'}},
-        "bludgeoning, piercing, and slashing damage from nonmagical attacks": {
-            'types': {
-                'nonmagical bludgeoning',
-                'nonmagical piercing',
-                'nonmagical slashing'}},
-        "bludgeoning, piercing, and slashing from nonmagical weapons": {
-            'types': {
-                'nonmagical bludgeoning',
-                'nonmagical piercing',
-                'nonmagical slashing'}},
-        "bludgeoning, piercing and slashing from nonmagical attacks": {
-            'types': {
-                'nonmagical bludgeoning',
-                'nonmagical piercing',
-                'nonmagical slashing'}},
-        "bludgeoning, piercing, and slashing that is nonmagical": {
-            'types': {
-                'nonmagical bludgeoning',
-                'nonmagical piercing',
-                'nonmagical slashing'}},
-        "bludgeoning from nonmagical attacks": {
-            'types': {
-                'nonmagical bludgeoning'}},
-
-        "fire, bludgeoning, piercing, and slashing from nonmagical attacks": {
-            'types': {
-                'nonmagical fire',
-                'nonmagical bludgeoning',
-                'nonmagical piercing',
-                'nonmagical slashing'}},
-        "cold, fire, lightning, bludgeoning, piercing and slashing that is nonmagical": {
-            'types': {
-                'nonmagical cold',
-                'nonmagical fire',
-                'nonmagical bludgeoning',
-                'nonmagical piercing',
-                'nonmagical slashing'}},
-
-        'non magical bludgeoning, piercing, and slashing (from stoneskin)': {
-            'types': {
-                'nonmagical bludgeoning',
-                'nonmagical piercing',
-                'nonmagical slashing'},
-            'notes': {
-                'from stoneskin': [
-                    'nonmagical bludgeoning',
-                    'nonmagical piercing',
-                    'nonmagical slashing']}},
-        "nonmagical bludgeoning, piercing, slashing (from stoneskin)": {
-            'types': {
-                'nonmagical bludgeoning',
-                'nonmagical piercing',
-                'nonmagical slashing'},
-            'notes': {
-                'from stoneskin': [
-                    'nonmagical bludgeoning',
-                    'nonmagical piercing',
-                    'nonmagical slashing']}},
-        "nonmagical bludgeoning, piercing, slashing (from stoneskin), poison": {
-            'types': {
-                'nonmagical bludgeoning',
-                'nonmagical piercing',
-                'nonmagical slashing',
-                'poison'},
-            'notes': {
-                'from stoneskin': [
-                    'nonmagical bludgeoning',
-                    'nonmagical piercing',
-                    'nonmagical slashing']}},
-        "nonmagical bludgeoning, piercing, slashing (from stoneskin), fire": {
-            'types': {
-                'nonmagical bludgeoning',
-                'nonmagical piercing',
-                'nonmagical slashing',
-                'fire'},
-            'notes': {
-                'from stoneskin': [
-                    'nonmagical bludgeoning',
-                    'nonmagical piercing',
-                    'nonmagical slashing']}},
-
-        "bludgeoning, piercing, and slashing from nonmagical attacks that aren't silvered": {
-            'types': {
-                'nonmagical nonsilver bludgeoning',
-                'nonmagical nonsilver piercing',
-                'nonmagical nonsilver slashing'}},
-        "bludgeoning, piercing, and slashing from nonmagical attacks that aren’t silvered": {
-            'types': {
-                'nonmagical nonsilver bludgeoning',
-                'nonmagical nonsilver piercing',
-                'nonmagical nonsilver slashing'}},
-        "bludgeoning, piercing, slashing from nonmagical attacks that aren't silvered": {
-            'types': {
-                'nonmagical nonsilver bludgeoning',
-                'nonmagical nonsilver piercing',
-                'nonmagical nonsilver slashing'}},
-        "bludgeoning, piercing, and slashing from nonmagical/nonsilver weapons": {
-            'types': {
-                'nonmagical nonsilver bludgeoning',
-                'nonmagical nonsilver piercing',
-                'nonmagical nonsilver slashing'}},
-        "bludgeoning, piercing, and slashing from nonmagical attacks not made with silvered weapons": {
-            'types': {
-                'nonmagical nonsilver bludgeoning',
-                'nonmagical nonsilver piercing',
-                'nonmagical nonsilver slashing'}},
-        "bludgeoning, piercing, and slashing from nonmagical weapons that aren't silvered": {
-            'types': {
-                'nonmagical nonsilver bludgeoning',
-                'nonmagical nonsilver piercing',
-                'nonmagical nonsilver slashing'}},
-        "bludgeoning, piercing, and slashing damage from nonmagical attacks that aren't silvered": {
-            'types': {
-                'nonmagical nonsilver bludgeoning',
-                'nonmagical nonsilver piercing',
-                'nonmagical nonsilver slashing'}},
-        "bludgeoning, piercing, and slashing damage from nonmagical attacks that aren't silvered weapons": {
-            'types': {
-                'nonmagical nonsilver bludgeoning',
-                'nonmagical nonsilver piercing',
-                'nonmagical nonsilver slashing'}},
-        "bludgeoning, piercing, slashing from nonmagical attacks not made with silvered weapons": {
-            'types': {
-                'nonmagical nonsilver bludgeoning',
-                'nonmagical nonsilver piercing',
-                'nonmagical nonsilver slashing'}},
-
-        "slashing damage from nonmagical attacks not made with silvered weapons": {
-            'types': {
-                'nonmagical nonsilver slashing'}},
-        "slashing from nonmagical attacks not made with silvered weapons": {
-            'types': {
-                'nonmagical nonsilver slashing'}},
-
-        "bludgeoning, piercing, slashing from nonmagical attacks that aren't adamantine or silvered": {
-            'types': {
-                'nonmagical nonsilver bludgeoning',
-                'nonmagical nonsilver piercing',
-                'nonmagical nonsilver slashing'}},
-
-        "lightning, poison, bludgeoning, piercing, sand slashing from non-magical attacks that aren't adamantine or silvered": {
-            'types': {
-                'lightning',
-                'poison',
-                'nonmagical nonsilver bludgeoning',
-                'nonmagical nonsilver piercing',
-                'nonmagical nonsilver slashing'}},
-
-        "bludgeoning, piercing, and slashing from nonmagical attacks that aren't adamantine": {
-            'types': {
-                'nonmagical nonadamantine bludgeoning',
-                'nonmagical nonadamantine piercing',
-                'nonmagical nonadamantine slashing'}},
-        "bludgeoning, piercing, and slashing damage from nonmagical attacks not made with adamantine weapons": {
-            'types': {
-                'nonmagical nonadamantine bludgeoning',
-                'nonmagical nonadamantine piercing',
-                'nonmagical nonadamantine slashing'}},
-        "bludgeoning, piercing, slashing from nonmagical attacks that aren't adamantine": {
-            'types': {
-                'nonmagical nonadamantine bludgeoning',
-                'nonmagical nonadamantine piercing',
-                'nonmagical nonadamantine slashing'}},
-        "bludgeoning, piercing, and slashing from nonmagical attacks that aren’t adamantine": {
-            'types': {
-                'nonmagical nonadamantine bludgeoning',
-                'nonmagical nonadamantine piercing',
-                'nonmagical nonadamantine slashing'}},
-        "bludgeoning, piercing, and slashing from nonmagical weapons that aren't adamantine": {
-            'types': {
-                'nonmagical nonadamantine bludgeoning',
-                'nonmagical nonadamantine piercing',
-                'nonmagical nonadamantine slashing'}},
-        "bludgeoning, piercing, slashing from nonmagical attacks not made with adamantine weapons": {
-            'types': {
-                'nonmagical nonadamantine bludgeoning',
-                'nonmagical nonadamantine piercing',
-                'nonmagical nonadamantine slashing'}},
-        "piercing, slashing from nonmagical attacks that aren't adamantine": {
-            'types': {
-                'nonmagical nonadamantine piercing',
-                'nonmagical nonadamantine slashing'}},
-        "piercing and slashing from nonmagical attacks that aren't adamantine": {
-            'types': {
-                'nonmagical nonadamantine piercing',
-                'nonmagical nonadamantine slashing'}},
-
-        "fire, bludgeoning, piercing, and slashing from metal weapons": {
-            'types': {
-                'fire',
-                'metal bludgeoning',
-                'metal piercing',
-                'metal slashing'}},
-
-        "bludgeoning, piercing, and slashing from magic weapons": {
-            'types': {
-                'magical bludgeoning',
-                'magical piercing',
-                'magical slashing'}},
-         "bludgeoning, piercing, slashing from magic weapons": {
-            'types': {
-                'magical bludgeoning',
-                'magical piercing',
-                'magical slashing'}},
-
-        "bludgeoning, piercing, and slashing while in dim light or darkness": {
-            'types': {
-                'bludgeoning while in dim light or darkness',
-                'piercing while in dim light or darkness',
-                'slashing while in dim light or darkness'}},
-        "bludgeoning, piercing, slashing while in dim light or darkness": {
-            'types': {
-                'bludgeoning while in dim light or darkness',
-                'piercing while in dim light or darkness',
-                'slashing while in dim light or darkness'}},
-        "bludgeoning, piercing, and slashing from nonmagical attacks while in dim light or darkness": {
-            'types': {
-                'nonmagical bludgeoning while in dim light or darkness',
-                'nonmagical piercing while in dim light or darkness',
-                'nonmagical slashing while in dim light or darkness'}},
-        "bludgeoning, piercing, slashing from nonmagical attacks while in dim light or darkness": {
-            'types': {
-                'nonmagical bludgeoning while in dim light or darkness',
-                'nonmagical piercing while in dim light or darkness',
-                'nonmagical slashing while in dim light or darkness'}},
-
-        "bludgeoning, piercing, slashing from metal weapons": {
-            'types': {
-                'bludgeoning from metal weapons',
-                'piercing from metal weapons',
-                'slashing from metal weapons'}},
-
-        "while wearing the mask of the dragon queen: acid, cold, lightning, poison": {
-            'types': {
-                'acid', 'cold', 'lightning', 'poison',
-                'nonmagical bludgeoning',
-                'nonmagical piercing',
-                'nonmagical slashing'},
-            'notes': {
-                'While wearing the mask of the Dragon Queen': [
-                    'acid', 'cold', 'lightning', 'poison']}},
-        "while wearing the mask of the dragon queen: fire": {
-            'types': {'fire'},
-            'notes': {'while wearing the mask of the dragon queen': 'fire'}},
-
-        "cold (while wearing the ring of winter)": {
-            'types': {'cold'},
-            'notes': {'while wearing the ring of winter': 'cold'}},
-        "while wearing the ring of winter: cold": {
-            'types': {'cold'},
-            'notes': {'while wearing the ring of winter': 'cold'}},
-
-        'posion': {
-            'types': {'poison'}},
-
-        # Elemental Spirit damage types from the Summon Elemental spell in TCoE
-        "lightning, thunder (air only), piercing": {    # this seems to be a mistranscription: this "piercing" is absent from the stat block in TCoE.
-            'types': {'lightning', 'thunder'},
-            'notes': {'air form only': ['lightning', 'thunder']}},
-        "piercing, slashing (earth only)": {
-            'types': {'piercing', 'slashing'},
-            'notes': {'earth form only': ['piercing, slashing']}},
-        "acid (water only)": {
-            'types': {'acid'},
-            'notes': {'water form only': 'acid'}},
-        "fire (fire only)": {
-            'types': {'fire'},
-            'notes': {'fire form only': 'fire'}},
-
-        # choose-one damage types from Rise of Tiamat
-        "one of the following: acid, cold, fire, lightning, poison": {
-            'types': {'acid', 'cold', 'fire', 'lightning', 'poison'},
-            'notes': {'choose one from acid, cold, fire, lightning, poison': ['acid', 'cold', 'fire', 'lightning', 'poison']}},
-        "one of the following: acid, cold, fire, lightning, poison, poison": {  # not sure what happened here
-            'types': {'acid', 'cold', 'fire', 'lightning', 'poison'},
-            'notes': {'choose one from acid, cold, fire, lightning, poison': ['acid', 'cold', 'fire', 'lightning', 'poison']}},
-
-        # Halaster Blackcloak from Waterdeep: Dungeon of the Mad Mage
-        'lightning (granted by the blast scepter, see "special equipment" below)': {
-            'types': {'lightning'},
-            'notes': {'granted by the blast scepter': 'lightning'}},
-    }
-
-    @classmethod
-    def yield_damage_types(cls, field, text):
-        """Yields the `field` and the damage types that apply to it for `text`.
-
-        `field` can be "resist", "vulnerable", or "immune"
-
-        Yield format e.g. ('resist': {..})
-
-        May also yield notes in the form ('resist_notes': {..})
-
-        >>> test = lambda text: list(Monster.yield_damage_types('resist', text))
-        >>> test(None)
-        []
-        >>> pprint(test('lightning; thunder; bludgeoning, piercing, ' + 
-        ...             'and slashing from nonmagical attacks'))
-        [('resist',
-          {'lightning',
-           'nonmagical bludgeoning',
-           'nonmagical piercing',
-           'nonmagical slashing',
-           'thunder'})]
-        >>> pprint(test('damage from spells; non magical bludgeoning, ' + 
-        ...             'piercing, and slashing (from stoneskin)'))
-        [('resist',
-          {'damage from spells',
-           'nonmagical bludgeoning',
-           'nonmagical piercing',
-           'nonmagical slashing'}),
-         ('resist_notes',
-          {'from stoneskin': ['nonmagical bludgeoning',
-                              'nonmagical piercing',
-                              'nonmagical slashing']})]
-        >>> r = test('acid, cold, fire, lightning, thunder')
-        >>> r == [('resist', {'acid', 'cold', 'fire', 'lightning', 'thunder'})]
-        True
-        >>> pprint(test('While wearing the mask of the Dragon Queen: acid, cold, ' +
-        ...             'lightning, poison; bludgeoning, piercing, ' +
-        ...             'and slashing damage from nonmagical weapons'))
-        [('resist',
-          {'acid',
-           'cold',
-           'lightning',
-           'nonmagical bludgeoning',
-           'nonmagical piercing',
-           'nonmagical slashing',
-           'poison'}),
-         ('resist_notes',
-          {'While wearing the mask of the Dragon Queen': ['acid',
-                                                          'cold',
-                                                          'lightning',
-                                                          'poison']})]
-        """
-        if text == None:
-            return
-
-        found, notfound = [], []
-
-        # First, parse the text, first along semicolon delimeters,
-        # then along commas
-        scsvs = re.split('; ?', text.lower()) #Semi-Colon-Separated Values
-        scsvs = map(str.strip, scsvs)
-
-        damage_types = set()
-        damage_types.update(cls.damage_types)
-        damage_types.update(cls.damage_mappings.keys())
-
-        for scsv in scsvs:
-            if scsv in damage_types:
-                found.append(scsv)
-            else:  # check if all subitems from comma-split match
-                csvs = re.split(', ?', scsv) #Comma-Separated Values
-                csvs = list(map(str.strip, csvs))
-                if anyfalse(csv in damage_types for csv in csvs):
-                    notfound.append(scsv)
-                else:
-                    found += csvs
-
-        for item in notfound:
-            warning(f'Unrecognised scsv "{item}" in text "{text}"')
-
-        # Now check the parsed field contents for any items
-        # which require remapping to multiple or different items
-        # and/or have associated notes.
-        field_contents = []
-        field_notes = {}
-        for i in found:
-            if i in cls.damage_mappings.keys():
-                try:
-                    field_contents += cls.damage_mappings[i]['types']
-                    field_notes.update(cls.damage_mappings[i]['notes'])
-                except KeyError:
-                    None
-            else:
-                field_contents.append(i)
-
-        if field_contents:
-            yield (field, set(field_contents))
-        if field_notes:
-            yield (f'{field}_notes', field_notes)
-
-    @classmethod
-    def yield_condition(cls, field, text):
-        """Parse field containing a set of conditions and yield the result.
-
-        >>> test = lambda text: dict(Monster.yield_condition('conditionImmune', text))
-        >>> ptest = lambda text: pprint(test(text), width=200)
-        >>> test(None)
-        {}
-        >>> r = test('charmed, frightened, paralyzed, petrified, poisoned , unconscious')
-        >>> r == {'conditionImmune': {'charmed', 'frightened', 'unconscious', 'poisoned', 'paralysed', 'petrified'}}
-        True
-        >>> test('petrified')
-        {'conditionImmune': {'petrified'}}
-        >>> r = test('While wearing the mask of the Dragon Queen: charmed, frightened, poisoned')
-        >>> r['conditionImmune'] == {'charmed', 'frightened', 'poisoned'}
-        True
-        >>> pprint(r['conditionImmune_notes'])
-        {'charmed': 'While wearing the mask of the Dragon Queen',
-         'frightened': 'While wearing the mask of the Dragon Queen',
-         'poisoned': 'While wearing the mask of the Dragon Queen'}
-        >>> test('Frightened')
-        {'conditionImmune': {'frightened'}}
-        """
-        full_text = { # special cases
-            'While wearing the mask of the Dragon Queen: charmed, frightened, poisoned': {
-                field: {'charmed', 'frightened', 'poisoned'},
-                f'{field}_notes': {
-                    'charmed': 'While wearing the mask of the Dragon Queen',
-                    'frightened': 'While wearing the mask of the Dragon Queen',
-                    'poisoned': 'While wearing the mask of the Dragon Queen'}},
-        }
-        conditions = { # format: {RE: normalized representation}
-            'blinded': None,
-            'charmed': None,
-            'deafened': None,
-            'exhaustion': None,
-            'frightened': None,
-            'grappled': None,
-            'incapacitated': None,
-            'paraly[sz]ed': 'paralysed',
-            'petrified': None,
-            'poisoned': None,
-            'prone': None,
-            'restrained': None,
-            'stunned': None,
-            'uncons?cious': 'unconscious',
-        }
-
-        if text == None:
-            return
-
-        for ft, v in full_text.items():
-            if re.fullmatch(ft, text):
-                yield from v.items()
-                return
-
-        found = []
-        notfound = []
-        csvs = re.split(' ?, ?', text)
-        def process_csv(csv):
-            for c, v in conditions.items():
-                if re.fullmatch(c, csv, re.I):
-                    return v if v else c
-            raise Exception(f'Unmatched CSV "{csv}" in field text "{text}"')
-
-        try:
-            yield (field, set(process_csv(csv) for csv in csvs))
-        except Exception as e:
-            warning(f'yield_condition: {e.args[0]}')
-
-    @classmethod
-    def yield_senses(cls, field, text):
-        """Parse 'senses' fields and yield the results.
-
-        >>> test = lambda text: dict(Monster.yield_senses('senses', text))
-        >>> test(None)
-        {}
-        >>> next(Monster.yield_senses('senses', None))
-        Traceback (most recent call last):
-            ...
-        StopIteration
-        >>> test('darkvision 120 ft.')
-        {'senses': {'darkvision': 120}}
-        >>> test('blindsight 30 ft., darkvision 60 ft.')
-        {'senses': {'blindsight': 30, 'darkvision': 60}}
-        >>> pprint(test('darkvision 60 ft. (rat form only)'))
-        {'senses': {'darkvision': 60}, 'senses_notes': {'darkvision': 'rat form only'}}
-        """
-        just_senses_res = { # match component of text, map to fn(groups) of match
-            'darkvision (\d+) ?(?:ft\.?)?': lambda *a: {'darkvision': int(a[0])},
-            'blindsight (\d+) ?ft\.?':      lambda *a: {'blindsight': int(a[0])},
-            'truesight (\d+) ?ft\.?':       lambda *a: {'truesight': int(a[0])},
-            'tremorsense (\d+) ?ft\.?':     lambda *a: {'tremorsense': int(a[0])},
-            'blindsight (\d+) ?ft\.? \(blind beyond this (?:radius|distance)\)':
-                lambda *a: {'blindsight': int(a[0])},
-            'blindsight (\d+) ?ft. or (\d+) ?ft. while deafened \(blind beyond this radius\)':
-                lambda *a: {'blindsight': int(a[0]), 'blindsight while deafened': int(a[1])},
-            'darkvision (\d+) ?ft\. \((?:including|penetrates) magical darkness\)':
-                lambda *a: {'devilsight': int(a[0])},
-            "darkvision (\d+) ?ft\. \(see devil's sight below\)":
-                lambda *a: {'devilsight': int(a[0])},
-        }
-        with_notes_strings = { # match full text, map to full dictionary
-            'darkvision 60 ft. (rat form only)':
-                {'senses': {'darkvision': 60},
-                 'senses_notes': {'darkvision': 'rat form only'}},
-            'While wearing the Mask of the Dragon Queen: darkvision 60 ft.':
-                {'senses': {'darkvision': 60},
-                 'senses_notes': 'darkvision while wearing the Mask of the Dragon Queen'},
-            'darkvision 60 ft. (can see invisible creatures out to the same range)':
-                {'senses': {'darkvision': 60},
-                 'senses_notes': {'darkvision': 'can see invisible creatures to same range'}},
-            'blindsight 120 ft. (blind beyond this radius); see also "detect sentience" below':
-                {'senses': {'blindsight': 120},
-                 'senses_notes': {'blindsight': 'blind beyond this radius'}},
-            'darkvision 60ft. (beast form only)':
-                {'senses': {'darkvision': 60},
-                 'senses_notes': {'darkvision': 'beast form only'}},
-        }
-
-        def map_component(c):
-            """Find a matching RE and map the component to a dictionary.
-
-            >>> map_component('darkvision 120 ft')
-            {'darkvision': 120}
-            """
-            for r, f in just_senses_res.items():
-                m = re.fullmatch(r, c, re.I)
-                if m:
-                    return f(*m.groups())
-
-        if text is None:
-            return
-
-        for s, v in with_notes_strings.items():
-            if s == text:
-                yield from v.items()
-                return
-
-        components = re.split(', ?', text)
-        mapped_components = (map_component(c) for c in components)
-        mapped_components = (m for m in mapped_components if m) # drop Nones
-        try:
-            senses = reduce(dict_merge, mapped_components)
-        except TypeError:
-            warning(f'yield_senses: failed match on text "{text}"')
-            return
-
-        yield (field, senses)
-
-    @classmethod
-    def yield_int(cls, field, text):
-        """Parse integer values and yield (field, value)
-
-        >>> test = lambda text: dict(Monster.yield_int('passive', text))
-        >>> test(None)
-        {}
-        >>> test('42')
-        {'passive': 42}
-        >>> from unittest import TestCase
-        >>> with TestCase.assertLogs(_) as cm:
-        ...     print(test('seven'))
-        ...     print(cm.output)
-        {}
-        ['WARNING:root:yield_int: failed to parse text "seven"']
-        """
-        if text == None:
-            return
-
-        try:
-            yield (field, int(text))
-        except ValueError:
-            warning(f'yield_int: failed to parse text "{text}"')
-
-    @classmethod
-    def yield_text(cls, field, text):
-        """Just yield the text field."""
-        if text is None:
-            return
-
-        yield (field, text)
-
-    @classmethod
-    def yield_fraction(cls, field, text):
-        """Convert fractional text field to float and yield (field, result)
-
-        >>> test = lambda text: dict(Monster.yield_fraction('cr', text))
-        >>> test(None)
-        {}
-        >>> test('42')
-        {'cr': 42.0}
-        >>> test('4/2')
-        {'cr': 2.0}
-        >>> test('2/4')
-        {'cr': 0.5}
-        >>> from unittest import TestCase
-        >>> with TestCase.assertLogs(_) as cm:
-        ...     print(test('not a fraction'))
-        ...     print(cm.output)
-        {}
-        ['WARNING:root:yield_fraction: failed to parse text "not a fraction"']
-        """
-        if text == None:
-            return
-
-        try:
-            yield (field, float(Fraction(text)))
-        except ValueError:
-            warning(f'yield_fraction: failed to parse text "{text}"')
-
 # `Reference` tuple used by Spell class
 Reference = namedtuple('Reference', ('book', 'page'))
 
@@ -1285,3 +336,720 @@ class Spell():
                 text_lines.append(line)
 
         return '\n'.join(text_lines), tuple(sources)
+
+#### Fundamental parsing functions
+def yield_text(element, node):
+    """The most basic element parser.
+
+    Just returns (tag, text).
+    """
+    if element.text is None:
+        debug(f'yield_text: None value for text in element with tag "{element.tag}"')
+        # This can happen when there's a tag like `<spells/>` in the XML
+        return
+    else:
+        yield (element.tag, element.text)
+
+def yield_int(element, node):
+    """Yield an integer that comprises the entirety of `element.text`."""
+    if element.text is None:
+        debug(f'yield_int: None value for text in element with tag "{element.tag}"')
+    else:
+        yield (element.tag, int(element.text))
+
+def yield_fraction(element, node):
+    """Convert fractional text field to float and yield (field, result)
+
+    >>> from dnd5edb.test import obj_fromdict
+    >>> fakenode = lambda v: obj_fromdict({'tag': 'cr', 'text': v})
+    >>> test = lambda text: dict(yield_fraction(fakenode(text), None))
+    >>> test(None)
+    {}
+    >>> test('42')
+    {'cr': 42.0}
+    >>> test('4/2')
+    {'cr': 2.0}
+    >>> test('2/4')
+    {'cr': 0.5}
+    >>> from unittest import TestCase
+    >>> with TestCase.assertLogs(_) as cm:
+    ...     print(test('not a fraction'))
+    ...     print(cm.output)
+    {}
+    ['WARNING:root:yield_fraction: failed to parse text "not a fraction"']
+    """
+    field = element.tag
+    text = element.text
+
+    if text == None:
+        debug(f'yield_fraction: None value for text in element with tag "{field}"')
+        return
+
+    try:
+        yield (field, float(Fraction(text)))
+    except ValueError:
+        warning(f'yield_fraction: failed to parse text "{text}"')
+
+#### Base parser class
+class NodeParser():
+    """Base class for objects which parse nodes."""
+
+    @classmethod
+    def parse(cls, node):
+        """Returns iterable of (field, value) pairs.
+
+        Iterates through elements of `node`, calling the appropriate
+        `yield_` method for each element.
+
+        `yield_` methods are generators which iterate (field, value) tuples.
+
+        For example, yield_ac yields two or three such tuples:
+        >>> from dnd5edb.test import obj_fromdict
+        >>> fakenode = lambda v: obj_fromdict({'tag': 'ac', 'text': v})
+        >>> list(MonsterParser.yield_ac(fakenode('10 (natural armor)'), None))
+        [('ac', '10 (natural armor)'), ('ac_num', 10), ('armor', 'natural armor')]
+        >>> list(MonsterParser.yield_ac(fakenode('11'), None))
+        [('ac', '11'), ('ac_num', 11)]
+
+        Issues a warning if an element is encountered for which there is no handler.
+        """
+        for element in node:
+            try:
+                parsefn = getattr(cls, 'yield_' + element.tag)
+            except AttributeError:
+                warning(f'NodeParser.parse: unknown tag "{element.tag}"')
+                continue
+            try:
+                yield from parsefn(element, node)
+            except TypeError as e:
+                warning(f'NodeParser.parse: TypeError "{e}" while parsing element "{element}" in node "{node}"')
+
+    yield_name = staticmethod(yield_text)
+
+# Derived parser classes
+class MonsterParser(NodeParser):
+    """Parser for <monster> nodes."""
+    yield_size = yield_text
+    yield_type = yield_text
+    yield_alignment = yield_text
+
+    @staticmethod
+    def yield_ac(element, node):
+        """Yield ac attributes.
+
+        If a numeric AC is parsed, it is yielded as `ac_num`.
+        If information on armor is parsed in the parentheses following the AC,
+        it is yielded as `armor`.
+        In any case, the full text of the field is yielded as `ac`.
+        """
+        text = element.text
+
+        yield ('ac', text)
+
+        #m = re.match('^(\d+)(?: \(.*)?$', text)
+        m = re.match('^(\d+)(?: \(([^)]*)\))?$', text)
+        if m is None:
+            debug(f'Failed match for AC text "{text}"')
+            return
+        g = m.groups()
+        if g[0]:
+            yield ('ac_num', int(g[0]))
+        if g[1]:
+            yield ('armor', g[1])
+
+    @staticmethod
+    def yield_hp(element, node):
+        """Assign to hp attributes.
+
+        Similar to yield_ac but parses `hp` and `hitdice` attributes.
+
+        >>> from dnd5edb.test import obj_fromdict
+        >>> fakenode = lambda v: obj_fromdict({'tag': 'hp', 'text': v})
+        >>> d = dict(MonsterParser.yield_hp(fakenode('135 (18d10+36)'), None))
+        >>> d['hp']
+        135
+        >>> d['hitdice']
+        '18d10+36'
+        >>> d = dict(MonsterParser.yield_hp(fakenode('0'), None))
+        >>> d['hp']
+        0
+        >>> d['hitdice']
+        Traceback (most recent call last):
+            ...
+        KeyError: 'hitdice'
+        """
+        text = element.text
+
+        m = re.match('^(\d+)(?: \(([^)]*)\))?$', text)
+        if m is None:
+            debug(f'Failed match for HP text "{text}"')
+            return
+        g = m.groups()
+        yield ('hp', int(g[0]))
+        if g[1]:
+            yield ('hitdice', g[1])
+
+    @staticmethod
+    def yield_speed(element, node):
+        """Parse speed fields into a dictionary.
+
+        >>> from dnd5edb.test import obj_fromdict
+        >>> fakenode = lambda v: obj_fromdict({'tag': 'speed', 'text': v})
+        >>> test = lambda t: dict(MonsterParser.yield_speed(fakenode(t), None))['speed']
+        >>> test('25 ft.')
+        {'walk': 25}
+        >>> result = test('40 ft., fly 80 ft., swim 40 ft.')
+        >>> result == {'walk': 40, 'fly': 80, 'swim': 40}
+        True
+        >>> result = test('40 ft., burrow 30 ft., fly 80 ft., swim 40 ft.')
+        >>> result == {'walk': 40, 'burrow': 30, 'fly': 80, 'swim': 40}
+        True
+        >>> result = test('30 ft., climb 30 ft.')
+        >>> result == {'walk': 30, 'climb': 30}
+        True
+        >>> result = test('swim 50 ft.')
+        >>> result == {'swim': 50}
+        True
+        >>> result = test('60 ft. (30 ft.in goblin form)')
+        >>> result == {'walk': 60, 'walk (in goblin form)': 30}
+        True
+        >>> result = test('30 ft. (20 ft. and swim 40 ft. in hybrid form)')
+        >>> result == {'walk': 30, 'walk (in hybrid form)': 20,
+        ...                        'swim (in hybrid form)': 40}
+        True
+        >>> result = test('60 ft., fly 120 ft. (hover)')
+        >>> result == {'walk': 60, 'fly': 120}
+        True
+        >>> result = test('30 ft. (60 ft. with boots of speed)')
+        >>> result == {'walk': 30, 'walk (with boots of speed)': 60}
+        True
+        >>> result = test('15 ft. (30 ft. when rolling, 60 ft. rolling downhill)')
+        >>> result == {'walk': 15, 'walk (when rolling)': 30,
+        ...                        'walk (when rolling downhill)': 60}
+        True
+        >>> result = test('30 ft. (climb 30 ft., fly 60 ft., in bat or hybrid form)')
+        >>> result == {'walk': 30, 'climb (in bat or hybrid form)': 30,
+        ...                        'fly (in bat or hybrid form)': 60}
+        True
+        >>> result = test('50 ft. (in one direction chosen at the start of its turn)')
+        >>> result == {'walk (in one direction chosen at the start of its turn)': 50}
+        True
+        >>> result = test('30 ft., fly 50 ft. in raven and hybrid forms')
+        >>> result == {'walk': 30, 'fly (in raven and hybrid forms)': 50}
+        True
+        >>> result = test('walk 40 ft., climb 30 ft., fly 40 ft.')
+        >>> result == {'walk': 40, 'climb': 30, 'fly': 40}
+        True
+        >>> result = test('30 ft. swim')
+        >>> result == {'swim': 30}
+        True
+        >>> result = test('30 ft., 30 ft. swim')
+        >>> result == {'walk': 30, 'swim': 30}
+        True
+        >>> test("12 miles per hour (288 miles per day)")
+        {'mph': 12}
+        """
+        text = element.text
+
+        movement_types = ['walk', 'fly', 'swim', 'climb', 'burrow']
+        mt_re = '(?:' + '|'.join(movement_types) + ')'
+        vector_re_basic = f'(?:{mt_re} )?\d+ ?ft\.?' # [movement_type] speed
+        vector_re_hover = f'fly \d+ ft. \([Hh]over\)'
+        vector_re_speed_first = f'\d+ ?ft\.? {mt_re}'
+        vector_just_a_number = f'\d+'
+        vector_vehicle_speed = r'^\d+ miles per hour \(\d+ miles per day\)$'
+        vector_re = (f'(?:{vector_re_basic}|{vector_re_hover}|'
+                      + f'{vector_re_speed_first}|{vector_just_a_number}|'
+                      + f'{vector_vehicle_speed})')
+
+        csv_match_re = f'^({vector_re})(?:, ({vector_re}))*$' # list of speeds, no ()
+
+        def parse_vector(vector):
+            """Parse a movement vector and return (type, speed).
+
+            Used by Monster._assign_speed().
+            
+            >>> parse_vector('60 ft.')
+            ('walk', 60)
+            >>> parse_vector('climb 30 ft.')
+            ('climb', 30)
+            >>> parse_vector('yeet 10000 ft.')
+            These doctests don't run because parse_vector is an internal function
+            >>> parse_vector('fly 30 ft. (hover)')
+            ('fly', 30)
+            >>> parse_vector("12 miles per hour (288 miles per day)")
+            ('mph', 12)
+            """
+            # capture groups for type and speed
+            parse_re = f'^(?:({mt_re}) )?(\d+) ?ft\.?(?: \([Hh]over\))?$'
+            parse_re_speed_first = f'^(\d+) ?ft\.? ({mt_re})$'
+            parse_re_just_a_number = '^(\d+)$'
+            parse_re_vehicle_speed = '^(\d+) miles per hour \(\d+ miles per day\)$'
+
+            m = re.match(parse_re, vector)
+            if m:
+                g = m.groups()
+                if g[0] is None:  # the movement type was implied
+                    mtype = 'walk'
+                else:
+                    mtype = g[0]
+                return (mtype, int(g[1]))
+
+            m = re.match(parse_re_speed_first, vector)
+            if m:
+                return (m.group(2), int(m.group(1)))
+
+            m = re.match(parse_re_just_a_number, vector)
+            if m:
+                return ('walk', int(m.group(1)))
+
+            m = re.match(parse_re_vehicle_speed, vector)
+            if m:
+                return ('mph', int(m.group(1)))
+
+            raise Exception(f'parse_vector: invalid match on "{vector}"')
+
+        if re.match(csv_match_re, text):
+            csv_iter_re = f'^({vector_re})(?:, ({vector_re}(?:, {vector_re})*))?$'
+            def iter_vectors(text):
+                while text:
+                    m = re.match(csv_iter_re, text)
+                    if m:
+                        yield m.group(1)
+                        text = m.group(2)
+                    else:
+                        raise Exception(f'iter_vectors failed to match text "{text}"')
+            yield('speed', dict(parse_vector(v) for v in iter_vectors(text)))
+        else:
+            # manually handle a bunch of special cases
+            irregulars = {
+                "60 ft. (30 ft.in goblin form)":
+                    {'walk': 60, 'walk (in goblin form)': 30},
+                "30 ft. (20 ft. and swim 40 ft. in hybrid form)":
+                    {'walk': 30, 'walk (in hybrid form)': 20,
+                                 'swim (in hybrid form)': 40},
+                "60 ft., fly 120 ft. (hover)":
+                    {'walk': 60, 'fly': 120},
+                "30 ft. (60 ft. with boots of speed)":
+                    {'walk': 30, 'walk (with boots of speed)': 60},
+                "15 ft. (30 ft. when rolling, 60 ft. rolling downhill)":
+                    {'walk': 15, 'walk (when rolling)': 30,
+                                 'walk (when rolling downhill)': 60},
+                "30 ft. (climb 30 ft., fly 60 ft., in bat or hybrid form)":
+                    {'walk': 30, 'climb (in bat or hybrid form)': 30,
+                                 'fly (in bat or hybrid form)': 60},
+                "50 ft. (in one direction chosen at the start of its turn)":
+                    {'walk (in one direction chosen at the start of its turn)':
+                     50},
+                "30 ft., fly 50 ft. in raven and hybrid forms":
+                    {'walk': 30, 'fly (in raven and hybrid forms)': 50},
+                "30 ft. (40 ft., climb 30 ft. in bear or hybrid form)":
+                    {'walk': 30, 'climb (in bear or hybrid form)': 30},
+                "30 ft. (40 ft. in boar form)":
+                    {'walk': 30, 'walk (in boar form)': 40},
+                "30 ft. (40 ft. in tiger form)":
+                    {'walk': 30, 'walk (in tiger form)': 40},
+                "30 ft. (40 ft. in wolf form)":
+                    {'walk': 30, 'walk (in wolf form)': 40},
+                "50 ft,":
+                    {'walk': 50} }
+
+            try:
+                yield ('speed', irregulars[text])
+            except KeyError:
+                warning(f'yield_speed failed to match "{text}"')
+
+    (yield_str, yield_dex, yield_con,
+     yield_int, yield_wis, yield_cha) = map(staticmethod, [yield_int] * 6)
+
+    @staticmethod
+    def yield_saves(element, node):
+        """Yield ('saves', {..})
+
+        Dictionary entries are a stat (eg 'str') and an integer.
+
+        >>> from dnd5edb.test import obj_fromdict
+        >>> fakenode = lambda v: obj_fromdict({'tag': 'saves', 'text': v})
+        >>> test = lambda text: next(MonsterParser.yield_saves(fakenode(text), None))
+        >>> test(None)
+        Traceback (most recent call last):
+            ...
+        StopIteration
+        >>> test('Dex +5, Con +11, Wis +7, Cha +9')
+        ('saves', {'dex': 5, 'con': 11, 'wis': 7, 'cha': 9})
+        """
+        text = element.text
+
+        if text is None:
+            return
+
+        try:
+            saves = re.split(', ', text)
+            saves = (re.split(' +', save) for save in saves)
+            saves = ((stat.lower(), int(val)) for stat, val in saves)
+        except:
+            error(f'yield_saves: parsing error for text "{text}"')
+            return
+
+        yield ('saves', dict(saves))
+
+    @staticmethod
+    def yield_skill(element, node):
+        """Yield ('skills', {..})
+
+        Dictionary entries are a skill (eg 'Athletics') and an integer.
+
+        >>> from dnd5edb.test import obj_fromdict
+        >>> fakenode = lambda v: obj_fromdict({'tag': 'skill', 'text': v})
+        >>> test = lambda text: next(MonsterParser.yield_skill(fakenode(text), None))
+        >>> test(None)
+        Traceback (most recent call last):
+            ...
+        StopIteration
+        >>> test('Perception +5')
+        ('skills', {'Perception': 5})
+        >>> test('History +7, Perception +11, Persuasion +8, Stealth +5')
+        ('skills', {'History': 7, 'Perception': 11, 'Persuasion': 8, 'Stealth': 5})
+        """
+        text = element.text
+
+        if text is None:
+            return
+
+        all_skills = [
+            'Athletics', 'Acrobatics', 'Sleight of Hand', 'Stealth', 'Arcana',
+            'History', 'Investigation', 'Nature', 'Religion', 'Animal Handling',
+            'Insight', 'Medicine', 'Perception', 'Survival', 'Deception',
+            'Intimidation', 'Performance', 'Persuasion' ]
+
+        def normalize(skill):
+            for s in all_skills:
+                if skill.lower() == s.lower():
+                    return s
+            raise Exception(f'Unknown skill "{skill}"')
+
+        try:
+            skills = re.split(', ?', text)
+            skills = (re.split(' \+', skill) for skill in skills)
+            skills = dict((normalize(skill), int(val)) for skill, val in skills)
+        except Exception as e:
+            error(f'yield_skill: {type(e)} "{e}" for text "{text}"')
+
+        yield ('skills', skills)
+
+    @staticmethod
+    def yield_damage_types(element, node):
+        """Yields the `field` and the damage types that apply to it for `text`.
+
+        `field` can be "resist", "vulnerable", or "immune"
+
+        Yield format e.g. ('resist': {..})
+
+        May also yield notes in the form ('resist_notes': {..})
+
+        >>> from dnd5edb.test import obj_fromdict
+        >>> fakenode = lambda v: obj_fromdict({'tag': 'resist', 'text': v})
+        >>> test = lambda text: list(MonsterParser.yield_damage_types(fakenode(text), None))
+        >>> test(None)
+        []
+        >>> pprint(test('lightning; thunder; bludgeoning, piercing, ' + 
+        ...             'and slashing from nonmagical attacks'))
+        [('resist',
+          {'lightning',
+           'nonmagical bludgeoning',
+           'nonmagical piercing',
+           'nonmagical slashing',
+           'thunder'})]
+        >>> pprint(test('damage from spells; non magical bludgeoning, ' + 
+        ...             'piercing, and slashing (from stoneskin)'))
+        [('resist',
+          {'damage from spells',
+           'nonmagical bludgeoning',
+           'nonmagical piercing',
+           'nonmagical slashing'}),
+         ('resist_notes',
+          {'from stoneskin': ['nonmagical bludgeoning',
+                              'nonmagical piercing',
+                              'nonmagical slashing']})]
+        >>> r = test('acid, cold, fire, lightning, thunder')
+        >>> r == [('resist', {'acid', 'cold', 'fire', 'lightning', 'thunder'})]
+        True
+        >>> pprint(test('While wearing the mask of the Dragon Queen: acid, cold, ' +
+        ...             'lightning, poison; bludgeoning, piercing, ' +
+        ...             'and slashing damage from nonmagical weapons'))
+        [('resist',
+          {'acid',
+           'cold',
+           'lightning',
+           'nonmagical bludgeoning',
+           'nonmagical piercing',
+           'nonmagical slashing',
+           'poison'}),
+         ('resist_notes',
+          {'While wearing the mask of the Dragon Queen': ['acid',
+                                                          'cold',
+                                                          'lightning',
+                                                          'poison']})]
+        """
+        field = element.tag
+        text = element.text
+
+        if text == None:
+            return
+
+        found, notfound = [], []
+
+        # First, parse the text, first along semicolon delimeters,
+        # then along commas
+        scsvs = re.split('; ?', text.lower()) #Semi-Colon-Separated Values
+        scsvs = map(str.strip, scsvs)
+
+        damage_types = set()
+        damage_types.update(datatypes.damage_types)
+        damage_types.update(datatypes.damage_mappings.keys())
+
+        for scsv in scsvs:
+            if scsv in damage_types:
+                found.append(scsv)
+            else:  # check if all subitems from comma-split match
+                csvs = re.split(', ?', scsv) #Comma-Separated Values
+                csvs = list(map(str.strip, csvs))
+                if anyfalse(csv in damage_types for csv in csvs):
+                    notfound.append(scsv)
+                else:
+                    found += csvs
+
+        for item in notfound:
+            warning(f'Unrecognised scsv "{item}" in text "{text}"')
+
+        # Now check the parsed field contents for any items
+        # which require remapping to multiple or different items
+        # and/or have associated notes.
+        field_contents = []
+        field_notes = {}
+        for i in found:
+            if i in datatypes.damage_mappings.keys():
+                try:
+                    field_contents += datatypes.damage_mappings[i]['types']
+                    field_notes.update(datatypes.damage_mappings[i]['notes'])
+                except KeyError:
+                    None
+            else:
+                field_contents.append(i)
+
+        if field_contents:
+            yield (field, set(field_contents))
+        if field_notes:
+            yield (f'{field}_notes', field_notes)
+    yield_resist = yield_damage_types
+    yield_vulnerable = yield_damage_types
+    yield_immune = yield_damage_types
+
+    @staticmethod
+    def yield_conditionImmune(element, node):
+        """Parse field containing a set of conditions and yield the result.
+
+        >>> from dnd5edb.test import obj_fromdict
+        >>> fakenode = lambda v: obj_fromdict({'tag': 'conditionImmune', 'text': v})
+        >>> test = lambda text: dict(MonsterParser.yield_conditionImmune(fakenode(text), None))
+        >>> ptest = lambda text: pprint(test(text), width=200)
+        >>> test(None)
+        {}
+        >>> r = test('charmed, frightened, paralyzed, petrified, poisoned , unconscious')
+        >>> r == {'conditionImmune': {'charmed', 'frightened', 'unconscious', 'poisoned', 'paralysed', 'petrified'}}
+        True
+        >>> test('petrified')
+        {'conditionImmune': {'petrified'}}
+        >>> r = test('While wearing the mask of the Dragon Queen: charmed, frightened, poisoned')
+        >>> r['conditionImmune'] == {'charmed', 'frightened', 'poisoned'}
+        True
+        >>> pprint(r['conditionImmune_notes'])
+        {'charmed': 'While wearing the mask of the Dragon Queen',
+         'frightened': 'While wearing the mask of the Dragon Queen',
+         'poisoned': 'While wearing the mask of the Dragon Queen'}
+        >>> test('Frightened')
+        {'conditionImmune': {'frightened'}}
+        """
+        field = element.tag
+        text = element.text
+
+        full_text = { # special cases
+            'While wearing the mask of the Dragon Queen: charmed, frightened, poisoned': {
+                field: {'charmed', 'frightened', 'poisoned'},
+                f'{field}_notes': {
+                    'charmed': 'While wearing the mask of the Dragon Queen',
+                    'frightened': 'While wearing the mask of the Dragon Queen',
+                    'poisoned': 'While wearing the mask of the Dragon Queen'}},
+        }
+        conditions = { # format: {RE: normalized representation}
+            'blinded': None,
+            'charmed': None,
+            'deafened': None,
+            'exhaustion': None,
+            'frightened': None,
+            'grappled': None,
+            'incapacitated': None,
+            'paraly[sz]ed': 'paralysed',
+            'petrified': None,
+            'poisoned': None,
+            'prone': None,
+            'restrained': None,
+            'stunned': None,
+            'uncons?cious': 'unconscious',
+        }
+
+        if text == None:
+            return
+
+        for ft, v in full_text.items():
+            if re.fullmatch(ft, text):
+                yield from v.items()
+                return
+
+        found = []
+        notfound = []
+        csvs = re.split(' ?, ?', text)
+        def process_csv(csv):
+            for c, v in conditions.items():
+                if re.fullmatch(c, csv, re.I):
+                    return v if v else c
+            raise Exception(f'MonsterParser.yield_conditionImmune: Unmatched CSV "{csv}" in text "{text}" of element "{element}" in node "{node}"')
+
+        try:
+            yield (field, set(process_csv(csv) for csv in csvs))
+        except Exception as e:
+            warning(f'yield_condition: {e.args[0]}')
+
+    @staticmethod
+    def yield_senses(element, node):
+        """Parse 'senses' fields and yield the results.
+
+        >>> from dnd5edb.test import obj_fromdict
+        >>> fakenode = lambda v: obj_fromdict({'tag': 'senses', 'text': v})
+        >>> test = lambda text: dict(MonsterParser.yield_senses(fakenode(text), None))
+        >>> test(None)
+        {}
+        >>> next(MonsterParser.yield_senses(fakenode(None), None))
+        Traceback (most recent call last):
+            ...
+        StopIteration
+        >>> test('darkvision 120 ft.')
+        {'senses': {'darkvision': 120}}
+        >>> test('blindsight 30 ft., darkvision 60 ft.')
+        {'senses': {'blindsight': 30, 'darkvision': 60}}
+        >>> pprint(test('darkvision 60 ft. (rat form only)'))
+        {'senses': {'darkvision': 60}, 'senses_notes': {'darkvision': 'rat form only'}}
+        """
+        field = element.tag
+        text = element.text
+
+        just_senses_res = { # match component of text, map to fn(groups) of match
+            'darkvision (\d+) ?(?:ft\.?)?': lambda *a: {'darkvision': int(a[0])},
+            'blindsight (\d+) ?ft\.?':      lambda *a: {'blindsight': int(a[0])},
+            'truesight (\d+) ?ft\.?':       lambda *a: {'truesight': int(a[0])},
+            'tremorsense (\d+) ?ft\.?':     lambda *a: {'tremorsense': int(a[0])},
+            'blindsight (\d+) ?ft\.? \(blind beyond this (?:radius|distance)\)':
+                lambda *a: {'blindsight': int(a[0])},
+            'blindsight (\d+) ?ft. or (\d+) ?ft. while deafened \(blind beyond this radius\)':
+                lambda *a: {'blindsight': int(a[0]), 'blindsight while deafened': int(a[1])},
+            'darkvision (\d+) ?ft\. \((?:including|penetrates) magical darkness\)':
+                lambda *a: {'devilsight': int(a[0])},
+            "darkvision (\d+) ?ft\. \(see devil's sight below\)":
+                lambda *a: {'devilsight': int(a[0])},
+        }
+        with_notes_strings = { # match full text, map to full dictionary
+            'darkvision 60 ft. (rat form only)':
+                {'senses': {'darkvision': 60},
+                 'senses_notes': {'darkvision': 'rat form only'}},
+            'While wearing the Mask of the Dragon Queen: darkvision 60 ft.':
+                {'senses': {'darkvision': 60},
+                 'senses_notes': 'darkvision while wearing the Mask of the Dragon Queen'},
+            'darkvision 60 ft. (can see invisible creatures out to the same range)':
+                {'senses': {'darkvision': 60},
+                 'senses_notes': {'darkvision': 'can see invisible creatures to same range'}},
+            'blindsight 120 ft. (blind beyond this radius); see also "detect sentience" below':
+                {'senses': {'blindsight': 120},
+                 'senses_notes': {'blindsight': 'blind beyond this radius'}},
+            'darkvision 60ft. (beast form only)':
+                {'senses': {'darkvision': 60},
+                 'senses_notes': {'darkvision': 'beast form only'}},
+        }
+
+        def map_component(c):
+            """Find a matching RE and map the component to a dictionary.
+
+            >>> map_component('darkvision 120 ft')
+            {'darkvision': 120}
+            """
+            for r, f in just_senses_res.items():
+                m = re.fullmatch(r, c, re.I)
+                if m:
+                    return f(*m.groups())
+
+        if text is None:
+            return
+
+        for s, v in with_notes_strings.items():
+            if s == text:
+                yield from v.items()
+                return
+
+        components = re.split(', ?', text)
+        mapped_components = (map_component(c) for c in components)
+        mapped_components = (m for m in mapped_components if m) # drop Nones
+        try:
+            senses = reduce(dict_merge, mapped_components)
+        except TypeError:
+            warning(f'yield_senses: failed match on text "{text}"')
+            return
+
+        yield (field, senses)
+
+    yield_passive = yield_int
+    yield_description = yield_text
+    yield_cr = yield_fraction
+    yield_spells = yield_text
+    yield_slots = yield_text
+
+    ## TODO: write these stubs
+    @staticmethod
+    def yield_action(element, node):
+        debug(f'MonsterParser.yield_action called for element "{element}"')
+        if False:
+            yield
+
+    @staticmethod
+    def yield_save(element, node):
+        debug(f'MonsterParser.yield_save called for element "{element}"')
+        if False:
+            yield
+
+    @staticmethod
+    def yield_languages(element, node):
+        debug(f'MonsterParser.yield_languages called for element "{element}"')
+        if False:
+            yield
+
+    @staticmethod
+    def yield_trait(element, node):
+        debug(f'MonsterParser.yield_trait called for element "{element}"')
+        if False:
+            yield
+
+    @staticmethod
+    def yield_environment(element, node):
+        debug(f'MonsterParser.yield_environment called for element "{element}"')
+        if False:
+            yield
+
+    @staticmethod
+    def yield_legendary(element, node):
+        debug(f'MonsterParser.yield_legendary called for element "{element}"')
+        if False:
+            yield
+
+    @staticmethod
+    def yield_reaction(element, node):
+        debug(f'MonsterParser.yield_reaction called for element "{element}"')
+        if False:
+            yield

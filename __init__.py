@@ -201,7 +201,7 @@ class Spell(DBItem):
 class Monster(DBItem):
     def __init__(self, node):
         """Instantiates this instance using data from the XML `node`."""
-        self.__dict__.update(parse.Monster.parse(node))
+        self.__dict__.update(parse.MonsterParser.parse(node))
 
     def __repr__(self):
         return f"Monster({self.fmt_oneline()})"

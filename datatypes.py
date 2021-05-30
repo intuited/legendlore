@@ -296,3 +296,317 @@ caster_classes = {
     'Wizard (Graviturgy)': "WzG",
     'Wizard (Illusion)': "WzI",
     }
+
+
+# damage types as they are used in the XML file
+# for resistances, vulnerabilities, and immunities
+damage_types = { # simple types which don't need remapping
+    'bludgeoning', 'piercing', 'slashing',
+    'poison', 'acid', 'fire', 'cold', 'radiant', 'necrotic',
+    'lightning', 'thunder', 'force', 'psychic',
+
+    'charmed', 'petrified', 'blinded', # should be in conditions but the DB is wrong
+
+    'damage from spells',
+    'piercing from magic weapons wielded by good creatures',
+    "one of the following: acid, cold, fire, lightning or poison",
+    "one of the following: acid, cold, fire, lightning, or poison",
+}
+damage_mappings = { # translation of complex expressions and simple expressions compounded with commas
+    'bludgeoning, piercing, and slashing from nonmagical attacks': {
+        'types': {
+            'nonmagical bludgeoning',
+            'nonmagical piercing',
+            'nonmagical slashing'}},
+    "bludgeoning, piercing, and slashing damage from nonmagical weapons": {
+        'types': {
+            'nonmagical bludgeoning',
+            'nonmagical piercing',
+            'nonmagical slashing'}},
+    "bludgeoning, piercing, slashing from nonmagical attacks": {
+        'types': {
+            'nonmagical bludgeoning',
+            'nonmagical piercing',
+            'nonmagical slashing'}},
+    "bludgeoning, piercing, and slashing damage from nonmagical attacks": {
+        'types': {
+            'nonmagical bludgeoning',
+            'nonmagical piercing',
+            'nonmagical slashing'}},
+    "bludgeoning, piercing, and slashing from nonmagical weapons": {
+        'types': {
+            'nonmagical bludgeoning',
+            'nonmagical piercing',
+            'nonmagical slashing'}},
+    "bludgeoning, piercing and slashing from nonmagical attacks": {
+        'types': {
+            'nonmagical bludgeoning',
+            'nonmagical piercing',
+            'nonmagical slashing'}},
+    "bludgeoning, piercing, and slashing that is nonmagical": {
+        'types': {
+            'nonmagical bludgeoning',
+            'nonmagical piercing',
+            'nonmagical slashing'}},
+    "bludgeoning from nonmagical attacks": {
+        'types': {
+            'nonmagical bludgeoning'}},
+
+    "fire, bludgeoning, piercing, and slashing from nonmagical attacks": {
+        'types': {
+            'nonmagical fire',
+            'nonmagical bludgeoning',
+            'nonmagical piercing',
+            'nonmagical slashing'}},
+    "cold, fire, lightning, bludgeoning, piercing and slashing that is nonmagical": {
+        'types': {
+            'nonmagical cold',
+            'nonmagical fire',
+            'nonmagical bludgeoning',
+            'nonmagical piercing',
+            'nonmagical slashing'}},
+
+    'non magical bludgeoning, piercing, and slashing (from stoneskin)': {
+        'types': {
+            'nonmagical bludgeoning',
+            'nonmagical piercing',
+            'nonmagical slashing'},
+        'notes': {
+            'from stoneskin': [
+                'nonmagical bludgeoning',
+                'nonmagical piercing',
+                'nonmagical slashing']}},
+    "nonmagical bludgeoning, piercing, slashing (from stoneskin)": {
+        'types': {
+            'nonmagical bludgeoning',
+            'nonmagical piercing',
+            'nonmagical slashing'},
+        'notes': {
+            'from stoneskin': [
+                'nonmagical bludgeoning',
+                'nonmagical piercing',
+                'nonmagical slashing']}},
+    "nonmagical bludgeoning, piercing, slashing (from stoneskin), poison": {
+        'types': {
+            'nonmagical bludgeoning',
+            'nonmagical piercing',
+            'nonmagical slashing',
+            'poison'},
+        'notes': {
+            'from stoneskin': [
+                'nonmagical bludgeoning',
+                'nonmagical piercing',
+                'nonmagical slashing']}},
+    "nonmagical bludgeoning, piercing, slashing (from stoneskin), fire": {
+        'types': {
+            'nonmagical bludgeoning',
+            'nonmagical piercing',
+            'nonmagical slashing',
+            'fire'},
+        'notes': {
+            'from stoneskin': [
+                'nonmagical bludgeoning',
+                'nonmagical piercing',
+                'nonmagical slashing']}},
+
+    "bludgeoning, piercing, and slashing from nonmagical attacks that aren't silvered": {
+        'types': {
+            'nonmagical nonsilver bludgeoning',
+            'nonmagical nonsilver piercing',
+            'nonmagical nonsilver slashing'}},
+    "bludgeoning, piercing, and slashing from nonmagical attacks that aren’t silvered": {
+        'types': {
+            'nonmagical nonsilver bludgeoning',
+            'nonmagical nonsilver piercing',
+            'nonmagical nonsilver slashing'}},
+    "bludgeoning, piercing, slashing from nonmagical attacks that aren't silvered": {
+        'types': {
+            'nonmagical nonsilver bludgeoning',
+            'nonmagical nonsilver piercing',
+            'nonmagical nonsilver slashing'}},
+    "bludgeoning, piercing, and slashing from nonmagical/nonsilver weapons": {
+        'types': {
+            'nonmagical nonsilver bludgeoning',
+            'nonmagical nonsilver piercing',
+            'nonmagical nonsilver slashing'}},
+    "bludgeoning, piercing, and slashing from nonmagical attacks not made with silvered weapons": {
+        'types': {
+            'nonmagical nonsilver bludgeoning',
+            'nonmagical nonsilver piercing',
+            'nonmagical nonsilver slashing'}},
+    "bludgeoning, piercing, and slashing from nonmagical weapons that aren't silvered": {
+        'types': {
+            'nonmagical nonsilver bludgeoning',
+            'nonmagical nonsilver piercing',
+            'nonmagical nonsilver slashing'}},
+    "bludgeoning, piercing, and slashing damage from nonmagical attacks that aren't silvered": {
+        'types': {
+            'nonmagical nonsilver bludgeoning',
+            'nonmagical nonsilver piercing',
+            'nonmagical nonsilver slashing'}},
+    "bludgeoning, piercing, and slashing damage from nonmagical attacks that aren't silvered weapons": {
+        'types': {
+            'nonmagical nonsilver bludgeoning',
+            'nonmagical nonsilver piercing',
+            'nonmagical nonsilver slashing'}},
+    "bludgeoning, piercing, slashing from nonmagical attacks not made with silvered weapons": {
+        'types': {
+            'nonmagical nonsilver bludgeoning',
+            'nonmagical nonsilver piercing',
+            'nonmagical nonsilver slashing'}},
+
+    "slashing damage from nonmagical attacks not made with silvered weapons": {
+        'types': {
+            'nonmagical nonsilver slashing'}},
+    "slashing from nonmagical attacks not made with silvered weapons": {
+        'types': {
+            'nonmagical nonsilver slashing'}},
+
+    "bludgeoning, piercing, slashing from nonmagical attacks that aren't adamantine or silvered": {
+        'types': {
+            'nonmagical nonsilver bludgeoning',
+            'nonmagical nonsilver piercing',
+            'nonmagical nonsilver slashing'}},
+
+    "lightning, poison, bludgeoning, piercing, sand slashing from non-magical attacks that aren't adamantine or silvered": {
+        'types': {
+            'lightning',
+            'poison',
+            'nonmagical nonsilver bludgeoning',
+            'nonmagical nonsilver piercing',
+            'nonmagical nonsilver slashing'}},
+
+    "bludgeoning, piercing, and slashing from nonmagical attacks that aren't adamantine": {
+        'types': {
+            'nonmagical nonadamantine bludgeoning',
+            'nonmagical nonadamantine piercing',
+            'nonmagical nonadamantine slashing'}},
+    "bludgeoning, piercing, and slashing damage from nonmagical attacks not made with adamantine weapons": {
+        'types': {
+            'nonmagical nonadamantine bludgeoning',
+            'nonmagical nonadamantine piercing',
+            'nonmagical nonadamantine slashing'}},
+    "bludgeoning, piercing, slashing from nonmagical attacks that aren't adamantine": {
+        'types': {
+            'nonmagical nonadamantine bludgeoning',
+            'nonmagical nonadamantine piercing',
+            'nonmagical nonadamantine slashing'}},
+    "bludgeoning, piercing, and slashing from nonmagical attacks that aren’t adamantine": {
+        'types': {
+            'nonmagical nonadamantine bludgeoning',
+            'nonmagical nonadamantine piercing',
+            'nonmagical nonadamantine slashing'}},
+    "bludgeoning, piercing, and slashing from nonmagical weapons that aren't adamantine": {
+        'types': {
+            'nonmagical nonadamantine bludgeoning',
+            'nonmagical nonadamantine piercing',
+            'nonmagical nonadamantine slashing'}},
+    "bludgeoning, piercing, slashing from nonmagical attacks not made with adamantine weapons": {
+        'types': {
+            'nonmagical nonadamantine bludgeoning',
+            'nonmagical nonadamantine piercing',
+            'nonmagical nonadamantine slashing'}},
+    "piercing, slashing from nonmagical attacks that aren't adamantine": {
+        'types': {
+            'nonmagical nonadamantine piercing',
+            'nonmagical nonadamantine slashing'}},
+    "piercing and slashing from nonmagical attacks that aren't adamantine": {
+        'types': {
+            'nonmagical nonadamantine piercing',
+            'nonmagical nonadamantine slashing'}},
+
+    "fire, bludgeoning, piercing, and slashing from metal weapons": {
+        'types': {
+            'fire',
+            'metal bludgeoning',
+            'metal piercing',
+            'metal slashing'}},
+
+    "bludgeoning, piercing, and slashing from magic weapons": {
+        'types': {
+            'magical bludgeoning',
+            'magical piercing',
+            'magical slashing'}},
+     "bludgeoning, piercing, slashing from magic weapons": {
+        'types': {
+            'magical bludgeoning',
+            'magical piercing',
+            'magical slashing'}},
+
+    "bludgeoning, piercing, and slashing while in dim light or darkness": {
+        'types': {
+            'bludgeoning while in dim light or darkness',
+            'piercing while in dim light or darkness',
+            'slashing while in dim light or darkness'}},
+    "bludgeoning, piercing, slashing while in dim light or darkness": {
+        'types': {
+            'bludgeoning while in dim light or darkness',
+            'piercing while in dim light or darkness',
+            'slashing while in dim light or darkness'}},
+    "bludgeoning, piercing, and slashing from nonmagical attacks while in dim light or darkness": {
+        'types': {
+            'nonmagical bludgeoning while in dim light or darkness',
+            'nonmagical piercing while in dim light or darkness',
+            'nonmagical slashing while in dim light or darkness'}},
+    "bludgeoning, piercing, slashing from nonmagical attacks while in dim light or darkness": {
+        'types': {
+            'nonmagical bludgeoning while in dim light or darkness',
+            'nonmagical piercing while in dim light or darkness',
+            'nonmagical slashing while in dim light or darkness'}},
+
+    "bludgeoning, piercing, slashing from metal weapons": {
+        'types': {
+            'bludgeoning from metal weapons',
+            'piercing from metal weapons',
+            'slashing from metal weapons'}},
+
+    "while wearing the mask of the dragon queen: acid, cold, lightning, poison": {
+        'types': {
+            'acid', 'cold', 'lightning', 'poison',
+            'nonmagical bludgeoning',
+            'nonmagical piercing',
+            'nonmagical slashing'},
+        'notes': {
+            'While wearing the mask of the Dragon Queen': [
+                'acid', 'cold', 'lightning', 'poison']}},
+    "while wearing the mask of the dragon queen: fire": {
+        'types': {'fire'},
+        'notes': {'while wearing the mask of the dragon queen': 'fire'}},
+
+    "cold (while wearing the ring of winter)": {
+        'types': {'cold'},
+        'notes': {'while wearing the ring of winter': 'cold'}},
+    "while wearing the ring of winter: cold": {
+        'types': {'cold'},
+        'notes': {'while wearing the ring of winter': 'cold'}},
+
+    'posion': {
+        'types': {'poison'}},
+
+    # Elemental Spirit damage types from the Summon Elemental spell in TCoE
+    "lightning, thunder (air only), piercing": {    # this seems to be a mistranscription: this "piercing" is absent from the stat block in TCoE.
+        'types': {'lightning', 'thunder'},
+        'notes': {'air form only': ['lightning', 'thunder']}},
+    "piercing, slashing (earth only)": {
+        'types': {'piercing', 'slashing'},
+        'notes': {'earth form only': ['piercing, slashing']}},
+    "acid (water only)": {
+        'types': {'acid'},
+        'notes': {'water form only': 'acid'}},
+    "fire (fire only)": {
+        'types': {'fire'},
+        'notes': {'fire form only': 'fire'}},
+
+    # choose-one damage types from Rise of Tiamat
+    "one of the following: acid, cold, fire, lightning, poison": {
+        'types': {'acid', 'cold', 'fire', 'lightning', 'poison'},
+        'notes': {'choose one from acid, cold, fire, lightning, poison': ['acid', 'cold', 'fire', 'lightning', 'poison']}},
+    "one of the following: acid, cold, fire, lightning, poison, poison": {  # not sure what happened here
+        'types': {'acid', 'cold', 'fire', 'lightning', 'poison'},
+        'notes': {'choose one from acid, cold, fire, lightning, poison': ['acid', 'cold', 'fire', 'lightning', 'poison']}},
+
+    # Halaster Blackcloak from Waterdeep: Dungeon of the Mad Mage
+    'lightning (granted by the blast scepter, see "special equipment" below)': {
+        'types': {'lightning'},
+        'notes': {'granted by the blast scepter': 'lightning'}},
+}

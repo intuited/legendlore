@@ -3,10 +3,17 @@ import dnd5edb
 
 s = dnd5edb.Spells()
 
+class BlankClass():
+    None
+
 def aobj(value, attr='a'):
     """Generate a simple object with attribute `attr` set to `value`."""
-    class TestClass():
-        None
-    o = TestClass()
+    o = BlankClass()
     setattr(o, attr, value)
+    return o
+
+def obj_fromdict(d):
+    o = BlankClass()
+    for k, v in d.items():
+        setattr(o, k, v)
     return o
