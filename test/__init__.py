@@ -17,3 +17,5 @@ def obj_fromdict(d):
     for k, v in d.items():
         setattr(o, k, v)
     return o
+
+fakenode = lambda tag, v: obj_fromdict({'tag': tag, 'text': v})

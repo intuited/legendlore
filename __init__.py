@@ -26,22 +26,12 @@ class DBItem:
 
 class Spell(DBItem):
     """Object with spell db object fields mapped as attributes."""
-    schools = {'EV': "Evocation",
-               'T': "Transmutation",
-               'C': "Conjuration",
-               'A': "Abjuration",
-               'EN': "Enchantment",
-               'D': "Divination",
-               'N': "Necromancy",
-               'I': "Illusion",
-               None: None}
-
     char_classes = ["Artificer", "Bard", "Cleric", "Druid", "Fighter", "Monk",
                     "Paladin", "Ranger", "Rogue", "Sorcerer", "Warlock", "Wizard",
                     "Eldritch Invocations", "Martial Adept", "Ritual Caster"]
 
     def __init__(self, node):
-        self.__dict__.update(parse.Spell.parse(node))
+        self.__dict__.update(parse.SpellParser.parse(node))
 
     def __repr__(self):
         return f"Spell({self.fmt_oneline()})"

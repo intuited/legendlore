@@ -1,6 +1,7 @@
 """Various items of data used by both parse.py and higher level code."""
 from functools import total_ordering
 from logging import warning
+from collections import namedtuple
 
 @total_ordering
 class OrderedField:
@@ -610,3 +611,50 @@ damage_mappings = { # translation of complex expressions and simple expressions 
         'types': {'lightning'},
         'notes': {'granted by the blast scepter': 'lightning'}},
 }
+
+class ReversibleDict(dict):
+    """Dictionary type for one-to-one mappings."""
+    def reverse_lookup(self, v):
+        """Returns the key whose value equals `v`.
+
+        >>> rd = ReversibleDict({1: 'one', 2: 'two'})
+        >>> rd.reverse_lookup('one')
+        1
+        >>> rd.reverse_lookup('two')
+        2
+        """
+        for key, value in self.items():
+            if value == v:
+                return key
+
+schools = ReversibleDict({
+    "Evocation": 'EV',
+    "Transmutation": 'T',
+    "Conjuration": 'C',
+    "Abjuration": 'A',
+    "Enchantment": 'EN',
+    "Divination": 'D',
+    "Necromancy": 'N',
+    "Illusion": 'I',
+    None: None})
+
+sources = {
+    'Acquisitions Incorporated': 'ai',
+    "Elemental Evil Player's Companion": 'eepc',
+    "Guildmasters' Guide to Ravnica": 'ggtr',
+    'Lost Laboratory of Kwalish': 'llok',
+    "Player's Handbook": 'phb',
+    'Princes of the Apocalypse': 'pota',
+    "Sword Coast Adventurer's Guide": 'scag',
+    "Volo's Guide to Monsters": 'vgm',
+    "Xanathar's Guide to Everything": 'xgte',
+    "Explorer's Guide to Wildemount": 'egtw',
+    "Wayfinder's Guide to Eberron": 'wgte',
+    "Eberron: Rising from the Last War": 'erftlw',
+    'Mythic Odysseys of Theros': 'moot',
+    "Icewind Dale: Rime of the Frostmaiden": 'rotf',
+    "Tasha's Cauldron of Everything": 'tcoe',
+    }
+
+# `Reference` tuple used by Spell class
+Reference = namedtuple('Reference', ('book', 'page'))

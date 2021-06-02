@@ -1,20 +1,17 @@
 import re
 from lxml import etree
 from logging import debug, warning, error
-from collections import namedtuple
-from functools import reduce
+from functools import reduce, partial
 from pprint import pprint, pformat
 from textwrap import dedent
 from fractions import Fraction
 import dnd5edb
 from dnd5edb import predicates, datatypes
+from dnd5edb.datatypes import Reference
 from itertools import groupby, chain
 chainfi = chain.from_iterable
 
 default_db_file = 'FC5eXML/Collections/CoreOnly.xml'
-
-def yield_args(*args):
-    yield args
 
 def anyfalse(bools):
     """Returns True iff any elements of iterable `bools` are False
@@ -38,7 +35,6 @@ def dict_merge(d1, d2):
     d.update(d1)
     d.update(d2)
     return d
-
 
 class XML:
     """Singleton class encapsulating the data read from the database file."""
@@ -74,268 +70,6 @@ class XML:
         if not cls.tree:
             cls.tree = cls.parse_db(db_file)
         return cls.tree
-
-# `Reference` tuple used by Spell class
-Reference = namedtuple('Reference', ('book', 'page'))
-
-class Spell():
-    """Class functions to parse spell nodes."""
-
-    @classmethod
-    def parse(cls, node):
-        """Parse a spell from a node in the tree."""
-        spell = {}
-        spell['name'] = node.find('name').text
-        spell['level'] = int(node.find('level').text)
-        #TODO: validation to confirm that this value is between 1 and 9
-        spell['school'] = dnd5edb.Spell.schools[getattr(node.find('school'), 'text', None)]
-        spell['ritual'] = True if getattr(node.find('ritual'), 'text', False) == "YES" else False
-        spell['time'] = cls.parse_casting_time(node.find('time').text)
-        spell['range'] = cls.parse_spell_range(node.find('range').text)
-        spell['components'] = cls.parse_spell_components(node.find('components').text)
-        spell['concentration'], spell['duration'] = cls.parse_spell_duration(node.find('duration').text)
-        spell['classes'] = cls.parse_spell_classes(node.find('classes').text)
-        spell['text'], spell['sources'] = cls.parse_spell_text(n.text for n in node.findall('text'))
-        spell['roll'] = getattr(node.find('roll'), 'text', None)
-        #TODO: figure out what to do with this property
-
-        return spell
-
-    casting_times = set()
-    @classmethod
-    def parse_casting_time(cls, time):
-        #TODO: write this, validate
-        # Why are there None values for this?
-        try:
-            return datatypes.CastingTime(time)
-        except KeyError as e:
-            warning(e)
-            return time
-
-    @classmethod
-    def parse_spell_range(cls, r):
-        try:
-            return datatypes.SpellRange(r)
-        except KeyError as e:
-            warning(e)
-            return r
-
-    @classmethod
-    def parse_spell_components(cls, text):
-        """Returns a dictionary with form resembling
-
-        {'V': True,
-         'M': "a sprig of rosemary"}
-
-        Initial strings are comma-separated strings of one of these forms:
-        * V
-        * S
-        * M (...)
-
-        >>> Spell.parse_spell_components('V, S, M (a sprinkling of holy water, rare incense, and powdered ruby worth at least 1,000 gp)')
-        {'M': 'a sprinkling of holy water, rare incense, and powdered ruby worth at least 1,000 gp', 'S': True, 'V': True}
-        """
-        return text
-
-        # Okay, this doesn't work because the parenthetical string after M
-        # sometimes contains commas
-        #if text is None:
-        #    return {}
-        #components = re.split(' ?, ?', text)
-        #components = (c.strip() for c in components)
-        #ret = {}
-        #for c in components:
-        #    if re.fullmatch('[vs]', c, re.I):
-        #        ret[c.upper()] = True
-        #    elif c[0] == 'M':
-        #        try:
-        #            specific = re.fullmatch('M(?: \(([^)]+)\))?', c).group(1)
-        #            ret['M'] = specific if specific else True
-        #        except AttributeError:
-        #            warning(f'parse_spell_components: re match fail on material component "{c}" for text "{text}"')
-        #            return {}
-        #    else:
-        #        warning(f'parse_spell_components: parse fail on text "{text}"')
-        #        return {}
-
-        #return ret
-
-    @classmethod
-    def parse_spell_duration(cls, duration):
-        """Return: concentration, duration = ({True, False}, [STRING])"""
-        if duration is None:
-            return False, None
-
-        if duration[:15] == 'Concentration, ':
-            conc, time = True, duration[15:]
-        elif duration[:15] == 'Instantaneous, ':
-            conc, time = False, duration[15:]
-        else:
-            conc, time = False, duration
-
-        try:
-            return conc, datatypes.SpellDuration(time)
-        except KeyError as e:
-            warning(f'parse_spell_duration: unknown spell duration in "{duration}".  Parsed conc: {conc}, time: {time}')
-            return conc, time
-
-    @classmethod
-    def parse_spell_classes(cls, classes):
-        if classes is None:
-            return []
-        classes = re.split(',\s*', classes)
-        classes = [c.strip() for c in classes]
-        for c in classes:
-            if c not in datatypes.caster_classes:
-                warning(f'parse_spell_classes: unknown caster class "{c}"')
-        return sorted(classes)
-
-    valid_sources = [
-        'Acquisitions Incorporated',
-        "Elemental Evil Player's Companion",
-        "Guildmasters' Guide to Ravnica",
-        'Lost Laboratory of Kwalish',
-        "Player's Handbook",
-        'Princes of the Apocalypse',
-        "Sword Coast Adventurer's Guide",
-        "Volo's Guide to Monsters",
-        "Xanathar's Guide to Everything",
-        "Explorer's Guide to Wildemount",
-        "Wayfinder's Guide to Eberron",
-        "Eberron: Rising from the Last War",
-        "Guildmasters' Guide to Ravnica",
-        'Mythic Odysseys of Theros',
-        "Icewind Dale: Rime of the Frostmaiden",
-        "Tasha's Cauldron of Everything" ]
-
-    @classmethod
-    def parse_spell_source(cls, source):
-        """Breaks source line into Reference(book, page) components.
-
-        Returns a list of Reference objects.
-
-        >>> source = "Xanathar's Guide to Everything, p. 152"
-        >>> Spell.parse_spell_source(source)
-        [Reference(book="Xanathar's Guide to Everything", page=152)]
-        >>> Spell.parse_spell_source("")     # ignored because blank line
-        []
-        >>> source = "Xanathar's Guide to Everything p. 157, Elemental Evil Player's Companion p. 19, Wayfinder's Guide to Eberron p. 107, Eberron: Rising from the Last War p. 50"
-        >>> Spell.parse_spell_source(source)
-        [Reference(book="Xanathar's Guide to Everything", page=157), Reference(book="Elemental Evil Player's Companion", page=19), Reference(book="Wayfinder's Guide to Eberron", page=107), Reference(book='Eberron: Rising from the Last War', page=50)]
-        >>> source = "Guildmasters' Guide to Ravnica"
-        >>> Spell.parse_spell_source(source)
-        [Reference(book="Guildmasters' Guide to Ravnica", page=None)]
-        """
-        source = source.strip()  # we're doing this more times than needed but nbd
-
-        if source == "":
-            # There are occasional blank lines, which we ignore
-            return []
-
-        m = re.match('^\s*(?P<book>.*?),?\s*p\.?\s*(?P<page>\d+)\s*(?P<extra>.*).*$', source)
-        if m:
-            book = m.groupdict()['book']
-            if book not in cls.valid_sources:
-                warning(f"parse_spell_source: invalid source '{book}' parsed on line '{source}'")
-            this_reference = [Reference(m.groupdict()['book'], int(m.groupdict()['page']))]
-            extra = m.groupdict()['extra']
-        elif source in cls.valid_sources:  # some entries don't give page numbers
-            this_reference = [Reference(source, None)]
-            # Currently, pageless references only occur at the end of lines, so we can do this for now.
-            extra = None
-        else:
-            warning(f"parse_spell_source: failed match on line '{source}'")
-            return []
-        #debug(book)
-
-        if not extra:
-            return this_reference
-        if extra[0] == ',':
-            return this_reference + cls.parse_spell_source(extra[1:].strip())
-        else:
-            warning(f"parse_spell_source: source '{source}': unknown extra '{extra}'")
-
-    @staticmethod
-    def expand_newlines(lines):
-        r"""Split strings with newlines into multiple strings.
-
-        >>> l = ["1\n2\n3", None, "4\n5\n6"]
-        >>> list(Spell.expand_newlines(l))
-        ['1', '2', '3', None, '4', '5', '6']
-        """
-        return chainfi([None] if l is None else l.split('\n') for l in lines)
-
-    @classmethod
-    def parse_spell_text(cls, lines):
-        """Parses list of strings containing <text> nodes from xml.
-
-        Checks for source book in last line of `lines`.
-        Returns (text, sources) where
-        -   `text` is the newline-joined contents of non-source lines
-        -   `sources` is a list of Reference namedtuples
-
-        >>> text = [
-        ...     "• A prone creature's only movement option is to crawl, unless it stands up and thereby ends the condition.",
-        ...     "",
-        ...     "• The creature has disadvantage on attack rolls.",
-        ...     "",
-        ...     "• An attack roll against the creature has advantage if the attacker is within 5 feet of the creature. Otherwise, the attack roll has disadvantage.",
-        ...     None,
-        ...     "Source: Xanathar's Guide to Everything, p. 168",
-        ...     "Elemental Evil Player's Companion, p. 22",
-        ...     "Princes of the Apocalypse, p. 240"]
-        >>> parsed = Spell.parse_spell_text(text)
-        >>> print(parsed[0])
-        • A prone creature's only movement option is to crawl, unless it stands up and thereby ends the condition.
-        <BLANKLINE>
-        • The creature has disadvantage on attack rolls.
-        <BLANKLINE>
-        • An attack roll against the creature has advantage if the attacker is within 5 feet of the creature. Otherwise, the attack roll has disadvantage.
-
-        >>> parsed[1] == (Reference("Xanathar's Guide to Everything", 168),
-        ...               Reference("Elemental Evil Player's Companion", 22),
-        ...               Reference("Princes of the Apocalypse", 240))
-        True
-        >>> text = [
-        ...     "Your spell bolsters your allies with toughness and resolve. Choose up to three creatures within range. Each target's hit point maximum and current hit points increase by 5 for the duration.",
-        ...     ""
-        ...     "At Higher Levels: When you cast this spell using a spell slot of 3rd level or higher, a target's hit points increase by an additional 5 for each slot level above 2nd.",
-        ...     None,
-        ...     "Source: Player's Handbook, p. 211",
-        ...     None,
-        ...     "* Oath, Domain, or Circle of the Land spell (always prepared)"]
-        >>> print(Spell.parse_spell_text(text)[1])
-        (Reference(book="Player's Handbook", page=211),)
-
-        >>> text = [
-        ...     "Source: Xanathar's Guide to Everything p. 157, Elemental Evil Player's Companion p. 19", 
-        ...     "Wayfinder's Guide to Eberron p. 107, Eberron: Rising from the Last War p. 50"]
-        >>> print(Spell.parse_spell_text(text)[1])
-        (Reference(book="Xanathar's Guide to Everything", page=157), Reference(book="Elemental Evil Player's Companion", page=19), Reference(book="Wayfinder's Guide to Eberron", page=107), Reference(book='Eberron: Rising from the Last War', page=50))
-        """
-        text_lines = []    # Accumulates lines of spell text in the for loop
-        sources = []       # Accumulates Reference objects in the for loop
-        in_sources = False # State that tracks if we're recording sources
-
-        # Break out newlines in the list of strings
-        lines = list(Spell.expand_newlines(lines))
-
-        for line in lines:
-            if line is None:
-                if in_sources:
-                    in_sources = False
-                continue
-
-            line = line.strip()
-            if line[:8] == 'Source: ':
-                in_sources = True
-                sources += cls.parse_spell_source(line[8:])
-            elif in_sources:
-                sources += cls.parse_spell_source(line)
-            else:
-                text_lines.append(line)
-
-        return '\n'.join(text_lines), tuple(sources)
 
 #### Fundamental parsing functions
 def yield_text(element, node):
@@ -390,6 +124,14 @@ def yield_fraction(element, node):
     except ValueError:
         warning(f'yield_fraction: failed to parse text "{text}"')
 
+def yield_datatype(datatype, element, node):
+    """Instantiates an object of type `datatype` and yields it."""
+    try:
+        yield (element.tag, datatype(element.text))
+    except KeyError as e:
+        warning(e)
+        yield (element.tag, element.text)
+
 #### Base parser class
 class NodeParser():
     """Base class for objects which parse nodes."""
@@ -413,20 +155,33 @@ class NodeParser():
 
         Issues a warning if an element is encountered for which there is no handler.
         """
+        yield from cls._postprocess(cls._parse(node))
+
+    @classmethod
+    def _parse(cls, node):
+        """Main parsing loop.
+
+        Results yielded here can be manipulated by subclasses in _postprocess.
+        """
         for element in node:
             try:
                 parsefn = getattr(cls, 'yield_' + element.tag)
             except AttributeError:
-                warning(f'NodeParser.parse: unknown tag "{element.tag}"')
+                warning(f'NodeParser._parse: unknown tag "{element.tag}"')
                 continue
-            try:
-                yield from parsefn(element, node)
-            except TypeError as e:
-                warning(f'NodeParser.parse: TypeError "{e}" while parsing element "{element}" in node "{node}"')
+            #try:
+            yield from parsefn(element, node)
+            #except TypeError as e:
+                #warning(f'NodeParser._parse: TypeError "{e}" while parsing element "{element}" in node "{node}"')
+
+    @classmethod
+    def _postprocess(cls, it):
+        """Subclass hook to manipulate results of processing."""
+        yield from it
 
     yield_name = staticmethod(yield_text)
 
-# Derived parser classes
+#### Derived parser classes
 class MonsterParser(NodeParser):
     """Parser for <monster> nodes."""
     yield_size = yield_text
@@ -567,7 +322,7 @@ class MonsterParser(NodeParser):
         def parse_vector(vector):
             """Parse a movement vector and return (type, speed).
 
-            Used by Monster._assign_speed().
+            Used by Monster.yield_speed().
             
             >>> parse_vector('60 ft.')
             ('walk', 60)
@@ -1053,3 +808,254 @@ class MonsterParser(NodeParser):
         debug(f'MonsterParser.yield_reaction called for element "{element}"')
         if False:
             yield
+
+class SpellParser(NodeParser):
+    yield_level = yield_int
+
+    @staticmethod
+    def yield_school(element, node):
+        """School is abbreviated in the XML; translate it into a full word identifier."""
+        yield ('school', datatypes.schools.reverse_lookup(element.text))
+
+    @staticmethod
+    def yield_ritual(element, node):
+        yield ('ritual', element.text == 'YES')
+
+    yield_time = partial(yield_datatype, datatypes.CastingTime)
+    yield_range = partial(yield_datatype, datatypes.SpellRange)
+
+    @staticmethod
+    def yield_components(element, node):
+        """Yields a dictionary with form resembling
+
+        {'V': True,
+         'M': "a sprig of rosemary"}
+
+        Initial strings are comma-separated strings of one of these forms:
+        * V
+        * S
+        * M (...)
+
+        >>> from dnd5edb.test import fakenode
+        >>> test = lambda string: list(SpellParser.yield_components(fakenode('components', string), None))
+        >>> test('V, S, M (a sprinkling of holy water, rare incense, and powdered ruby worth at least 1,000 gp)')
+        ('components', {'M': 'a sprinkling of holy water, rare incense, and powdered ruby worth at least 1,000 gp', 'S': True, 'V': True})
+        """
+        yield from yield_text(element, node)
+
+        # Okay, this doesn't work because the parenthetical string after M
+        # sometimes contains commas
+        #if text is None:
+        #    return {}
+        #components = re.split(' ?, ?', text)
+        #components = (c.strip() for c in components)
+        #ret = {}
+        #for c in components:
+        #    if re.fullmatch('[vs]', c, re.I):
+        #        ret[c.upper()] = True
+        #    elif c[0] == 'M':
+        #        try:
+        #            specific = re.fullmatch('M(?: \(([^)]+)\))?', c).group(1)
+        #            ret['M'] = specific if specific else True
+        #        except AttributeError:
+        #            warning(f'parse_spell_components: re match fail on material component "{c}" for text "{text}"')
+        #            return {}
+        #    else:
+        #        warning(f'parse_spell_components: parse fail on text "{text}"')
+        #        return {}
+
+        #return ret
+
+    @staticmethod
+    def yield_duration(element, node):
+        """Yields tuples for 'concentration' and 'duration'.
+
+        >>> from dnd5edb.test import fakenode
+        >>> test = lambda string: list(SpellParser.yield_duration(fakenode('duration', string), None))
+        >>> test('Concentration, up to 10 minutes')
+        [('concentration', True), ('duration', SpellDuration('up to 10 minutes'))]
+        >>> test('1 minute')
+        [('concentration', False), ('duration', SpellDuration('1 minute'))]
+        >>> test('Instantaneous, 1 hour')
+        [('concentration', False), ('duration', SpellDuration('1 hour'))]
+        """
+        duration = element.text
+
+        if duration is None:
+            return False, None
+
+        if duration[:15] == 'Concentration, ':
+            conc, time = True, duration[15:]
+        elif duration[:15] == 'Instantaneous, ':
+            conc, time = False, duration[15:]
+        else:
+            conc, time = False, duration
+
+        try:
+            time = datatypes.SpellDuration(time)
+        except KeyError as e:
+            warning(f'parse_spell_duration: unknown spell duration in "{duration}".  Parsed conc: {conc}, time: {time}')
+
+        yield ('concentration', conc)
+        yield ('duration', time)
+
+    @staticmethod
+    def yield_classes(element, node):
+        classes = element.text
+
+        if classes is None:
+            yield ('classes', [])
+            return
+
+        classes = re.split(',\s*', classes)
+        classes = [c.strip() for c in classes]
+        for c in classes:
+            if c not in datatypes.caster_classes:
+                warning(f'yield_classes: unknown caster class "{c}"')
+        yield ('classes', sorted(classes))
+
+    # Parsing of spell text and sources is handled in _postprocess
+    yield_text = yield_text
+
+    @classmethod
+    def _postprocess(cls, results):
+        lines = []
+        for tup in results:
+            if tup[0] == 'text':
+                lines += [tup[1]]
+            else:
+                yield tup
+
+        text, sources = cls._parse_spell_text(lines)
+        yield ('text', text)
+        yield ('sources', sources)
+
+    @classmethod
+    def _parse_spell_text(cls, lines):
+        """Parses list of strings containing <text> nodes from xml.
+
+        Checks for source book in last line of `lines`.
+        Returns (text, sources) where
+        -   `text` is the newline-joined contents of non-source lines
+        -   `sources` is a list of Reference namedtuples
+
+        >>> text = [
+        ...     "• A prone creature's only movement option is to crawl, unless it stands up and thereby ends the condition.",
+        ...     "",
+        ...     "• The creature has disadvantage on attack rolls.",
+        ...     "",
+        ...     "• An attack roll against the creature has advantage if the attacker is within 5 feet of the creature. Otherwise, the attack roll has disadvantage.",
+        ...     None,
+        ...     "Source: Xanathar's Guide to Everything, p. 168",
+        ...     "Elemental Evil Player's Companion, p. 22",
+        ...     "Princes of the Apocalypse, p. 240"]
+        >>> parsed = SpellParser._parse_spell_text(text)
+        >>> print(parsed[0])
+        • A prone creature's only movement option is to crawl, unless it stands up and thereby ends the condition.
+        <BLANKLINE>
+        • The creature has disadvantage on attack rolls.
+        <BLANKLINE>
+        • An attack roll against the creature has advantage if the attacker is within 5 feet of the creature. Otherwise, the attack roll has disadvantage.
+
+        >>> parsed[1] == (Reference("Xanathar's Guide to Everything", 168),
+        ...               Reference("Elemental Evil Player's Companion", 22),
+        ...               Reference("Princes of the Apocalypse", 240))
+        True
+        >>> text = [
+        ...     "Your spell bolsters your allies with toughness and resolve. Choose up to three creatures within range. Each target's hit point maximum and current hit points increase by 5 for the duration.",
+        ...     ""
+        ...     "At Higher Levels: When you cast this spell using a spell slot of 3rd level or higher, a target's hit points increase by an additional 5 for each slot level above 2nd.",
+        ...     None,
+        ...     "Source: Player's Handbook, p. 211",
+        ...     None,
+        ...     "* Oath, Domain, or Circle of the Land spell (always prepared)"]
+        >>> print(SpellParser._parse_spell_text(text)[1])
+        (Reference(book="Player's Handbook", page=211),)
+
+        >>> text = [
+        ...     "Source: Xanathar's Guide to Everything p. 157, Elemental Evil Player's Companion p. 19", 
+        ...     "Wayfinder's Guide to Eberron p. 107, Eberron: Rising from the Last War p. 50"]
+        >>> print(SpellParser._parse_spell_text(text)[1])
+        (Reference(book="Xanathar's Guide to Everything", page=157), Reference(book="Elemental Evil Player's Companion", page=19), Reference(book="Wayfinder's Guide to Eberron", page=107), Reference(book='Eberron: Rising from the Last War', page=50))
+        """
+        text_lines = []    # Accumulates lines of spell text in the for loop
+        sources = []       # Accumulates Reference objects in the for loop
+        in_sources = False # State that tracks if we're recording sources
+
+        # Break out newlines in the list of strings
+        lines = list(cls._expand_newlines(lines))
+
+        for line in lines:
+            if line is None:
+                if in_sources:
+                    in_sources = False
+                continue
+
+            line = line.strip()
+            if line[:8] == 'Source: ':
+                in_sources = True
+                sources += cls._parse_spell_source(line[8:])
+            elif in_sources:
+                sources += cls._parse_spell_source(line)
+            else:
+                text_lines.append(line)
+
+        return '\n'.join(text_lines), tuple(sources)
+
+    @staticmethod
+    def _expand_newlines(lines):
+        r"""Split strings with newlines into multiple strings.
+
+        >>> l = ["1\n2\n3", None, "4\n5\n6"]
+        >>> list(SpellParser._expand_newlines(l))
+        ['1', '2', '3', None, '4', '5', '6']
+        """
+        return chainfi([None] if l is None else l.split('\n') for l in lines)
+
+    @classmethod
+    def _parse_spell_source(cls, source):
+        """Breaks source line into Reference(book, page) components.
+
+        Returns a list of Reference objects.
+
+        >>> source = "Xanathar's Guide to Everything, p. 152"
+        >>> SpellParser._parse_spell_source(source)
+        [Reference(book="Xanathar's Guide to Everything", page=152)]
+        >>> SpellParser._parse_spell_source("")     # ignored because blank line
+        []
+        >>> source = "Xanathar's Guide to Everything p. 157, Elemental Evil Player's Companion p. 19, Wayfinder's Guide to Eberron p. 107, Eberron: Rising from the Last War p. 50"
+        >>> SpellParser._parse_spell_source(source)
+        [Reference(book="Xanathar's Guide to Everything", page=157), Reference(book="Elemental Evil Player's Companion", page=19), Reference(book="Wayfinder's Guide to Eberron", page=107), Reference(book='Eberron: Rising from the Last War', page=50)]
+        >>> source = "Guildmasters' Guide to Ravnica"
+        >>> SpellParser._parse_spell_source(source)
+        [Reference(book="Guildmasters' Guide to Ravnica", page=None)]
+        """
+        source = source.strip()  # we're doing this more times than needed but nbd
+
+        if source == "":
+            # There are occasional blank lines, which we ignore
+            return []
+
+        m = re.match('^\s*(?P<book>.*?),?\s*p\.?\s*(?P<page>\d+)\s*(?P<extra>.*).*$', source)
+        if m:
+            book = m.groupdict()['book']
+            if book not in datatypes.sources:
+                warning(f"parse_spell_source: invalid source '{book}' parsed on line '{source}'")
+            this_reference = [Reference(m.groupdict()['book'], int(m.groupdict()['page']))]
+            extra = m.groupdict()['extra']
+        elif source in datatypes.sources:  # some entries don't give page numbers
+            this_reference = [Reference(source, None)]
+            # Currently, pageless references only occur at the end of lines, so we can do this for now.
+            extra = None
+        else:
+            warning(f"parse_spell_source: failed match on line '{source}'")
+            return []
+
+        if not extra:
+            return this_reference
+        if extra[0] == ',':
+            return this_reference + cls._parse_spell_source(extra[1:].strip())
+        else:
+            warning(f"parse_spell_source: source '{source}': unknown extra '{extra}'")
+
+    yield_roll = yield_text
