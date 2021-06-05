@@ -639,25 +639,26 @@ schools = ReversibleDict({
     None: None})
 
 sources = {
-    'Acquisitions Incorporated': 'ai',
-    "Elemental Evil Player's Companion": 'eepc',
-    "Guildmasters' Guide to Ravnica": 'ggtr',
-    'Lost Laboratory of Kwalish': 'llok',
-    "Player's Handbook": 'phb',
-    'Princes of the Apocalypse': 'pota',
-    "Sword Coast Adventurer's Guide": 'scag',
-    "Volo's Guide to Monsters": 'vgm',
-    "Xanathar's Guide to Everything": 'xgte',
-    "Explorer's Guide to Wildemount": 'egtw',
-    "Wayfinder's Guide to Eberron": 'wgte',
-    "Eberron: Rising from the Last War": 'erftlw',
-    'Mythic Odysseys of Theros': 'moot',
-    "Icewind Dale: Rime of the Frostmaiden": 'rotf',
-    "Tasha's Cauldron of Everything": 'tcoe',
+    'Acquisitions Incorporated': 'AI',
+    "Elemental Evil Player's Companion": 'EEPC',
+    "Guildmasters' Guide to Ravnica": 'GGtR',
+    'Lost Laboratory of Kwalish': 'LLoK',
+    "Player's Handbook": 'PHB',
+    'Princes of the Apocalypse': 'PotA',
+    "Sword Coast Adventurer's Guide": 'SCAG',
+    "Volo's Guide to Monsters": 'VGM',
+    "Xanathar's Guide to Everything": 'XGtE',
+    "Explorer's Guide to Wildemount": 'EGtW',
+    "Wayfinder's Guide to Eberron": 'WGtE',
+    "Eberron: Rising from the Last War": 'ERftLW',
+    'Mythic Odysseys of Theros': 'MOoT',
+    "Icewind Dale: Rime of the Frostmaiden": 'RotF',
+    "Tasha's Cauldron of Everything": 'TCoE',
     }
 
 # `Reference` tuple used by Spell class
 Reference = namedtuple('Reference', ('book', 'page'))
+Reference.abbr = lambda self: f'{sources[self.book]}' + (f'#{self.page}' if self.page else '')
 
 # Exceptional spell components fields which we parse manually.
 # This includes

@@ -10,6 +10,7 @@ class DBItem:
 
         >>> print(Spells().search('Magic Missile')[0].fmt_xlist())
         * Magic Missile A/120'/I [V/S] (1:AArm+CA+S+Wz)
+          " Evocation (PHB#257)
           " You create three glowing darts of magical force. Each dart hits a creature of your choice that you can see within range. A dart deals 1d4 + 1 force damage to its target. The darts all strike simultaneously, and you can direct them to hit one creature or several.
           " At Higher Levels:
           " When you cast this spell using a spell slot of 2nd level or higher, the spell creates one more dart for each slot level above 1st.
@@ -23,6 +24,9 @@ class DBItem:
         """
         return self.fmt_pointform(header='*', body='"', tabstop=tabstop)
 
+    def abbrev_sources(self):
+        """Abbreviate the list of sources for this DB item."""
+        return ', '.join(ref.abbr() for ref in self.sources)
 
 class Spell(DBItem):
     """Object with spell db object fields mapped as attributes."""
@@ -152,7 +156,8 @@ class Spell(DBItem):
         """Return multiline string containing all spell information.
 
         The top line is a one-line header via self.fmt_oneline.
-        If there are material components, they are shown on a second line.
+        The second, and first indented, line contains the spell school and sourcebook references.
+        If there are material components, they are also shown on the second line.
         The remaining lines are the spell text.
         `header` and `body` are single-character bullets
             used for their respective types of lines.
@@ -161,6 +166,7 @@ class Spell(DBItem):
         By default, uses `-` as the bullet for all lines and tabstop of 2:
         >>> print(Spells().search('Magic Missile')[0].fmt_pointform())
         - Magic Missile A/120'/I [V/S] (1:AArm+CA+S+Wz)
+          - Evocation (PHB#257)
           - You create three glowing darts of magical force. Each dart hits a creature of your choice that you can see within range. A dart deals 1d4 + 1 force damage to its target. The darts all strike simultaneously, and you can direct them to hit one creature or several.
           - At Higher Levels:
           - When you cast this spell using a spell slot of 2nd level or higher, the spell creates one more dart for each slot level above 1st.
@@ -168,6 +174,7 @@ class Spell(DBItem):
         Tabstop can be customized:
         >>> print(Spells().search('Magic Missile')[0].fmt_pointform(tabstop=4))
         - Magic Missile A/120'/I [V/S] (1:AArm+CA+S+Wz)
+            - Evocation (PHB#257)
             - You create three glowing darts of magical force. Each dart hits a creature of your choice that you can see within range. A dart deals 1d4 + 1 force damage to its target. The darts all strike simultaneously, and you can direct them to hit one creature or several.
             - At Higher Levels:
             - When you cast this spell using a spell slot of 2nd level or higher, the spell creates one more dart for each slot level above 1st.
@@ -175,6 +182,7 @@ class Spell(DBItem):
         Bullet can be set separately for the header and body lines:
         >>> print(Spells().search('Magic Missile')[0].fmt_pointform(header='*', body='"'))
         * Magic Missile A/120'/I [V/S] (1:AArm+CA+S+Wz)
+          " Evocation (PHB#257)
           " You create three glowing darts of magical force. Each dart hits a creature of your choice that you can see within range. A dart deals 1d4 + 1 force damage to its target. The darts all strike simultaneously, and you can direct them to hit one creature or several.
           " At Higher Levels:
           " When you cast this spell using a spell slot of 2nd level or higher, the spell creates one more dart for each slot level above 1st.
@@ -182,14 +190,23 @@ class Spell(DBItem):
         If the spell has material components, these are listed on a separate line above the spell text:
         >>> print(Spells().search('identify')[0].fmt_pointform())
         - Identify (rit.) 1m/T/I [V/S/M@100gp] (1:A+Bd+CF+CK+Wz)
-          - Material components: a pearl worth at least 100 gp and an owl feather
+          - Divination (PHB#252); Material components: a pearl worth at least 100 gp and an owl feather
           - You choose one object that you must touch throughout the casting of the spell. If it is a magic item or some other magic-imbued object, you learn its properties and how to use them, whether it requires attunement to use, and how many charges it has, if any. You learn whether any spells are affecting the item and what they are. If the item was created by a spell, you learn which spell created it.
           - If you instead touch a creature throughout the casting, you learn what spells, if any, are currently affecting it.
+
+        If a spell has multiple sources, they are all listed:
+        >>> Spells().search('Wall of Water').print('xlist')
+        * Wall of Water A/60'/C<=10m [V/S] (3:D+S+Wz)
+          " Evocation (XGtE#170, EEPC#23, VGM#116, MOoT); Material components: a drop of water
+          " You create a wall of water on the ground at a point you can see within range. You can make the wall up to 30 feet long, 10 feet high, and 1 foot thick, or you can make a ringed wall up to 20 feet in diameter, 20 feet high, and 1 foot thick. The wall vanishes when the spell ends. The wall's space is difficult terrain.
+          " Any ranged weapon attack that enters the wall's space has disadvantage on the attack roll, and fire damage is halved if the fire effect passes through the wall to reach its target. Spells that deal cold damage that pass through the wall cause the area of the wall they pass through to freeze solid (at least a 5-foot-square section is frozen). Each 5-foot-square frozen section has AC 5 and 15 hit points. Reducing a frozen section to 0 hit points destroys it. When a section is destroyed, the wall's water doesn't fill it.
         """
         ret = [f'{header} {spell.fmt_oneline()}']
+        linetwo = f'{" " * tabstop}{body} {spell.school} ({spell.abbrev_sources()})'
         material = spell.components.get('M', '')
         if material:
-            ret += [f'{" " * tabstop}{body} Material components: {material}']
+            linetwo += f'; Material components: {material}'
+        ret += [linetwo]
         ret += [f'{" " * tabstop}{body} {line}' for line in spell.text.split('\n')]
         return '\n'.join(ret)
 
@@ -667,12 +684,14 @@ class Collection(list):
         Circle of Death A/150'/I [V/S/M@500gp] (6:S+Wl+Wz)
         >>> print(Spells().where(name=p.contains('Find')).where(name=p.contains('Steed')).fmt('xlist'))
         * Find Steed 10m/30'/I [V/S] (2:P)
+          " Conjuration (PHB#240)
           " You summon a spirit that assumes the form of an unusually intelligent, strong, and loyal steed, creating a long-lasting bond with it. Appearing in an unoccupied space within range, the steed takes on a form that you choose: a warhorse, a pony, a camel, an elk, or a mastiff. (Your DM might allow other animals to be summoned as steeds.) The steed has the statistics of the chosen form, though it is a celestial, fey, or fiend (your choice) instead of its normal type. Additionally, if your steed has an Intelligence of 5 or less, its Intelligence becomes 6, and it gains the ability to understand one language of your choice that you speak.
           " Your steed serves you as a mount, both in combat and out, and you have an instinctive bond with it that allows you to fight as a seamless unit. While mounted on your steed, you can make any spell you cast that targets only you also target your steed.
           " When the steed drops to 0 hit points, it disappears, leaving behind no physical form. You can also dismiss your steed at any time as an action, causing it to disappear. In either case, casting this spell again summons the same steed, restored to its hit point maximum.
           " While your steed is within 1 mile of you, you can communicate with each other telepathically.
           " You can't have more than one steed bonded by this spell at a time. As an action, you can release the steed from its bond at any time, causing it to disappear.
         * Find Greater Steed 10m/30'/I [V/S] (4:P)
+          " Conjuration (XGtE#156)
           " You summon a spirit that assumes the form of a loyal, majestic mount. Appearing in an unoccupied space within range, the spirit takes on a form you choose: a griffon, a pegasus, a peryton, a dire wolf, a rhinoceros, or a saber-toothed tiger. The creature has the statistics provided in the Monster Manual for the chosen form, though it is a celestial, a fey, or a fiend (your choice) instead of its normal creature type. Additionally, if it has an Intelligence score of 5 or lower, its Intelligence becomes 6, and it gains the ability to understand one language of your choice that you speak.
           " You control the mount in combat. While the mount is within 1 mile of you, you can communicate with it telepathically. While mounted on it, you can make any spell you cast that targets only you also target the mount.
           " The mount disappears temporarily when it drops to 0 hit points or when you dismiss it as an action. Casting this spell again re-summons the bonded mount, with all its hit points restored and any conditions removed.
