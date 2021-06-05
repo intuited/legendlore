@@ -13,10 +13,12 @@ m = dnd5edb.Monsters()
 # Spell Print in a convenient format
 sp = lambda name: s.search(name).print('xlist')
 
-### just druid stuff
-
 # convert Ability Score to Bonus
 asbonus = lambda ascore: int((ascore - 10) / 2)
+
+### just druid stuff
+
+druid = Blank()
 
 def beasts(cr, fly=True, swim=True, crpred=p.lte):
     """Returns beast-type creatures matching the other conditions."""
@@ -26,11 +28,12 @@ def beasts(cr, fly=True, swim=True, crpred=p.lte):
     if not swim:
         ret = ret.where(speed=p.not_(p.contains('swim')))
     return ret
+druid.beasts = beasts
 
 # moon druid wildshape options at various levels
 elementals = ['Air Elemental', 'Earth Elemental', 'Fire Elemental', 'Water Elemental']
 elementals = m.where(name=p.in_(elementals))
-moonws = {
+druid.moonws = {
     2:  beasts(1, swim=False, fly=False),
     4:  beasts(1, swim=True, fly=False),
     6:  beasts(2, swim=True, fly=False),
@@ -40,11 +43,13 @@ moonws = {
     12: beasts(4, swim=True, fly=True).extend(elementals),
     15: beasts(5, swim=True, fly=True).extend(elementals),
     18: beasts(6, swim=True, fly=True).extend(elementals), }
-moonws = { k: v.sorted('cr') for k, v in moonws.items() }
+del beasts
+del elementals
+druid.moonws = { k: v.sorted('cr') for k, v in druid.moonws.items() }
 
 # AC evaluation for druid mc
-bearbarian_ac = lambda c: max(c.ac_num if 'natural armor' in c.ac.lower() else 0, asbonus(10 + c.dex + c.con))
-drunk_ac = lambda c, wis: max(c.ac_num if 'natural armor' in c.ac.lower() else 0, asbonus(10 + c.dex + wis))
+druid.bearbarian_ac = lambda c: max(c.ac_num if 'natural armor' in c.ac.lower() else 0, asbonus(10 + c.dex + c.con))
+druid.drunk_ac = lambda c, wis: max(c.ac_num if 'natural armor' in c.ac.lower() else 0, asbonus(10 + c.dex + wis))
 
 ### die roll stuff
 
