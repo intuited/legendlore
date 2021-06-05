@@ -824,47 +824,89 @@ class SpellParser(NodeParser):
     yield_time = partial(yield_datatype, datatypes.CastingTime)
     yield_range = partial(yield_datatype, datatypes.SpellRange)
 
-    @staticmethod
-    def yield_components(element, node):
+    re_components = r'\bM \(([^)]*)\)'
+    re_value = r'\b([0-9,]+)\s?([gs]p|gold pieces)\b'
+
+    @classmethod
+    def yield_components(cls, element, node):
         """Yields a dictionary with form resembling
 
         {'V': True,
          'M': "a sprig of rosemary"}
 
-        Initial strings are comma-separated strings of one of these forms:
-        * V
-        * S
-        * M (...)
-
         >>> from dnd5edb.test import fakenode
         >>> test = lambda string: list(SpellParser.yield_components(fakenode('components', string), None))
+        >>> test('S')
+        [('components', {'S': True})]
+        >>> test('V, S')
+        [('components', {'V': True, 'S': True})]
+        >>> test('V, S, M (a sliver of glass)')
+        [('components', {'V': True, 'S': True, 'M': 'a sliver of glass'})]
+
+        The value of components with monetary value is parsed and returned
+        in one of two keys ('used' or 'consumed'):
         >>> test('V, S, M (a sprinkling of holy water, rare incense, and powdered ruby worth at least 1,000 gp)')
-        ('components', {'M': 'a sprinkling of holy water, rare incense, and powdered ruby worth at least 1,000 gp', 'S': True, 'V': True})
+        [('components', {'V': True, 'S': True, 'M': 'a sprinkling of holy water, rare incense, and powdered ruby worth at least 1,000 gp', 'used': 1000})]
+        >>> test('V, S, M (ruby dust worth 50 gp, which the spell consumes)')
+        [('components', {'V': True, 'S': True, 'M': 'ruby dust worth 50 gp, which the spell consumes', 'consumed': 50})]
+
+        Components with value given in sp will be parsed as tenths of gp:
+        >>> test('S, M (a melee weapon worth at least 1 sp)')
+        [('components', {'S': True, 'M': 'a melee weapon worth at least 1 sp', 'used': 0.1})]
+
+        Some components are exceptions and are parsed with custom rules:
+        >>> test('V, S, M (incense worth at least 250 gp, which the spell consumes, and four ivory strips worth at least 50 gp each)')
+        [('components', {'V': True, 'S': True, 'M': 'incense worth at least 250 gp, which the spell consumes, and four ivory strips worth at least 50 gp each', 'consumed': 250, 'used': 200})]
         """
-        yield from yield_text(element, node)
+        text = element.text
+        if text == None:
+            return None
 
-        # Okay, this doesn't work because the parenthetical string after M
-        # sometimes contains commas
-        #if text is None:
-        #    return {}
-        #components = re.split(' ?, ?', text)
-        #components = (c.strip() for c in components)
-        #ret = {}
-        #for c in components:
-        #    if re.fullmatch('[vs]', c, re.I):
-        #        ret[c.upper()] = True
-        #    elif c[0] == 'M':
-        #        try:
-        #            specific = re.fullmatch('M(?: \(([^)]+)\))?', c).group(1)
-        #            ret['M'] = specific if specific else True
-        #        except AttributeError:
-        #            warning(f'parse_spell_components: re match fail on material component "{c}" for text "{text}"')
-        #            return {}
-        #    else:
-        #        warning(f'parse_spell_components: parse fail on text "{text}"')
-        #        return {}
+        components = re.sub(cls.re_components, 'M', text)
+        components = re.split(',\s*', components)
+        components = dict.fromkeys(components, True)
 
-        #return ret
+        material_details = re.search(cls.re_components, text)
+        if material_details:
+            if 'M' not in components:
+                warning(f'yield_components: material details "{material_details}"'
+                        + f' but no M in components "{text}"')
+            material_details = material_details.groups()[0]
+            components.update({'M': material_details})
+            components.update(cls.parse_material_value(material_details))
+        yield ('components', components)
+
+    @classmethod
+    def parse_material_value(cls, details):
+        """Handle parsing of unusual material components manually.
+
+        Examples and tests are found in SpellParser.yield_components.
+
+        Returns a dictionary containing zero or more keys from the set
+        {'used', 'consumed'}, indicating the respective value in gp.
+        The values are of type `int` or `float`.
+        """
+        if details in datatypes.components_exceptions:
+            return datatypes.components_exceptions[details]
+
+        # Any spells with both used and consumed components with monetary value
+        # are handled by exceptions, so here we just look for a monetary value
+        # and then check for the string "consume"
+        value = re.search(cls.re_value, details)
+        if value:
+            quantity, units = value.groups()
+            # Monetary values sometimes contain commas, e.g. "1,000"
+            quantity = quantity.translate({ord(','): None})
+            quantity = int(quantity)
+            if units == 'sp':
+                quantity = quantity / 10
+
+            if details.find('consume') > -1:
+                return {'consumed': quantity}
+            else:
+                return {'used': quantity}
+
+        return {}
 
     @staticmethod
     def yield_duration(element, node):

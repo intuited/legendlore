@@ -658,3 +658,33 @@ sources = {
 
 # `Reference` tuple used by Spell class
 Reference = namedtuple('Reference', ('book', 'page'))
+
+# Exceptional spell components fields which we parse manually.
+# This includes
+# - components including multiple monetary values
+# - components in which the string "consume" occurs but for which no components with monetary value are consumed
+# - components which use the word "each" to multiply the given monetary value
+components_exceptions = {
+    "a pinch of salt and one copper piece placed on each of the corpse's eyes, which must remain there for the duration":
+        {'used': 0.01},
+    'a diamond worth at least 1,000 gp and at least 1 cubic inch of flesh of the creature that is to be cloned, which the spell consumes, and a vessel worth at least 2,000 gp that has a sealable lid and is large enough to hold a Medium creature, such as a huge urn, coffin, mud-filled cyst in the ground, or crystal container filled with salt water':
+        {'consumed': 1000, 'used': 2000},
+    'a miniature portal carved from ivory, a small piece of polished marble, and a tiny silver spoon, each item worth at least 5 gp':
+        {'used': 15},
+    'a pair of platinum rings worth at least 50 gp each, which you and the target must wear for the duration':
+        {'used': 100},
+    'a vial of quicksilver worth 500 gp and a life-sized human doll, both of which the spell consumes, and an intricate crystal rod worth at least 1,500 gp that is not consumed':
+        {'consumed': 500, 'used': 1500},
+    'an exquisite chest, 3 feet by 2 feet by 2 feet, constructed from rare materials worth at least 5,000 gp, and a Tiny replica made from the same materials worth at least 50 gp':
+        {'used': 5050},
+    'clay, ash, and mandrake root, all of which the spell consumes, and a jewel-encrusted dagger worth at least 1,000 gp':
+        {'used': 1000},
+    'for each creature you affect with this spell, you must provide one jacinth worth at least 1,000 gp and one ornately carved bar of silver worth at least 100 gp, all of which the spell consumes':
+        {'consumed': 1100},
+    'incense worth at least 250 gp, which the spell consumes, and four ivory strips worth at least 50 gp each':
+        {'consumed': 250, 'used': 200},
+    'one clay pot filled with grave dirt, one clay pot filled with brackish water, and one 150 gp black onyx stone for each corpse':
+        {'used': 150},
+    'seven sharp thorns or seven small twigs, each sharpened to a point':
+        {},
+    }

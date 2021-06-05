@@ -9,7 +9,7 @@ class DBItem:
         DBItem subclass must implement fmt_pointform for this to work.
 
         >>> print(Spells().search('Magic Missile')[0].fmt_xlist())
-        * Magic Missile A/120'/I (1:AArm+CA+S+Wz)
+        * Magic Missile A/120'/I [V/S] (1:AArm+CA+S+Wz)
           " You create three glowing darts of magical force. Each dart hits a creature of your choice that you can see within range. A dart deals 1d4 + 1 force damage to its target. The darts all strike simultaneously, and you can direct them to hit one creature or several.
           " At Higher Levels:
           " When you cast this spell using a spell slot of 2nd level or higher, the spell creates one more dart for each slot level above 1st.
@@ -76,6 +76,23 @@ class Spell(DBItem):
         c = 'C' if spell.concentration else ''
         return c + spell.duration.abbr()
 
+    def abbrev_components(spell):
+        """Abbreviate spell components."""
+        components = []
+        for c in spell.components:
+            if c in ['V', 'S', 'R']:
+                components += [c]
+            if c == 'M':
+                monetary = []
+                if 'used' in spell.components:
+                    monetary += [f'{spell.components["used"]}']
+                if 'consumed' in spell.components:
+                    monetary += [f'!{spell.components["consumed"]}!']
+
+                if monetary:
+                    components += [f'M@{"+".join(monetary)}gp']
+        return '[' + '/'.join(components) + ']'
+
     def abbrev_classes(spell):
         """Abbreviate the classes which have access to a given spell.
 
@@ -88,22 +105,33 @@ class Spell(DBItem):
         """Return a string summarizing the spell.
 
         Format:
-            NAME, T/R/D, (L:CLASSES)
+            NAME T/R/D [C] (L:CLASSES)
 
         Where
             T = Time
             R = Range
             D = Duration
+            C = Components
             L = Level
 
         >>> test = lambda name: Spells().search(name)[0].fmt_oneline()
         >>> test('Banishing Smite')
-        'Banishing Smite B/S/C<=1m (5:ABS+P+WlH)'
+        'Banishing Smite B/S/C<=1m [V] (5:ABS+P+WlH)'
+
+        Minimum value of material components is shown with "@___gp" after the "M"
         >>> test('Identify')
-        'Identify (rit.) 1m/T/I (1:A+Bd+CF+CK+Wz)'
+        'Identify (rit.) 1m/T/I [V/S/M@100gp] (1:A+Bd+CF+CK+Wz)'
+
+        *Consumed* material component values are surrounded by exclamation points
+        >>> test('Revivify')
+        'Revivify A/T/I [V/S/M@!300!gp] (3:A+C+CG+CLf+D+DW+P+Ra+WlC)'
+
+        Some spells have both consumed and non-consumed components with monetary value
+        >>> test('Clone')
+        'Clone 1h/T/I [V/S/M@2000+!1000!gp] (8:Wz)'
         """
         f = self._abbrev_fields()
-        return "{name}{rit} {t}/{r}/{d} ({l}:{classes})".format(**f)
+        return "{name}{rit} {t}/{r}/{d} {c} ({l}:{classes})".format(**f)
 
     def _abbrev_fields(self):
         """Returns dict with field names and abbreviations of their values.
@@ -116,6 +144,7 @@ class Spell(DBItem):
             't': self.abbrev_time(),
             'r': self.abbrev_range(),
             'd': self.abbrev_duration(),
+            'c': self.abbrev_components(),
             'l': self.level,
             'classes': self.abbrev_classes()}
 
@@ -129,17 +158,17 @@ class Spell(DBItem):
         `tabstop` determines the depth to which the body lines are indented.
 
         >>> print(Spells().search('Magic Missile')[0].fmt_pointform())
-        - Magic Missile A/120'/I (1:AArm+CA+S+Wz)
+        - Magic Missile A/120'/I [V/S] (1:AArm+CA+S+Wz)
           - You create three glowing darts of magical force. Each dart hits a creature of your choice that you can see within range. A dart deals 1d4 + 1 force damage to its target. The darts all strike simultaneously, and you can direct them to hit one creature or several.
           - At Higher Levels:
           - When you cast this spell using a spell slot of 2nd level or higher, the spell creates one more dart for each slot level above 1st.
         >>> print(Spells().search('Magic Missile')[0].fmt_pointform(tabstop=4))
-        - Magic Missile A/120'/I (1:AArm+CA+S+Wz)
+        - Magic Missile A/120'/I [V/S] (1:AArm+CA+S+Wz)
             - You create three glowing darts of magical force. Each dart hits a creature of your choice that you can see within range. A dart deals 1d4 + 1 force damage to its target. The darts all strike simultaneously, and you can direct them to hit one creature or several.
             - At Higher Levels:
             - When you cast this spell using a spell slot of 2nd level or higher, the spell creates one more dart for each slot level above 1st.
         >>> print(Spells().search('Magic Missile')[0].fmt_pointform(header='*', body='"'))
-        * Magic Missile A/120'/I (1:AArm+CA+S+Wz)
+        * Magic Missile A/120'/I [V/S] (1:AArm+CA+S+Wz)
           " You create three glowing darts of magical force. Each dart hits a creature of your choice that you can see within range. A dart deals 1d4 + 1 force damage to its target. The darts all strike simultaneously, and you can direct them to hit one creature or several.
           " At Higher Levels:
           " When you cast this spell using a spell slot of 2nd level or higher, the spell creates one more dart for each slot level above 1st.
@@ -395,10 +424,10 @@ class Collection(list):
 
         >>> from repltools import s
         >>> s.where(level=1)[:4].print()
-        Absorb Elements R/S/1r (1:A+D+Ra+S+Wz)
-        Alarm (rit.) 1m/30'/8h (1:A+PW+Ra+SCS+Wz)
-        Animal Friendship A/30'/24h (1:Bd+CN+D+Ra)
-        Armor of Agathys A/S/1h (1:PCo+Wl)
+        Absorb Elements R/S/1r [S] (1:A+D+Ra+S+Wz)
+        Alarm (rit.) 1m/30'/8h [V/S] (1:A+PW+Ra+SCS+Wz)
+        Animal Friendship A/30'/24h [V/S] (1:Bd+CN+D+Ra)
+        Armor of Agathys A/S/1h [V/S] (1:PCo+Wl)
         >>> type(s.where(level=1)[:4])
         <class 'dnd5edb.Spells'>
         """
@@ -419,7 +448,7 @@ class Collection(list):
         >>> Monsters().search('AAR')[0]
         Monster(Aarakocra: M Neutral Good humanoid (aarakocra), 1/4CR 13HP/3d8 12AC (walk 20, fly 50))
         >>> Spells().search('smite')[0]
-        Spell(Banishing Smite B/S/C<=1m (5:ABS+P+WlH))
+        Spell(Banishing Smite B/S/C<=1m [V] (5:ABS+P+WlH))
         """
         def lc_in(term):
             return str(val).lower() in str(getattr(term, field, '')).lower()
@@ -485,44 +514,44 @@ class Collection(list):
         >>> s = s.where(text=p.contains('adiant')).where(classes=p.contains('Warlock'))
         >>> s = s.sorted('name')
         >>> s.sorted('level').print()
-        Spirit Shroud B/S/C<=1m (3:C+P+Wl+Wz)
-        Shadow of Moil A/S/C<=1m (4:Wl)
-        Sickening Radiance A/120'/C<=10m (4:S+Wl+Wz)
-        Wall of Light A/120'/C<=10m (5:S+Wl+Wz)
-        Tasha's Otherworldly Guise B/S/C<=1m (6:S+Wl+Wz)
-        Crown of Stars A/S/1h (7:S+Wl+Wz)
+        Spirit Shroud B/S/C<=1m [V/S] (3:C+P+Wl+Wz)
+        Shadow of Moil A/S/C<=1m [V/S/M@150gp] (4:Wl)
+        Sickening Radiance A/120'/C<=10m [V/S] (4:S+Wl+Wz)
+        Wall of Light A/120'/C<=10m [V/S] (5:S+Wl+Wz)
+        Tasha's Otherworldly Guise B/S/C<=1m [V/S/M@500gp] (6:S+Wl+Wz)
+        Crown of Stars A/S/1h [V/S] (7:S+Wl+Wz)
         >>> s.sorted('level', reverse=True).print()
-        Crown of Stars A/S/1h (7:S+Wl+Wz)
-        Tasha's Otherworldly Guise B/S/C<=1m (6:S+Wl+Wz)
-        Wall of Light A/120'/C<=10m (5:S+Wl+Wz)
-        Shadow of Moil A/S/C<=1m (4:Wl)
-        Sickening Radiance A/120'/C<=10m (4:S+Wl+Wz)
-        Spirit Shroud B/S/C<=1m (3:C+P+Wl+Wz)
+        Crown of Stars A/S/1h [V/S] (7:S+Wl+Wz)
+        Tasha's Otherworldly Guise B/S/C<=1m [V/S/M@500gp] (6:S+Wl+Wz)
+        Wall of Light A/120'/C<=10m [V/S] (5:S+Wl+Wz)
+        Shadow of Moil A/S/C<=1m [V/S/M@150gp] (4:Wl)
+        Sickening Radiance A/120'/C<=10m [V/S] (4:S+Wl+Wz)
+        Spirit Shroud B/S/C<=1m [V/S] (3:C+P+Wl+Wz)
         >>> s.sorted('classes').print()
-        Spirit Shroud B/S/C<=1m (3:C+P+Wl+Wz)
-        Crown of Stars A/S/1h (7:S+Wl+Wz)
-        Sickening Radiance A/120'/C<=10m (4:S+Wl+Wz)
-        Tasha's Otherworldly Guise B/S/C<=1m (6:S+Wl+Wz)
-        Wall of Light A/120'/C<=10m (5:S+Wl+Wz)
-        Shadow of Moil A/S/C<=1m (4:Wl)
+        Spirit Shroud B/S/C<=1m [V/S] (3:C+P+Wl+Wz)
+        Crown of Stars A/S/1h [V/S] (7:S+Wl+Wz)
+        Sickening Radiance A/120'/C<=10m [V/S] (4:S+Wl+Wz)
+        Tasha's Otherworldly Guise B/S/C<=1m [V/S/M@500gp] (6:S+Wl+Wz)
+        Wall of Light A/120'/C<=10m [V/S] (5:S+Wl+Wz)
+        Shadow of Moil A/S/C<=1m [V/S/M@150gp] (4:Wl)
 
         # Sorting by level does not disturb previous sort by name
         >>> s.sorted('sources').print()
-        Spirit Shroud B/S/C<=1m (3:C+P+Wl+Wz)
-        Tasha's Otherworldly Guise B/S/C<=1m (6:S+Wl+Wz)
-        Crown of Stars A/S/1h (7:S+Wl+Wz)
-        Shadow of Moil A/S/C<=1m (4:Wl)
-        Sickening Radiance A/120'/C<=10m (4:S+Wl+Wz)
-        Wall of Light A/120'/C<=10m (5:S+Wl+Wz)
+        Spirit Shroud B/S/C<=1m [V/S] (3:C+P+Wl+Wz)
+        Tasha's Otherworldly Guise B/S/C<=1m [V/S/M@500gp] (6:S+Wl+Wz)
+        Crown of Stars A/S/1h [V/S] (7:S+Wl+Wz)
+        Shadow of Moil A/S/C<=1m [V/S/M@150gp] (4:Wl)
+        Sickening Radiance A/120'/C<=10m [V/S] (4:S+Wl+Wz)
+        Wall of Light A/120'/C<=10m [V/S] (5:S+Wl+Wz)
 
         Invalid sort fields have no effect
         >>> s.sorted('blipdebloop').print()
-        Crown of Stars A/S/1h (7:S+Wl+Wz)
-        Shadow of Moil A/S/C<=1m (4:Wl)
-        Sickening Radiance A/120'/C<=10m (4:S+Wl+Wz)
-        Spirit Shroud B/S/C<=1m (3:C+P+Wl+Wz)
-        Tasha's Otherworldly Guise B/S/C<=1m (6:S+Wl+Wz)
-        Wall of Light A/120'/C<=10m (5:S+Wl+Wz)
+        Crown of Stars A/S/1h [V/S] (7:S+Wl+Wz)
+        Shadow of Moil A/S/C<=1m [V/S/M@150gp] (4:Wl)
+        Sickening Radiance A/120'/C<=10m [V/S] (4:S+Wl+Wz)
+        Spirit Shroud B/S/C<=1m [V/S] (3:C+P+Wl+Wz)
+        Tasha's Otherworldly Guise B/S/C<=1m [V/S/M@500gp] (6:S+Wl+Wz)
+        Wall of Light A/120'/C<=10m [V/S] (5:S+Wl+Wz)
 
         Test that we're handling empty sets correctly
         >>> len(s.where(classes=p.contains('gobbledegook')).sorted())
@@ -580,28 +609,28 @@ class Collection(list):
         ...   .extend(s.where(text=p.contains('Fire'))).where(classes=p.or_(p.contains('Warlock'),
         ...                                                                 p.contains('Warlock (Celestial)')))
         ...   .sorted('name').sorted('level').print())
-        Create Bonfire A/60'/C<=1m (0:A+D+S+Wl+Wz)
-        Green-Flame Blade A/S(5'r)/I (0:A+S+Wl+Wz)
-        Prestidigitation A/10'/1h (0:A+Bd+FAA+S+Wl+Wz)
-        Sacred Flame A/60'/I (0:C+WlC)
-        Guiding Bolt A/120'/1r (1:C+PG+WlC)
-        Hellish Rebuke R/60'/I (1:PO+Wl)
-        Unseen Servant (rit.) A/60'/1h (1:Bd+Wl+Wz)
-        Flaming Sphere A/60'/C<=1m (2:AAl+CLt+D+DW+S+WlC+Wz)
-        Spirit Shroud B/S/C<=1m (3:C+P+Wl+Wz)
-        Elemental Bane A/90'/C<=1m (4:A+D+Wl+Wz)
-        Guardian of Faith A/30'/8h (4:C+CLf+CLt+PCr+PD+WlC)
-        Shadow of Moil A/S/C<=1m (4:Wl)
-        Sickening Radiance A/120'/C<=10m (4:S+Wl+Wz)
-        Wall of Fire A/120'/C<=1m (4:AArt+CF+CLt+D+S+WlC+WlFi+Wz)
-        Flame Strike A/60'/I (5:C+CLt+CW+DW+PD+PG+WlC+WlFi+WlGe)
-        Wall of Light A/120'/C<=10m (5:S+Wl+Wz)
-        Investiture of Flame A/S/C<=10m (6:D+S+Wl+Wz)
-        Investiture of Ice A/S/C<=10m (6:D+S+Wl+Wz)
-        Mental Prison A/60'/C<=1m (6:S+Wl+Wz)
-        Tasha's Otherworldly Guise B/S/C<=1m (6:S+Wl+Wz)
-        Crown of Stars A/S/1h (7:S+Wl+Wz)
-        Plane Shift A/T/I (7:C+D+S+Wl+Wz)
+        Create Bonfire A/60'/C<=1m [V/S] (0:A+D+S+Wl+Wz)
+        Green-Flame Blade A/S(5'r)/I [V/M@0.1gp] (0:A+S+Wl+Wz)
+        Prestidigitation A/10'/1h [V/S] (0:A+Bd+FAA+S+Wl+Wz)
+        Sacred Flame A/60'/I [V/S] (0:C+WlC)
+        Guiding Bolt A/120'/1r [V/S] (1:C+PG+WlC)
+        Hellish Rebuke R/60'/I [V/S] (1:PO+Wl)
+        Unseen Servant (rit.) A/60'/1h [V/S] (1:Bd+Wl+Wz)
+        Flaming Sphere A/60'/C<=1m [V/S] (2:AAl+CLt+D+DW+S+WlC+Wz)
+        Spirit Shroud B/S/C<=1m [V/S] (3:C+P+Wl+Wz)
+        Elemental Bane A/90'/C<=1m [V/S] (4:A+D+Wl+Wz)
+        Guardian of Faith A/30'/8h [V] (4:C+CLf+CLt+PCr+PD+WlC)
+        Shadow of Moil A/S/C<=1m [V/S/M@150gp] (4:Wl)
+        Sickening Radiance A/120'/C<=10m [V/S] (4:S+Wl+Wz)
+        Wall of Fire A/120'/C<=1m [V/S] (4:AArt+CF+CLt+D+S+WlC+WlFi+Wz)
+        Flame Strike A/60'/I [V/S] (5:C+CLt+CW+DW+PD+PG+WlC+WlFi+WlGe)
+        Wall of Light A/120'/C<=10m [V/S] (5:S+Wl+Wz)
+        Investiture of Flame A/S/C<=10m [V/S] (6:D+S+Wl+Wz)
+        Investiture of Ice A/S/C<=10m [V/S] (6:D+S+Wl+Wz)
+        Mental Prison A/60'/C<=1m [S] (6:S+Wl+Wz)
+        Tasha's Otherworldly Guise B/S/C<=1m [V/S/M@500gp] (6:S+Wl+Wz)
+        Crown of Stars A/S/1h [V/S] (7:S+Wl+Wz)
+        Plane Shift A/T/I [V/S/M@250gp] (7:C+D+S+Wl+Wz)
         """
         for i in new_items:
             if i not in self:
@@ -616,18 +645,18 @@ class Collection(list):
 
         >>> from dnd5edb import predicates as p
         >>> print(Spells().where(name=p.contains('Circle')).fmt())
-        Magic Circle 1m/10'/1h (3:C+CA+P+RaMS+Wl+Wz)
-        Circle of Power A/S(30'r)/C<=10m (5:CTw+P+PCr)
-        Teleportation Circle 1m/10'/1r (5:Bd+CA+RaHW+S+Wz)
-        Circle of Death A/150'/I (6:S+Wl+Wz)
+        Magic Circle 1m/10'/1h [V/S/M@!100!gp] (3:C+CA+P+RaMS+Wl+Wz)
+        Circle of Power A/S(30'r)/C<=10m [V] (5:CTw+P+PCr)
+        Teleportation Circle 1m/10'/1r [V/M@!50!gp] (5:Bd+CA+RaHW+S+Wz)
+        Circle of Death A/150'/I [V/S/M@500gp] (6:S+Wl+Wz)
         >>> print(Spells().where(name=p.contains('Find')).where(name=p.contains('Steed')).fmt('xlist'))
-        * Find Steed 10m/30'/I (2:P)
+        * Find Steed 10m/30'/I [V/S] (2:P)
           " You summon a spirit that assumes the form of an unusually intelligent, strong, and loyal steed, creating a long-lasting bond with it. Appearing in an unoccupied space within range, the steed takes on a form that you choose: a warhorse, a pony, a camel, an elk, or a mastiff. (Your DM might allow other animals to be summoned as steeds.) The steed has the statistics of the chosen form, though it is a celestial, fey, or fiend (your choice) instead of its normal type. Additionally, if your steed has an Intelligence of 5 or less, its Intelligence becomes 6, and it gains the ability to understand one language of your choice that you speak.
           " Your steed serves you as a mount, both in combat and out, and you have an instinctive bond with it that allows you to fight as a seamless unit. While mounted on your steed, you can make any spell you cast that targets only you also target your steed.
           " When the steed drops to 0 hit points, it disappears, leaving behind no physical form. You can also dismiss your steed at any time as an action, causing it to disappear. In either case, casting this spell again summons the same steed, restored to its hit point maximum.
           " While your steed is within 1 mile of you, you can communicate with each other telepathically.
           " You can't have more than one steed bonded by this spell at a time. As an action, you can release the steed from its bond at any time, causing it to disappear.
-        * Find Greater Steed 10m/30'/I (4:P)
+        * Find Greater Steed 10m/30'/I [V/S] (4:P)
           " You summon a spirit that assumes the form of a loyal, majestic mount. Appearing in an unoccupied space within range, the spirit takes on a form you choose: a griffon, a pegasus, a peryton, a dire wolf, a rhinoceros, or a saber-toothed tiger. The creature has the statistics provided in the Monster Manual for the chosen form, though it is a celestial, a fey, or a fiend (your choice) instead of its normal creature type. Additionally, if it has an Intelligence score of 5 or lower, its Intelligence becomes 6, and it gains the ability to understand one language of your choice that you speak.
           " You control the mount in combat. While the mount is within 1 mile of you, you can communicate with it telepathically. While mounted on it, you can make any spell you cast that targets only you also target the mount.
           " The mount disappears temporarily when it drops to 0 hit points or when you dismiss it as an action. Casting this spell again re-summons the bonded mount, with all its hit points restored and any conditions removed.

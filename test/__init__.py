@@ -18,4 +18,4 @@ def obj_fromdict(d):
         setattr(o, k, v)
     return o
 
-fakenode = lambda tag, v: obj_fromdict({'tag': tag, 'text': v})
+fakenode = lambda tag, value: obj_fromdict({'tag': tag, 'text': value})

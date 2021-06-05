@@ -1,3 +1,7 @@
+"""db_analysis
+
+Inquiries into the nature of the database, used to write parsing code.
+"""
 from functools import reduce
 
 def tags_in_node(node):
