@@ -29,7 +29,7 @@ def beasts(cr, fly=True, swim=True, crpred=p.lte):
 
 # moon druid wildshape options at various levels
 elementals = ['Air Elemental', 'Earth Elemental', 'Fire Elemental', 'Water Elemental']
-elementals = m.where(name=lambda attr, obj: getattr(obj, attr, '') in elementals)
+elementals = m.where(name=p.in_(elementals))
 moonws = {
     2:  beasts(1, swim=False, fly=False),
     4:  beasts(1, swim=True, fly=False),
