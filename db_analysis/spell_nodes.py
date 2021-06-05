@@ -6,9 +6,15 @@ Pull the tree data, select spells from the tree
 >>> tree = parse.XML.get_tree()
 >>> spells = tree.xpath('//spell')
 
+
+### All tags
+
 All string tags of spell nodes
 >>> string_tags(subnode_tags(spells))
 ['classes', 'components', 'duration', 'level', 'name', 'range', 'ritual', 'roll', 'school', 'text', 'time']
+
+
+### Component parsing
 
 There are 257 unique components strings
 >>> components = tree.xpath('//spell/components')
@@ -139,6 +145,17 @@ V, S, M (seven sharp thorns or seven small twigs, each sharpened to a point)
 If updates change the output of the above 3 tests,
 new exceptions may need to be added to datatypes.components_exceptions;
 changes may also need to be made to parse.SpellParser.parse_material_value
+
+
+### Rolls
+
+What's actually in the roll field, anyway?
+>>> rolls = tree.xpath('//spell/roll')
+>>> sorted(set(r.text for r in rolls))
+['10d10', '10d12', '10d4', '10d6', '10d6+40', '10d8', '11d10', '11d4', '11d6', '11d8', '12d10', '12d12', '12d4', '12d6', '12d8', '13d6', '13d6+40', '13d8', '14d10', '14d4', '14d6', '15d8', '16d10', '16d4', '16d6+40', '17d8', '18d10', '18d4', '19d6+40', '19d8', '1d10', '1d12', '1d20', '1d20+1', '1d20+2', '1d20+4', '1d20-2', '1d20-3', '1d4', '1d4+1', '1d4+4', '1d4+SPELL', '1d6', '1d6+SPELL', '1d8', '1d8+2', '1d8+SPELL', '20d10', '20d4', '20d6', '21d8', '22d10', '2d10', '2d10+2', '2d12', '2d12+4', '2d4', '2d6', '2d6+1', '2d6+SPELL', '2d8', '2d8+1', '2d8+SPELL', '3d10', '3d12', '3d4', '3d6', '3d8', '3d8+SPELL', '4d10', '4d12', '4d4', '4d6', '4d8', '4d8+15', '5d10', '5d12', '5d4', '5d6', '5d8', '6d10', '6d12', '6d4', '6d6', '6d8', '7d10', '7d12', '7d4', '7d6', '7d8', '7d8+30', '8d10', '8d12', '8d4', '8d6', '8d8', '9d10', '9d12', '9d4', '9d6', '9d8']
+
+Doesn't seem super useful?  I guess it could be used to provide average damage for damage spells, but inaccurately,
+since there's no allowance made for the saving throw, if any, that can halve that damage.
 """
 from dnd5edb import parse
 re_components = parse.SpellParser.re_components
