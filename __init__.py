@@ -152,28 +152,44 @@ class Spell(DBItem):
         """Return multiline string containing all spell information.
 
         The top line is a one-line header via self.fmt_oneline.
+        If there are material components, they are shown on a second line.
         The remaining lines are the spell text.
         `header` and `body` are single-character bullets
             used for their respective types of lines.
         `tabstop` determines the depth to which the body lines are indented.
 
+        By default, uses `-` as the bullet for all lines and tabstop of 2:
         >>> print(Spells().search('Magic Missile')[0].fmt_pointform())
         - Magic Missile A/120'/I [V/S] (1:AArm+CA+S+Wz)
           - You create three glowing darts of magical force. Each dart hits a creature of your choice that you can see within range. A dart deals 1d4 + 1 force damage to its target. The darts all strike simultaneously, and you can direct them to hit one creature or several.
           - At Higher Levels:
           - When you cast this spell using a spell slot of 2nd level or higher, the spell creates one more dart for each slot level above 1st.
+
+        Tabstop can be customized:
         >>> print(Spells().search('Magic Missile')[0].fmt_pointform(tabstop=4))
         - Magic Missile A/120'/I [V/S] (1:AArm+CA+S+Wz)
             - You create three glowing darts of magical force. Each dart hits a creature of your choice that you can see within range. A dart deals 1d4 + 1 force damage to its target. The darts all strike simultaneously, and you can direct them to hit one creature or several.
             - At Higher Levels:
             - When you cast this spell using a spell slot of 2nd level or higher, the spell creates one more dart for each slot level above 1st.
+
+        Bullet can be set separately for the header and body lines:
         >>> print(Spells().search('Magic Missile')[0].fmt_pointform(header='*', body='"'))
         * Magic Missile A/120'/I [V/S] (1:AArm+CA+S+Wz)
           " You create three glowing darts of magical force. Each dart hits a creature of your choice that you can see within range. A dart deals 1d4 + 1 force damage to its target. The darts all strike simultaneously, and you can direct them to hit one creature or several.
           " At Higher Levels:
           " When you cast this spell using a spell slot of 2nd level or higher, the spell creates one more dart for each slot level above 1st.
+
+        If the spell has material components, these are listed on a separate line above the spell text:
+        >>> print(Spells().search('identify')[0].fmt_pointform())
+        - Identify (rit.) 1m/T/I [V/S/M@100gp] (1:A+Bd+CF+CK+Wz)
+          - Material components: a pearl worth at least 100 gp and an owl feather
+          - You choose one object that you must touch throughout the casting of the spell. If it is a magic item or some other magic-imbued object, you learn its properties and how to use them, whether it requires attunement to use, and how many charges it has, if any. You learn whether any spells are affecting the item and what they are. If the item was created by a spell, you learn which spell created it.
+          - If you instead touch a creature throughout the casting, you learn what spells, if any, are currently affecting it.
         """
         ret = [f'{header} {spell.fmt_oneline()}']
+        material = spell.components.get('M', '')
+        if material:
+            ret += [f'{" " * tabstop}{body} Material components: {material}']
         ret += [f'{" " * tabstop}{body} {line}' for line in spell.text.split('\n')]
         return '\n'.join(ret)
 
