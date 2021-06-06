@@ -342,8 +342,8 @@ class Monster(DBItem):
 
             if action:
                 text.append('ACTIONS:')
-                for a in action:
-                    text.append(f"{a['name']}: {a['text']}")
+                for name, details in action.items():
+                    text.append(f'{name}: {details.get("text", "")}')
 
             return '\n'.join(text)
 

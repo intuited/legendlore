@@ -827,12 +827,12 @@ class MonsterParser(NodeParser):
     yield_spells = yield_text
     yield_slots = yield_text
 
-    ## TODO: write these stubs
     @staticmethod
     def yield_action(element, node):
         debug(f'MonsterParser.yield_action called for element "{element}"')
         yield ('action', dict(MonsterActionParser.parse(element)))
 
+    ## TODO: write these stubs
     @staticmethod
     def yield_save(element, node):
         debug(f'MonsterParser.yield_save called for element "{element}"')
@@ -870,6 +870,31 @@ class MonsterParser(NodeParser):
             yield
 
     _listify = ('action')
+    @classmethod
+    def _postprocess(cls, it):
+        it = super()._postprocess(it)
+        for field, value in it:
+            if field == 'action':
+                # convert the list of actions to a dictionary of actions
+                # keyed to the 'name' fields
+                yield ('action', cls._names_to_keys(value))
+            else:
+                yield (field, value)
+
+    @staticmethod
+    def _names_to_keys(dicts):
+        """Convert the list of dictionaries `dicts` to a dictionary of dictionaries.
+
+        Each dictionary's `name` field becomes the key by which that dictionary is referenced;
+        the `name` key is removed from the dictionary.
+
+        >>> _names_to_keys = MonsterParser._names_to_keys
+        >>> _names_to_keys([{'name': 'Jimi', 'age': 27, 'favourite colour': 'deep purple'},
+        ...                 {'name': 'Strahd', 'age': 792, 'favourite colour': 'black'}])
+        {'Jimi': {'age': 27, 'favourite colour': 'deep purple'}, 'Strahd': {'age': 792, 'favourite colour': 'black'}}
+        """
+        stripname = lambda d: {key: value for key, value in d.items() if key != 'name'}
+        return {d.get('name', None): stripname(d) for d in dicts}
 
 class MonsterActionParser(NodeParser):
     _join = ('text',)
