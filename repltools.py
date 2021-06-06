@@ -10,9 +10,6 @@ Can be sourced into the current REPL environment using ipython's %run command:
 Functionality:
     #TODO
 """
-from simpleeval import simple_eval
-import re
-
 class Blank:
     """Blank class used as basis for attribute-based structures."""
     None
@@ -96,7 +93,8 @@ def calc_avg(expression):
     >>> calc_avg('2d10+10 + 2d6') # Level 5 at last
     28.0
     """
-    #d_re = r'\b([0-9]+)d([0-9]+)\b'
+    from simpleeval import simple_eval
+    import re
     d_re = r'\b([0-9]+)d([0-9]+)\b'
     subbed = re.sub(d_re, r'(float(\1)*\2 + \1)/2', expression)
     return simple_eval(subbed)
