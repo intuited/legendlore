@@ -50,9 +50,44 @@ So one last thing to confirm for actions: are there any subnodes of subnodes of 
 0
 
 Okay, so that was pretty much as expected, especially since 2220 + 3399 + 7472 == 13091
+
+What do Attack fields look like?
+>>> attacks = tree.xpath('//monster/action/attack')
+>>> [n.text for n in attacks][:20]
+['Slam|+8|2d12+4', 'Slam|+6|2d10+2', 'Slam|+5|2d6+1', 'Slam|+6|1d8+2', 'Slam|+8|1d4+4', 'Bite|+1|1d4-1', 'Talon|+4|1d4+2', 'Javelin|+4|1d6+2', 'Tentacle|+9|2d6+5', 'Tentacle||1d12', 'Tail|+9|3d6+5', 'Claw|+11|2d6+7', 'Chilling Gaze||6d6', 'Cold Breath (Recharge 6)||10d8', 'Club|+2|1d4', 'Bite|+11|2d10+6', 'Claw|+11|2d6+6', 'Tail|+11|2d8+6', 'Acid Breath (Recharge 5-6)||12d8', 'Bite|+13|2d10+7']
+
+Does the first of those three fields always match the text of the action `name` element?
+>>> actions = tree.xpath('//monster/action')
+>>> nomatch = [n for n in actions if 'attack' in tags_in_node(n) and get_name(n) != get_attack_name(n)]
+>>> len(nomatch)
+1
+
+The sole exception has no name element.  Appears to be an action element for a vehicle called a "battle balloon".
+>>> pprint([(c.tag, c.text) for c in nomatch[0].iterchildren()])
+[('text',
+  'On its turn the battle balloon can take 3 actions if it has twenty or more crew, 2 actions if it has ten or more '
+  'crew, or 1 action if it has fewer than ten crew, choosing from the options below. It cannot take any actions if it '
+  'has no remaining crew.'),
+ ('text', '• Fire Ballista. The battle balloon can fire its harpoon guns.'),
+ ('text', '• Fire Green Flame Arbalester. The battle balloon can fire its green flame arbalester.'),
+ ('text',
+  '• Move. The battle balloon can use its helm to move using its propeller. If the battle balloon enters a Large or '
+  "smaller creature's space, that creature is automatically pushed to the edge of the battle balloon's space. The "
+  'creature must also succeed on a DC 15 Dexterity saving throw or take 5 (1d10) bludgeoning damage.'),
+ ('attack', '||1d10'),
+ ('text',
+  '• Harpoon Haul. The battle balloon can pull each target grappled by it up to 30 feet toward the battle balloon.')]
 """
 from dnd5edb import parse
-from dnd5edb.db_analysis import subnode_tags, string_tags, tag_count
+from dnd5edb.db_analysis import tags_in_node, subnode_tags, string_tags, tag_count, get_name
 
-from functools import reduce
+from functools import reduce, partial
+from pprint import pprint
+pprint = partial(pprint, width=120)
 from collections import Counter
+
+def get_attack_name(node):
+    """Returns the first of the three '|'-delimited fields in the 'text' field of the child 'attack' node."""
+    for child in node.iterchildren():
+        if child.tag == 'attack':
+            return child.text.split('|')[0]

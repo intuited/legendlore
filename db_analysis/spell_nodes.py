@@ -161,8 +161,8 @@ from dnd5edb import parse
 re_components = parse.SpellParser.re_components
 re_value = parse.SpellParser.re_value
 from dnd5edb.db_analysis import subnode_tags, string_tags, tag_count
-from pprint import pprint
 from functools import partial
+from pprint import pprint
 pprint = partial(pprint, width=1000)
 jprint = lambda lines: print('\n'.join(lines))
 import re

@@ -10,6 +10,7 @@ from dnd5edb import predicates, datatypes
 from dnd5edb.datatypes import Reference
 from itertools import groupby, chain
 chainfi = chain.from_iterable
+from collections import defaultdict
 
 default_db_file = 'FC5eXML/Collections/CoreOnly.xml'
 
@@ -71,7 +72,7 @@ class XML:
             cls.tree = cls.parse_db(db_file)
         return cls.tree
 
-#### Fundamental parsing functions
+#### Generic parsing functions
 def yield_text(element, node):
     """The most basic element parser.
 
@@ -134,8 +135,36 @@ def yield_datatype(datatype, element, node):
 
 #### Base parser class
 class NodeParser():
-    """Base class for objects which parse nodes."""
+    """Base class for objects which parse nodes.
 
+    Subclasses should define "yield_*" methods where the "*"
+    matches the XML tag attribute of the elements to be handled
+    by that parsing method.
+
+    These methods are generator functions yielding (field, value) tuples.
+
+    They can be static or class methods; as these classes are not intended
+    to be instantiated, they should be one or the other.
+
+    There are a number of generic parsing functions defined in this module
+    which can simply be assigned as values to subclass "yield_*" functions:
+    `yield_text`, `yield_int`, `yield_fraction`, and `yield_datatype`.
+
+    `yield_datatype` is intended to be passed to `functools.partial`
+    as is done in the definition of the SpellParser class.
+
+    Once the XML structures have been parsed into tuples,
+    post-processing code passes over it to group together like fields.
+
+    There are two ways to implement post-processing for subclasses:
+
+        - The simple way is to override _listify and/or _joined.
+          These attributes indicate the fields which have multiple entries
+          and should be combined, either by adding them to a list
+          or by joining them with newlines into a single string.
+        - If this is not sufficient, the _postprocess method itself
+          can be overridden.
+    """
     @classmethod
     def parse(cls, node):
         """Returns iterable of (field, value) pairs.
@@ -169,17 +198,49 @@ class NodeParser():
             except AttributeError:
                 warning(f'NodeParser._parse: unknown tag "{element.tag}"')
                 continue
-            #try:
             yield from parsefn(element, node)
-            #except TypeError as e:
-                #warning(f'NodeParser._parse: TypeError "{e}" while parsing element "{element}" in node "{node}"')
+
+    yield_name = staticmethod(yield_text)
 
     @classmethod
     def _postprocess(cls, it):
-        """Subclass hook to manipulate results of processing."""
-        yield from it
+        """Subclass hook to manipulate results of processing.
 
-    yield_name = staticmethod(yield_text)
+        _postprocess hook is inserted into the iteration chain after other parsing is complete.
+        It receives (key, value) pairs from it that, barring changes made here,
+        become the contents of the dictionary being created by the calling function.
+
+        E.G. `spell = dict(SpellParser.parse(spell_node)` would normally receive
+        
+            ('name', 'Magic Missile),
+            ('level', 1),
+            ('school', 'Evocation'),
+
+        etc.; this function has the ability to modify that sequence.
+
+        The default behaviour is to collect any fields in cls._listify
+        into a list of objects, and to collect any fields in cls._join
+        into a single newline-joined string.
+
+        Overriding those attributes is all that should be necessary
+        for most classes to implement proper post-processing.
+        """
+        listified = defaultdict(list)
+        joined = defaultdict(list)
+        for field, value in it:
+            if field in cls._listify:
+                listified[field].append(value)
+            elif field in cls._join:
+                joined[field].append(value)
+            else:
+                yield (field, value)
+
+        yield from listified.items()
+        for field, lines in joined.items():
+            yield field, '\n'.join(lines)
+
+    _listify = ()
+    _join = ()
 
 #### Derived parser classes
 class MonsterParser(NodeParser):
@@ -770,8 +831,7 @@ class MonsterParser(NodeParser):
     @staticmethod
     def yield_action(element, node):
         debug(f'MonsterParser.yield_action called for element "{element}"')
-        if False:
-            yield
+        yield ('action', dict(MonsterActionParser.parse(element)))
 
     @staticmethod
     def yield_save(element, node):
@@ -808,6 +868,27 @@ class MonsterParser(NodeParser):
         debug(f'MonsterParser.yield_reaction called for element "{element}"')
         if False:
             yield
+
+    _listify = ('action')
+
+class MonsterActionParser(NodeParser):
+    _join = ('text',)
+    re_damage = r'-?[0-9]+(?:d[0-9]+(?:[+-][0-9]+)?)?'
+    re_attack_bonus = r'[+-][0-9]+'
+    @classmethod
+    def yield_attack(cls, element, node):
+        # First of the fields is the name; this is redundant with the action 'name' element text.
+        _, attack_bonus, damage = element.text.split('|')
+        if attack_bonus:
+            if not re.fullmatch(cls.re_attack_bonus, attack_bonus):
+                warning(f'MonsterActionParser.yield_attack: validation fail for attack bonus "{attack_bonus}"')
+            attack_bonus = int(attack_bonus)
+            yield ('attack_bonus', attack_bonus)
+        if damage:
+            if not re.fullmatch(cls.re_damage, damage):
+                warning(f'MonsterActionParser.yield_attack: validation fail for damage string "{damage}"')
+            yield ('damage', damage)
+    yield_text = yield_text
 
 class SpellParser(NodeParser):
     yield_level = yield_int
@@ -961,12 +1042,17 @@ class SpellParser(NodeParser):
 
     @classmethod
     def _postprocess(cls, results):
+        """Post-processing for spell nodes.
+
+        Collects `text` nodes, combines them,
+        and splits them into singular `text` and `sources` nodes.
+        """
         lines = []
-        for tup in results:
-            if tup[0] == 'text':
-                lines += [tup[1]]
+        for field, value in results:
+            if field == 'text':
+                lines.append(value)
             else:
-                yield tup
+                yield (field, value)
 
         text, sources = cls._parse_spell_text(lines)
         yield ('text', text)

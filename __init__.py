@@ -294,62 +294,33 @@ class Monster(DBItem):
                         immune=None, immune_notes=None,
                         resist=None, resist_notes=None,
                         conditionImmune=None, conditionImmune_notes=None,
-                        vulnerable=None, description=None):
+                        vulnerable=None, description=None, action=None):
             text = []
-            # * 'name': 1268,
-            # * 'alignment': 1252,
-            # * 'type': 1268,
-            # * 'size': 1268,
-            # * 'cr': 1241,
+
             text.append(f'{name} ({alignment} {type})  Size: {size}  CR: {cr}')
 
-            # * 'hp': 1267,
-            #   * 'hitdice': 1261,
-            # * 'ac': 1268,
-            #   * 'ac_num': 1266,
-            # * 'speed': 1267,
             text.append(f'HP: {hp}({hitdice})  AC: {ac}({ac_num})  Speed: {speed}')
 
-            # * 'str': 1268,
-            # * 'dex': 1268,
-            # * 'con': 1268,
-            # * 'int': 1268,
-            # * 'wis': 1268,
-            # * 'cha': 1268,
             text.append(f'STR:{str} DEX:{dex} CON:{con} INT:{int} WIS:{wis} CHA:{cha}')
 
-            # * 'skills': 877,
             if skills:
                 text.append(f'skills: {skills}')
-            # * 'saves': 485,
             if saves:
                 text.append(f'saves: {saves}')
-            # * 'passive': 1264,
-            # * 'senses': 881,
-            # * 'senses_notes': 3,
             text.append(f'passive perception: {passive}')
             if senses:
                 text.append(f'senses: {senses}')
                 if senses_notes:
                     text.append(f'NOTE: {senses_notes}')
-            # * 'spells': 388,
+
             if spells:
                 text.append(f'spells: {spells}')
-            # * 'slots': 203,
             if slots:
                 text.append(f'slots: {slots}')
 
-            # * 'armor': 960,
             if armor:
                 text.append(f'armor: {armor}')
 
-            # * 'immune': 447,
-            # * 'immune_notes': 2,
-            # * 'resist': 392,
-            # * 'resist_notes': 5,
-            # * 'conditionImmune': 449,
-            # * 'conditionImmune_notes': 1
-            # * 'vulnerable': 51,
             if immune:
                 text.append(f'immunities: {immune}')
                 if immune_notes:
@@ -369,6 +340,11 @@ class Monster(DBItem):
             if description:
                 text.append(description)
 
+            if action:
+                text.append('ACTIONS:')
+                for a in action:
+                    text.append(f"{a['name']}: {a['text']}")
+
             return '\n'.join(text)
 
         fields = ['name', 'alignment', 'type', 'size', 'cr',
@@ -378,10 +354,10 @@ class Monster(DBItem):
                   'spells', 'slots', 'armor', 'immune', 'immune_notes',
                   'resist', 'resist_notes',
                   'conditionImmune', 'conditionImmune_notes',
-                  'vulnerable', 'description']
+                  'vulnerable', 'description', 'action']
 
-        m = [(f, getattr(self, f, None)) for f in dir(self) if f in fields]
-        return render_text(**dict(m))
+        fields = dict((f, getattr(self, f, None)) for f in dir(self) if f in fields)
+        return render_text(**fields)
 
     def fmt_pointform(self, header='-', body='-', tabstop=2):
         """Multiline string containing point-form summary of item.
