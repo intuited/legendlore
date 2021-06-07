@@ -1,5 +1,6 @@
 from functools import partial
 from dnd5edb import parse, predicates, reflect, datatypes
+import re
 
 class DBItem:
     """Abstract base class for Spell, Monster, and other database entries."""
@@ -380,6 +381,143 @@ class Monster(DBItem):
         ret = [f'{header} {self.fmt_oneline()}']
         ret += [f'{" " * tabstop}{body} {line}' for line in self.fmt_full().split('\n')[2:]]
         return '\n'.join(ret)
+
+#class RESelect(dict):
+#    """Dict-like class for RE-based branching.
+#
+#    >>> arithmetic = RESelect({r'(\d+)\+(\d+)': {'label': 'addition', 'handler': lambda a, b, **kw: int(a)+int(b)},
+#    ...                        r'(\d+)-(\d+)':  {'label': 'subtraction', 'handler': lambda a, b, **kw: int(a)-int(b)} })
+#    >>> arithmetic.select('2+2')
+#    4
+#    >>> arithmetic.select('8-2')
+#    6
+#    """
+#    def __init__(self, re_dict, default_handler=dict):
+#        super().__init__(re_dict)
+#        self._default = default_handler
+#
+#    def select(self, string):
+#        """Returns a dictionary of match data using its first RE which matches `string`."""
+#        for regexp, data in self.items():
+#            match = re.fullmatch(regexp, string)
+#            if match:
+#                passed = {'regexp': regexp, 'string': string, 'match': match}
+#                if 'label' in data:
+#                    passed['label'] = data['label']
+#                if 'handler' in data:
+#                    handler = data['handler']
+#                else:
+#                    handler = self._default
+#                return handler(*match.groups(), **passed)
+#        return self._default(label='default', text=string)
+
+class RESelect(dict):
+    """Base class for RE-based branching.
+
+    Handlers in this class simply return (label, string) and do not branch.
+
+    >>> selector = RESelect({'one': r'.*one.*', 'two': r'.*two.*'})
+    >>> selector.select('onetwo')
+    ('one', 'onetwo')
+    >>> selector.select('twoone')
+    ('one', 'twoone')
+    >>> selector = RESelect({'two': r'.*two.*', 'one': r'.*one.*'})
+    >>> selector.select('onetwo')
+    ('two', 'onetwo')
+    >>> selector.select('twoone')
+    ('two', 'twoone')
+    """
+    def __init__(self, re_dict):
+        super().__init__(re_dict)
+
+    def select(self, string):
+        for label, regexp in self.items():
+            match = re.fullmatch(regexp, string)
+            if match:
+                return self.handle(label, match, regexp, string)
+        return self.handle_default(string)
+
+    def handle(self, label, match, regexp, string):
+        return (label, string)
+
+    def handle_default(self, string):
+        return ('default', string)
+
+re_num = r'one|two|three|four|five|six'
+re_article = r'(?:a|its|his|her)?'
+re_name = r'(?P<mname>[^.]+)'
+multiattack_handler = RESelect({
+    'any': f'(?P<mname>[^.]+) makes (?P<total>{re_num}) attacks\.',
+        # we can select the most effective attacks from all options
+    'any_melee': f'(?P<mname>[^.]+) makes (?P<num>{re_num}) melee attacks\.',
+        # we can select the most effective attacks from all melee options.
+        # melee options seem to be consistently indicated with 'Melee' at the beginning of the action text.
+    'any_ranged': f'(?P<mname>[^.]+) makes (?P<num>{re_num}) ranged attacks\.',
+        # we can select the most effective attacks from all ranged options
+        # ranged options seem to be consistently indicated with 'Melee' at the beginning of the action text.
+    'melee_or_ranged': f'(?P<mname>[^.]+) makes (?P<num_melee>{re_num}) melee attacks or (?P<num_ranged>{re_num}) ranged attacks\.',
+        # choose max of averages of optimal ranged and optimal melee attacks
+    'named': f'(?P<mname>[^.]+) makes (?P<num>{re_num}) (?P<type>\w+) attacks\.',
+        # check if `type` matches an attack action name; otherwise fail
+    'with_named': f'(?P<mname>[^.]+) makes (?P<num>{re_num}) (?:melee |ranged )?attacks with {re_article} (?P<type>\w+)\.',
+        # check if `type` matches an attack action name; otherwise fail
+        # same handler as 'named'
+    'art_a_and_art_b_or_c': f'(?P<mname>[^.]+) makes (?P<total>{re_num}) attacks: '
+        + f'(?P<num1>{re_num}) with {re_article} (?P<type1>[^,.]+) '
+        + f'and (?P<num2>{re_num}) with {re_article} (?P<type2>[^,.]+) or (?P<type3>[^,.]+)\.',
+        # similar to `a_and_art_b` but there's a choice between type2 and type3 for the second attack.
+    'art_a_and_art_b': f'(?P<mname>[^.]+) makes (?P<total>{re_num}) attacks: '
+        + f'(?P<num1>{re_num}) with {re_article} (?P<type1>[^,.]+) '
+        + f'and (?P<num2>{re_num}) with {re_article} (?P<type2>[^,.]+)\.',
+        # we should be able to just ignore articles like a, its, his, etc.  Check type1 and type2 against attack action names.
+        # if they don't all match, we're still okay if there are only two attack actions
+        # otherwise, fail
+    'a_or_b': f'(?P<mname>[^.]+) makes (?P<num1>{re_num}) (?P<type1>[^,.]+) attacks or (?P<num2>{re_num}) (?P<type2>[^,.]+) attacks\.',
+        # check type1 & type2; fail if check fails; calculate optimal damage
+    'colon_and_period': f'(?P<mname>[^.]+) makes (?P<total>{re_num}) attacks: (?P<num1>{re_num}) with (?P<type1>[^,.]+) and (?P<num2>{re_num}) with (?P<type2>[^,.]+)\.',
+        # parse num1 and num2 as numbers; check type1 and type 2 against attack action names; otherwise fail
+    'by_half_spell_level': f"{re_name} makes a number of attacks equal to half this spell's level \(rounded down\)\.",
+        # Auto-fail since we don't know the spell level.
+        # hmmmmm or maybe default to 1 attack of any kind?
+    })
+# failures are rendered with uhhh '??' I guess.
+# however, we can will program in many of these as exceptional cases;
+#   these are found by checking the monster name before we reach this point.
+
+def parse_multiattack(text):
+    """Parse multiattack action text.
+
+    Used to generate damage per round averages.
+
+    A bit of exploration in here:
+    >>> from repltools import m, p
+    >>> from pprint import pprint
+    >>> pprint = partial(pprint, width=200)
+    >>> from collections import defaultdict
+    >>> from re import fullmatch
+    >>> have_ma = m.where(action=p.contains('Multiattack'))
+    >>> have_ma[0]
+    Monster(Aberrant Spirit: M Unaligned aberration, --CR 40HP/-- 0AC (walk 30, fly 30))
+    >>> get_ma_text = lambda n: n.action['Multiattack']['text']
+    >>> multiattack_handler.select(get_ma_text(have_ma[0]))
+    ('default', "The aberration makes a number of attacks equal to half this spell's level (rounded down).")
+
+    >>> def groupeddict(it):
+    ...     d = defaultdict(list)
+    ...     for k, v in it:
+    ...         d[k].append(v)
+    ...     return d
+    >>> grouped_by_re = groupeddict(multiattack_handler.select(get_ma_text(n)) for n in have_ma)
+    >>> histogram = lambda d: {k: len(v) for k, v in d.items()}
+    >>> histogram(grouped_by_re)
+    >>> #pprint(grouped_by_re['colon_and_period'][:40])
+    >>> pprint(grouped_by_re['default'][:40])
+    >>> #pprint(grouped_by_re['a_and_art_b'][:40])
+    
+    What's the deal with any_melee
+    >>> any_melee = [n for n in m.where(action=p.contains('Multiattack')) if multiattack_handler.select(n.action['Multiattack']['text'])[0] == 'any_melee']
+    >>> #pprint([n.action for n in any_melee][:20])
+    """
 
 class Collection(list):
     """Virtual superclass for a list of DB items.
