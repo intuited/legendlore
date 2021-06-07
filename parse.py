@@ -8,6 +8,7 @@ from fractions import Fraction
 import dnd5edb
 from dnd5edb import predicates, datatypes
 from dnd5edb.datatypes import Reference
+from dnd5edb.actions import Actions
 from itertools import groupby, chain
 chainfi = chain.from_iterable
 from collections import defaultdict
@@ -877,7 +878,7 @@ class MonsterParser(NodeParser):
             if field == 'action':
                 # convert the list of actions to a dictionary of actions
                 # keyed to the 'name' fields
-                yield ('action', cls._names_to_keys(value))
+                yield ('action', Actions(cls._names_to_keys(value)))
             else:
                 yield (field, value)
 
