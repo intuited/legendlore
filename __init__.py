@@ -2,6 +2,7 @@ from functools import partial
 from dnd5edb import parse, predicates, reflect, datatypes
 import re
 import calc
+from logging import warning
 
 def dictify(fn):
     """Used as a wrapper for generator functions that produce dicts."""
@@ -394,8 +395,8 @@ class Monster(DBItem):
                 return parse_multiattack(text)
         return None
 
-    def dpr(self, target_ac, ndigits=4):
-        """Calculate average DPR of the monster vs a given AC.
+    def dpr(self, target_ac):
+        r"""Calculate average DPR of the monster vs a given AC.
 
         >>> from repltools import m
         >>> m.where(name='Wolf')[0].dpr(10)
@@ -405,8 +406,8 @@ class Monster(DBItem):
         >>> m.where(name='Wolf')[0].dpr(20)
         1.75
 
-        There's still some chance of hitting with a nat 20.
-        Note that extra critical damage is not currently calculated in here.
+        Even against very high AC, there's still some chance of hitting with a nat 20.
+        Note that extra critical damage is not currently included.
         >>> m.where(name='Wolf')[0].dpr(40)
         0.35
 
@@ -416,18 +417,24 @@ class Monster(DBItem):
         {10: 16.575, 15: 11.7, 20: 6.825}
         >>> three_dprs(m.where(name='Lifferlas')[0])
         {10: 24.65, 15: 17.4, 20: 10.15}
+
+        Checking for errors...
+        >>> from unittest import TestCase
+        >>> with TestCase.assertLogs(_) as cm:
+        ...     _ = [n.dpr(10) for n in m]
+        ...     print('\n'.join(cm.output))
         """
         multiattack = self._parse_multiattack(self)
+        round4 = lambda x: round(x, 4) if x is not None else None
         if multiattack:
             dpr = getattr(self, '_dpr_' + multiattack['label'], None)
             if dpr:
-                return round(dpr(multiattack['match'], target_ac), ndigits=ndigits)
+                return round4(dpr(multiattack['match'], target_ac))
         else:
             attacks = self._attacks()
             if attacks:
-                ret = max(calc.dpr(target_ac, attack['attack_bonus'], attack['damage'])
-                          for name, attack in attacks.items())
-                return round(ret, ndigits=ndigits)
+                return round4(max(calc.dpr(target_ac, attack['attack_bonus'], attack['damage'])
+                              for name, attack in attacks.items()))
         return None
 
     def _dpr_named(self, match, target_ac):
@@ -444,10 +451,10 @@ class Monster(DBItem):
         for name, attack in attacks.items():
             if attack_name.lower() in name.lower():
                 return num * calc.dpr(target_ac, attack['attack_bonus'], attack['damage'])
-        warning('Monster._dpr_named: failed to match attack name "{attack_name}" for monster "{self}"')
+        warning(f'Monster._dpr_named: failed to match attack name "{attack_name}" for monster "{self}"')
         return None
 
-    _attacks = lambda self: {name: attack for name, attack in getattr(self, 'action', []).items()
+    _attacks = lambda self: {name: attack for name, attack in getattr(self, 'action', {}).items()
                              if 'attack_bonus' in attack and 'damage' in attack}
 
 numberwords = {
@@ -532,7 +539,7 @@ re_num = '|'.join(numberwords)
 re_article = r'(?:a|its|his|her)?'
 re_name = r'(?P<mname>[^.]+)'
 multiattack_forms = RESelect({
-    'any': f'(?P<mname>[^.]+) makes (?P<total>{re_num}) attacks\.',
+    'any': f'(?P<mname>[^.]+) makes (?P<total>{re_num}) (?:weapon )?attacks\.',
         # we can select the most effective attacks from all options
     'any_melee': f'(?P<mname>[^.]+) makes (?P<num>{re_num}) melee attacks\.',
         # we can select the most effective attacks from all melee options.
