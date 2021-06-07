@@ -1,6 +1,7 @@
 from functools import partial
 from dnd5edb import parse, predicates, reflect, datatypes
 import re
+import calc
 
 def dictify(fn):
     """Used as a wrapper for generator functions that produce dicts."""
@@ -386,36 +387,41 @@ class Monster(DBItem):
         ret += [f'{" " * tabstop}{body} {line}' for line in self.fmt_full().split('\n')[2:]]
         return '\n'.join(ret)
 
-    def _multiattack_form(self):
+    def _parse_multiattack(self, text):
         if hasattr(self, 'action'):
             if 'Multiattack' in self.action:
-                return multiattack_form(self.action['Multiattack']['text'])[0]
+                text = self.action['Multiattack']['text']
+                return parse_multiattack(text)
         return None
 
     def dpr(self, target_ac, ndigits=4):
         """Calculate average DPR of the monster vs a given AC.
 
         >>> from repltools import m
-        >>> m.where(name='Wolf')[0].avg_dpr(10)
+        >>> m.where(name='Wolf')[0].dpr(10)
         5.25
-        >>> m.where(name='Wolf')[0].avg_dpr(15)
+        >>> m.where(name='Wolf')[0].dpr(15)
         3.5
-        >>> m.where(name='Wolf')[0].avg_dpr(20)
+        >>> m.where(name='Wolf')[0].dpr(20)
         1.75
 
         There's still some chance of hitting with a nat 20.
         Note that extra critical damage is not currently calculated in here.
-        >>> m.where(name='Wolf')[0].avg_dpr(40)
+        >>> m.where(name='Wolf')[0].dpr(40)
         0.35
 
         Works for most multiattack creatures as well:
-        >>> m.where(name='Brown Bear')[0].avg_dpr(10)
-        >>> m.where(name='Brown Bear')[0].avg_dpr(15)
-        >>> m.where(name='Brown Bear')[0].avg_dpr(20)
+        >>> three_dprs = lambda monster: {ac: monster.dpr(ac) for ac in (10, 15, 20)}
+        >>> three_dprs(m.where(name='Brown Bear')[0])
+        {10: 16.575, 15: 11.7, 20: 6.825}
+        >>> three_dprs(m.where(name='Lifferlas')[0])
+        {10: 24.65, 15: 17.4, 20: 10.15}
         """
-        multiattack = self._multiattack_form()
+        multiattack = self._parse_multiattack(self)
         if multiattack:
-            return multiattack.avg_dpr(target_ac)
+            dpr = getattr(self, '_dpr_' + multiattack['label'], None)
+            if dpr:
+                return round(dpr(multiattack['match'], target_ac), ndigits=ndigits)
         else:
             attacks = self._attacks()
             if attacks:
@@ -424,22 +430,34 @@ class Monster(DBItem):
                 return round(ret, ndigits=ndigits)
         return None
 
-    def dpr(self, target_ac):
-        handler = getattr(self, 'dpr_' + self.match['label'], None)
-        if not handler:
-            return None
-
-        return handler(self.match(match))
-
-    def _dpr_named(self, match):
+    def _dpr_named(self, match, target_ac):
         """Returns DPR for a parsed multiattack string with the 'named' label.
 
         'named': f'(?P<mname>[^.]+) makes (?P<num>{re_num}) (?P<type>\w+) attacks\.'
         """
+        groupdict = match.groupdict()
+        num = numberwords[groupdict['num']]
+        attack_name = groupdict['type']
+
+        attacks = self._attacks()
+
+        for name, attack in attacks.items():
+            if attack_name.lower() in name.lower():
+                return num * calc.dpr(target_ac, attack['attack_bonus'], attack['damage'])
+        warning('Monster._dpr_named: failed to match attack name "{attack_name}" for monster "{self}"')
+        return None
 
     _attacks = lambda self: {name: attack for name, attack in getattr(self, 'action', []).items()
                              if 'attack_bonus' in attack and 'damage' in attack}
 
+numberwords = {
+    'one': 1,
+    'two': 2,
+    'three': 3,
+    'four': 4,
+    'five': 5,
+    'six': 6,
+    }
 
 #class RESelect(dict):
 #    """Dict-like class for RE-based branching.
@@ -510,11 +528,10 @@ class RESelectDetails(RESelect):
         return {'label': 'default', 'text': text}
 
 
-
-re_num = r'one|two|three|four|five|six'
+re_num = '|'.join(numberwords)
 re_article = r'(?:a|its|his|her)?'
 re_name = r'(?P<mname>[^.]+)'
-multiattack_form = RESelect({
+multiattack_forms = RESelect({
     'any': f'(?P<mname>[^.]+) makes (?P<total>{re_num}) attacks\.',
         # we can select the most effective attacks from all options
     'any_melee': f'(?P<mname>[^.]+) makes (?P<num>{re_num}) melee attacks\.',
@@ -567,7 +584,7 @@ def parse_multiattack(text):
     >>> have_ma[0]
     Monster(Aberrant Spirit: M Unaligned aberration, --CR 40HP/-- 0AC (walk 30, fly 30))
     >>> get_ma_text = lambda n: n.action['Multiattack']['text']
-    >>> multiattack_form.select(get_ma_text(have_ma[0]))
+    >>> multiattack_forms.select(get_ma_text(have_ma[0]))
     ('default', "The aberration makes a number of attacks equal to half this spell's level (rounded down).")
 
     >>> def groupeddict(it):
@@ -575,17 +592,19 @@ def parse_multiattack(text):
     ...     for k, v in it:
     ...         d[k].append(v)
     ...     return d
-    >>> grouped_by_re = groupeddict(multiattack_form.select(get_ma_text(n)) for n in have_ma)
+    >>> grouped_by_re = groupeddict(multiattack_forms.select(get_ma_text(n)) for n in have_ma)
     >>> histogram = lambda d: {k: len(v) for k, v in d.items()}
     >>> histogram(grouped_by_re)
     >>> #pprint(grouped_by_re['colon_and_period'][:40])
     >>> pprint(grouped_by_re['default'][:40])
     >>> #pprint(grouped_by_re['a_and_art_b'][:40])
+    >>> #pprint(grouped_by_re['named'][:40])
     
     What's the deal with any_melee
-    >>> any_melee = [n for n in m.where(action=p.contains('Multiattack')) if multiattack_form.select(n.action['Multiattack']['text'])[0] == 'any_melee']
+    >>> any_melee = [n for n in m.where(action=p.contains('Multiattack')) if multiattack_forms.select(n.action['Multiattack']['text'])[0] == 'any_melee']
     >>> #pprint([n.action for n in any_melee][:20])
     """
+    return RESelectDetails(multiattack_forms).select(text)
 
 class Collection(list):
     """Virtual superclass for a list of DB items.
