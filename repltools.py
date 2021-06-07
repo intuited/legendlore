@@ -18,6 +18,7 @@ import dnd5edb
 from dnd5edb import predicates as p
 s = dnd5edb.Spells()
 m = dnd5edb.Monsters()
+from dnd5edb import calc
 
 # Spell Print in a convenient format
 sp = lambda name: s.search(name).print('xlist')
@@ -68,39 +69,3 @@ druid.ac.bearbarian = lambda creature: max(creature.ac_num if 'natural armor' in
 druid.ac.bearbarian.__doc__ = 'Calculate AC for Druid/Barbarian wildshaped into `creature`.'
 druid.ac.drunk = lambda creature, wis: max(creature.ac_num if 'natural armor' in creature.ac.lower() else 0, asbonus(10 + creature.dex + wis))
 druid.ac.drunk.__doc__ = 'Calculate AC for Druid/Monk with Wisdom `wis` wildshaped into `creature`.'
-
-### die roll stuff
-
-prob = Blank()
-prob.__doc__ = """Probability functionality."""
-
-# average die roll calculations
-def calc_avg(expression):
-    """Calculates the average total of `expression`.
-
-    `expression` can contain die-roll notation of the form [0-9]+d[0-9]+.
-
-    >>> calc_avg('1')
-    1
-    >>> calc_avg('1 - 2')
-    -1
-    >>> calc_avg('1d4')
-    2.5
-    >>> calc_avg('1d10+5') # So anyway, I started blasting
-    10.5
-    >>> calc_avg('1d10+5 + 1d6') # I put a spell on you...
-    14.0
-    >>> calc_avg('2d10+10 + 2d6') # Level 5 at last
-    28.0
-    """
-    from simpleeval import simple_eval
-    import re
-    d_re = r'\b([0-9]+)d([0-9]+)\b'
-    subbed = re.sub(d_re, r'(float(\1)*\2 + \1)/2', expression)
-    return simple_eval(subbed)
-prob.avg = calc_avg
-del calc_avg
-
-# die roll odds
-prob.meetorbeat = lambda minimum: 1 - (float(minimum) - 1) / 20
-prob.adv = lambda odds: 1 - ((1 - odds) * (1 - odds))
