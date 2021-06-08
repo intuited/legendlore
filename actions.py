@@ -23,6 +23,8 @@ Monster(Aberrant Spirit: M Unaligned aberration, --CR 40HP/-- 0AC (walk 30, fly 
 
 >>> grouped_by_form = groupeddict(n.action.attack_form.summary for n in have_ma)
 >>> histogram(grouped_by_form)
+{'ByHalfSpellLevel': 9, 'Named': 221, 'Default': 426, 'AnyMelee': 105, 'ArtAAndArtB': 195, 'ArtAAndArtBOrC': 23, 'AOrB': 20, 'WithNamed': 44, 'MeleeOrRanged': 28, 'Any': 14, 'ColonAndPeriod': 1}
+
 >>> #pprint(grouped_by_form['ColonAndPeriod'][:40])
 >>> pprint(grouped_by_form['Default'][:40])
 >>> #pprint(grouped_by_form['a_and_art_b'][:40])
@@ -101,23 +103,31 @@ class Actions(dict):
 
         Returns an instantiated object of the class keyed by that RE.
         """
-        for regexp, form_class in attack_forms.items():
-            if regexp is None:
-                if self.multiattack_text is None:
-                    return form_class(self, None)
-            else:
-                match = re.fullmatch(regexp, self.multiattack_text)
-                if match:
-                    return form_class(self, match)
-        raise Exception(f'attack_form: no match found.  Actions: {self}')
+        return AttackForm(self)
 
 attack_forms = {} # gets filled up by AttackForm.__init_subclass__
 
 class AttackForm:
     """Base class for attack set classes."""
-    def __init__(self, actions, match):
+    def __init__(self, actions):
+        """Matches multiattack text to one of the REs in attack_forms.keys().
+
+        Typecasts `self` to the class keyed by that RE.
+        """
         self.actions = actions
-        self.match = match
+        for regexp, form_class in attack_forms.items():
+            if regexp is None:
+                if actions.multiattack_text is None:
+                    self.__class__ = form_class
+                    self.match = None
+                    return
+            else:
+                match = re.fullmatch(regexp, actions.multiattack_text)
+                if match:
+                    self.__class__ = form_class
+                    self.match = match
+                    return
+        raise Exception(f'Attack_Form.__init__: no match found.  Actions: {actions}')
 
     def __repr__(self):
         return f'{self.form}({getattr(self.match, "string", None)})'
