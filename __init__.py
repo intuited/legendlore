@@ -301,7 +301,7 @@ class Monster(DBItem):
                         immune=None, immune_notes=None,
                         resist=None, resist_notes=None,
                         conditionImmune=None, conditionImmune_notes=None,
-                        vulnerable=None, description=None, action=None):
+                        vulnerable=None, description=None, actions=None):
             text = []
 
             text.append(f'{name} ({alignment} {type})  Size: {size}  CR: {cr}')
@@ -347,9 +347,9 @@ class Monster(DBItem):
             if description:
                 text.append(description)
 
-            if action:
+            if actions:
                 text.append('ACTIONS:')
-                for name, details in action.items():
+                for name, details in actions.items():
                     text.append(f'{name}: {details.get("text", "")}')
 
             return '\n'.join(text)
@@ -361,7 +361,7 @@ class Monster(DBItem):
                   'spells', 'slots', 'armor', 'immune', 'immune_notes',
                   'resist', 'resist_notes',
                   'conditionImmune', 'conditionImmune_notes',
-                  'vulnerable', 'description', 'action']
+                  'vulnerable', 'description', 'actions']
 
         fields = dict((f, getattr(self, f, None)) for f in dir(self) if f in fields)
         return render_text(**fields)
@@ -390,8 +390,8 @@ class Monster(DBItem):
 
     @cached_property
     def dpr(self):
-        if hasattr(self, 'action'):
-            return lambda *args, **kwargs: calc.round4(self.action.dpr(*args, **kwargs))
+        if hasattr(self, 'actions'):
+            return lambda *args, **kwargs: calc.round4(self.actions.dpr(*args, **kwargs))
         else:
             return lambda *args, **kwargs: None
 

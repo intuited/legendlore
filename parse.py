@@ -878,7 +878,7 @@ class MonsterParser(NodeParser):
             if field == 'action':
                 # convert the list of actions to a dictionary of actions
                 # keyed to the 'name' fields
-                yield ('action', Actions(cls._names_to_keys(value)))
+                yield ('actions', Actions(cls._names_to_keys(value)))
             else:
                 yield (field, value)
 

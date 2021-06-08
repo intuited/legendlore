@@ -8,10 +8,10 @@ A bit of exploration in here:
 >>> from collections import defaultdict
 >>> from re import fullmatch
 
->>> have_ma = m.where(action=p.contains('Multiattack'))
+>>> have_ma = m.where(actions=p.contains('Multiattack'))
 >>> have_ma[0]
 Monster(Aberrant Spirit: M Unaligned aberration, --CR 40HP/-- 0AC (walk 30, fly 30))
->>> have_ma[0].action.attack_form
+>>> have_ma[0].actions.attack_form
 ('default', "The aberration makes a number of attacks equal to half this spell's level (rounded down).")
 
 >>> def groupeddict(it):
@@ -21,7 +21,7 @@ Monster(Aberrant Spirit: M Unaligned aberration, --CR 40HP/-- 0AC (walk 30, fly 
 ...     return d
 >>> histogram = lambda d: {k: len(v) for k, v in d.items()}
 
->>> grouped_by_form = groupeddict(n.action.attack_form.summary for n in have_ma)
+>>> grouped_by_form = groupeddict(n.actions.attack_form.summary for n in have_ma)
 >>> histogram(grouped_by_form)
 {'ByHalfSpellLevel': 9, 'Named': 221, 'Default': 426, 'AnyMelee': 105, 'ArtAAndArtB': 195, 'ArtAAndArtBOrC': 23, 'AOrB': 20, 'WithNamed': 44, 'MeleeOrRanged': 28, 'Any': 14, 'ColonAndPeriod': 1}
 
@@ -31,9 +31,9 @@ Monster(Aberrant Spirit: M Unaligned aberration, --CR 40HP/-- 0AC (walk 30, fly 
 >>> #pprint(grouped_by_form['named'][:40])
 
 What's the deal with any_melee
->>> any_melee = [n for n in m.where(action=p.contains('Multiattack'))
-...              if n.action.attack_form.form == 'AnyMelee']
->>> #pprint([n.action for n in any_melee][:20])
+>>> any_melee = [n for n in m.where(actions=p.contains('Multiattack'))
+...              if n.actions.attack_form.form == 'AnyMelee']
+>>> #pprint([n.actions for n in any_melee][:20])
 """
 import re
 from dnd5edb import calc
