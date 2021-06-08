@@ -391,7 +391,7 @@ class Monster(DBItem):
     @cached_property
     def dpr(self):
         if hasattr(self, 'action'):
-            return self.action.dpr
+            return lambda *args, **kwargs: calc.round4(self.action.dpr(*args, **kwargs))
         else:
             return lambda *args, **kwargs: None
 

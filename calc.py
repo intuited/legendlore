@@ -68,3 +68,6 @@ meetorbeat = lambda target: max(min(1.0 - (target - 1.0) / 20, 1.0), 0.0)
 meetorbeat.adv = lambda target: adv(meetorbeat(target))
 attackodds = lambda target: max(min(1.0 - (target - 1.0) / 20, 0.95), 0.05)
 attackodds.adv = lambda target: adv(attackodds(target))
+
+# rounding; passes None values through
+round4 = lambda x: round(x, 4) if x is not None else None

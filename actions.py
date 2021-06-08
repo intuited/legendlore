@@ -39,7 +39,6 @@ import re
 from dnd5edb import calc
 from functools import cached_property
 from logging import warning
-round4 = lambda x: round(x, 4) if x is not None else None
 
 class Actions(dict):
     """Data and methods for the actions of a particular monster.
@@ -52,7 +51,7 @@ class Actions(dict):
 
     Methods dpr_* implement parsing of various multi
     """
-    @cached_property
+    @property
     def dpr(self):
         r"""Calculate average DPR of the monster vs a given AC.
 
@@ -115,18 +114,19 @@ class AttackForm:
         Typecasts `self` to the class keyed by that RE.
         """
         self.actions = actions
+
+        if actions.multiattack_text is None:
+            self.__class__ = attack_forms[None]
+            self.match = None
+            return
+
         for regexp, form_class in attack_forms.items():
-            if regexp is None:
-                if actions.multiattack_text is None:
-                    self.__class__ = form_class
-                    self.match = None
-                    return
-            else:
-                match = re.fullmatch(regexp, actions.multiattack_text)
-                if match:
-                    self.__class__ = form_class
-                    self.match = match
-                    return
+            match = re.fullmatch(regexp, actions.multiattack_text)
+            if match:
+                self.__class__ = form_class
+                self.match = match
+                return
+
         raise Exception(f'Attack_Form.__init__: no match found.  Actions: {actions}')
 
     def __repr__(self):
@@ -148,6 +148,10 @@ class AttackForm:
         """
         attack_forms.update({subclass.re: subclass})
 
+    def dpr(self, target_ac):
+        """Redefined in handler subclasses."""
+        return None
+
 ### parsing constants
 numberwords = {
     'one': 1,
@@ -162,6 +166,8 @@ re_article = r'(?:a|its|his|her)?'
 re_name = r'(?P<mname>[^.]+)'
 form_text = lambda form: (form.__class__, form.match.string) # translates multiattack output into convenient form
 
+# AttackForm subclasses defined in order of parsing priority.
+# AttackForm.__init__ will try to match the `re` attribute of each of these in this order.
 class Any(AttackForm):
     re = f'(?P<mname>[^.]+) makes (?P<total>{re_num}) (?:weapon )?attacks\.'
     # we can select the most effective attacks from all options
@@ -184,10 +190,10 @@ class Named(AttackForm):
         num = numberwords[groupdict['num']]
         attack_name = groupdict['type']
 
-        for name, attack in self, self.attacks.items():
+        for name, attack in self.actions.attacks.items():
             if attack_name.lower() in name.lower():
                 return num * calc.dpr(target_ac, attack['attack_bonus'], attack['damage'])
-        warning(f'Actions.dpr_named: failed to match attack name "{attack_name}" for match "{self.match}"; attacks: {self.attacks}')
+        warning(f'Actions.dpr_named: failed to match attack name "{attack_name}" for match "{self.match}"; attacks: {self.actions.attacks}')
         return None
 
 class WithNamed(AttackForm):
@@ -221,8 +227,10 @@ class Default(AttackForm):
 class NoMultiattack(AttackForm):
     re = None
     def dpr(self, target_ac):
-        return round4(max(calc.dpr(target_ac, attack['attack_bonus'], attack['damage'])
-                          for name, attack in self.attacks.items()))
+        if self.actions.attacks:
+            return max(calc.dpr(target_ac, attack['attack_bonus'], attack['damage'])
+                       for name, attack in self.actions.attacks.items())
+        return None
 # failures are rendered with uhhh '??' I guess.
 # however, we can will program in many of these as exceptional cases;
 #   these are found by checking the monster name before we reach this point.
