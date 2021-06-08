@@ -28,7 +28,7 @@ Monster(Aberrant Spirit: M Unaligned aberration, --CR 40HP/-- 0AC (walk 30, fly 
 >>> #pprint(grouped_by_form['ColonAndPeriod'][:40])
 >>> pprint(grouped_by_form['Default'][:40])
 >>> #pprint(grouped_by_form['a_and_art_b'][:40])
->>> #pprint(grouped_by_form['named'][:40])
+>>> #pprint(grouped_by_form['Named'][:40])
 
 What's the deal with any_melee
 >>> any_melee = [n for n in m.where(actions=p.contains('Multiattack'))
@@ -70,10 +70,6 @@ class Actions(dict):
 
         Works for most multiattack creatures as well:
         >>> three_dprs = lambda monster: {ac: monster.dpr(ac) for ac in (10, 15, 20)}
-        >>> three_dprs(m.where(name='Brown Bear')[0])
-        {10: 16.575, 15: 11.7, 20: 6.825}
-        >>> three_dprs(m.where(name='Lifferlas')[0])
-        {10: 24.65, 15: 17.4, 20: 10.15}
 
         Checking for errors...
         >>> from unittest import TestCase
@@ -86,7 +82,7 @@ class Actions(dict):
     @cached_property
     def attacks(self):
         """Subset of Actions which have `attack_bonus` and `damage` entries."""
-        return {name: attack for name, attack in self.items()
+        return {name: Attack(attack) for name, attack in self.items()
                 if 'attack_bonus' in attack and 'damage' in attack}
 
     @cached_property
@@ -130,7 +126,7 @@ class AttackForm:
         raise Exception(f'Attack_Form.__init__: no match found.  Actions: {actions}')
 
     def __repr__(self):
-        return f'{self.form}({getattr(self.match, "string", None)})'
+        return f'{self.form}({repr(getattr(self.match, "string", None))})'
 
     @property
     def summary(self):
@@ -152,6 +148,74 @@ class AttackForm:
         """Redefined in handler subclasses."""
         return None
 
+    def _match_attack(self, attack_name):
+        """Matches the `attack_name` against one of the attacks in `self.actions`."""
+        for name, attack in self.actions.attacks.items():
+            if attack_name.lower().rstrip('s') in name.lower():
+                return attack
+        return None
+
+    def _validate(self):
+        r"""Validates the `self.match` data and returns interpreted group match data.
+
+        Validation/interpretation steps:
+        * /num\d+/ groups are cast to int
+        * "total" group is cast to int
+        * confirms that `total` is the sum of all /num\d+/ groups
+        * finds corresponding attacks for /type\d*/ groups
+
+        Return value is an object with zero or more of the following attributes:
+
+        * a\1count: int(/num(\d+)/)
+        * total: int(/total/)
+        * a\1name: /type(\d+)/
+        * for each /type(\d+)/ group, a corresponding /a\1attack/ group is returned
+            * that groups contains the matching attack from `self.actions.attacks`
+
+        Returns None instead if attack matching fails.
+        """
+        w = lambda m: warning(f'{self.__class__.__name__}._validate: {m}.  Match: {self.match}')
+        ret = {}
+        counts = []
+        for key, val in self.match.groupdict().items():
+            if re.fullmatch('num\d+', key):
+                anum = int(key[3:])
+                count = numberwords[val]
+                ret[f'a{anum}count'] = count
+                counts.append(count)
+                continue
+            if key == 'total':
+                ret['total'] = numberwords[val]
+                continue
+            if re.fullmatch('type\d+', key):
+                anum = int(key[4:])
+                ret[f'a{anum}name'] = val
+                attack = self._match_attack(val)
+                if attack:
+                    ret[f'a{anum}attack'] = attack
+                    continue
+                w(f'attack match for "{val}" is None; attacks: {self.actions.attacks}')
+                return None
+            if key == 'mname':
+                ret['mname'] = val
+                continue
+
+        if 'total' in ret:
+            if sum(counts) != ret['total']:
+                w(f'validation of total failed: {"+".join(counts)} != {ret["total"]}')
+
+        return Validated(**ret)
+
+class Attack(dict):
+    def dpr(self, target_ac):
+        if 'attack_bonus' in self and 'damage' in self:
+            return calc.dpr(target_ac, self['attack_bonus'], self['damage'])
+        return None
+
+class Validated:
+    def __init__(self, **kwargs):
+        self.__dict__ = kwargs
+
 ### parsing constants
 numberwords = {
     'one': 1,
@@ -162,7 +226,8 @@ numberwords = {
     'six': 6,
     }
 re_num = '|'.join(numberwords)
-re_article = r'(?:a|its|his|her)?'
+re_article = r'(?:a|its|his|her)?' # We should be able to just ignore articles like a, its, his, etc.
+
 re_name = r'(?P<mname>[^.]+)'
 form_text = lambda form: (form.__class__, form.match.string) # translates multiattack output into convenient form
 
@@ -183,6 +248,15 @@ class MeleeOrRanged(AttackForm):
     re = f'(?P<mname>[^.]+) makes (?P<num_melee>{re_num}) melee attacks or (?P<num_ranged>{re_num}) ranged attacks\.'
     # choose max of averages of optimal ranged and optimal melee attacks
 class Named(AttackForm):
+    """A varying number of attacks of a named type.
+
+    >>> from repltools import m
+    >>> liff = m.where(name='Lifferlas')[0]
+    >>> liff.actions.attack_form
+    Named('Lifferlas makes two slam attacks.')
+    >>> {ac: liff.dpr(ac) for ac in (10, 15, 20)}
+    {10: 24.65, 15: 17.4, 20: 10.15}
+    """
     re = f'(?P<mname>[^.]+) makes (?P<num>{re_num}) (?P<type>\w+) attacks\.'
     def dpr(self, target_ac):
         """Check if `type` matches an attack action name; otherwise fail."""
@@ -190,10 +264,10 @@ class Named(AttackForm):
         num = numberwords[groupdict['num']]
         attack_name = groupdict['type']
 
-        for name, attack in self.actions.attacks.items():
-            if attack_name.lower() in name.lower():
-                return num * calc.dpr(target_ac, attack['attack_bonus'], attack['damage'])
-        warning(f'Actions.dpr_named: failed to match attack name "{attack_name}" for match "{self.match}"; attacks: {self.actions.attacks}')
+        attack = self._match_attack(attack_name)
+        if attack:
+            return num * calc.dpr(target_ac, attack['attack_bonus'], attack['damage'])
+        warning(f'Named.dpr: failed to match attack name "{attack_name}" for match "{self.match}"; attacks: {self.actions.attacks}')
         return None
 
 class WithNamed(AttackForm):
@@ -206,12 +280,27 @@ class ArtAAndArtBOrC(AttackForm):
           + f'and (?P<num2>{re_num}) with {re_article} (?P<type2>[^,.]+) or (?P<type3>[^,.]+)\.')
     # similar to `a_and_art_b` but there's a choice between type2 and type3 for the second attack.
 class ArtAAndArtB(AttackForm):
+    """Attacks of two different types with articles or pronouns preceding them.
+
+    >>> from repltools import m
+    >>> bear = m.where(name='Brown Bear')[0]
+    >>> (bear.actions.attack_form)
+    ArtAAndArtB('The bear makes two attacks: one with its bite and one with its claws.')
+    >>> {ac: bear.dpr(ac) for ac in (10, 15, 20)}
+    {10: 16.575, 15: 11.7, 20: 6.825}
+    """
     re = (f'(?P<mname>[^.]+) makes (?P<total>{re_num}) attacks: '
           + f'(?P<num1>{re_num}) with {re_article} (?P<type1>[^,.]+) '
           + f'and (?P<num2>{re_num}) with {re_article} (?P<type2>[^,.]+)\.')
-    # we should be able to just ignore articles like a, its, his, etc.  Check type1 and type2 against attack action names.
-    # if they don't all match, we're still okay if there are only two attack actions
-    # otherwise, fail
+    def dpr(self, target_ac):
+        """Sum of DPR from two different attacks."""
+        v = self._validate()
+
+        if v is None:
+            return None
+
+        return v.a1count * v.a1attack.dpr(target_ac) + v.a2count * v.a2attack.dpr(target_ac)
+
 class AOrB(AttackForm):
     re = f'(?P<mname>[^.]+) makes (?P<num1>{re_num}) (?P<type1>[^,.]+) attacks or (?P<num2>{re_num}) (?P<type2>[^,.]+) attacks\.'
     # check type1 & type2; fail if check fails; calculate optimal damage
