@@ -23,7 +23,7 @@ Monster(Aberrant Spirit: M Unaligned aberration, --CR 40HP/-- 0AC (walk 30, fly 
 
 >>> grouped_by_form = groupeddict(n.actions.attack_form.summary for n in have_ma)
 >>> histogram(grouped_by_form)
-{'ByHalfSpellLevel': 9, 'Named': 220, 'Default': 390, 'AnyMelee': 105, 'WithNamed2Options': 11, 'ArtAAndArtB': 200, 'ArtAAndArtBOrC': 20, 'AOrB': 20, 'WithNamed': 42, 'MeleeOrRanged': 28, 'Any': 14, 'AttacksWithNamed': 25, 'MakesAAndB': 1, 'ColonAndPeriod': 1}
+{'ByHalfSpellLevel': 9, 'Named': 246, 'Default': 348, 'AnyMelee': 105, 'WithNamed2Options': 12, 'ArtAAndArtB': 200, 'ArtAAndArtBOrC': 20, 'AOrB': 20, 'WithNamed': 52, 'MeleeOrRanged': 28, 'Any': 14, 'AttacksWithNamed': 25, 'MakesAAndB': 6, 'ColonAndPeriod': 1}
 
 >>> #pprint(grouped_by_form['ColonAndPeriod'][:40])
 >>> pprint(grouped_by_form['Default'][:40])
@@ -234,7 +234,7 @@ re_name = r'(?P<mname>[^,.]+)'
 re_total = f'(?P<total>{re_num})'
 
 re_count = lambda n: f'(?P<num{n}>{re_num})'
-re_type_word = lambda n: f'(?P<type{n}>\w+)'
+re_type_word = lambda n: f'(?P<type{n}>\w+(?:\s\w+)?)'
 re_type_phrase = lambda n: f'(?P<type{n}>[^,.]+)'
 
 # AttackForm subclasses defined in order of parsing priority.
