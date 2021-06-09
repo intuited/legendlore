@@ -12,7 +12,7 @@ A bit of exploration in here:
 >>> have_ma[0]
 Monster(Aberrant Spirit: M Unaligned aberration, --CR 40HP/-- 0AC (walk 30, fly 30))
 >>> have_ma[0].actions.attack_form
-('default', "The aberration makes a number of attacks equal to half this spell's level (rounded down).")
+ByHalfSpellLevel("The aberration makes a number of attacks equal to half this spell's level (rounded down).")
 
 >>> def groupeddict(it):
 ...     d = defaultdict(list)
@@ -23,11 +23,10 @@ Monster(Aberrant Spirit: M Unaligned aberration, --CR 40HP/-- 0AC (walk 30, fly 
 
 >>> grouped_by_form = groupeddict(n.actions.attack_form.summary for n in have_ma)
 >>> histogram(grouped_by_form)
-{'ByHalfSpellLevel': 9, 'Named': 248, 'Default': 332, 'AnyMelee': 107, 'WithNamed2Options': 12, 'ArtAAndArtB': 200, 'ArtAAndArtBOrC': 20, 'AOrB': 20, 'WithNamed': 52, 'MeleeOrRanged': 28, 'Any': 15, 'AttacksWithNamed': 25, 'MakesAAndB': 6, 'TwiceArtAAndArtB': 6, 'NamedAndUses': 4, 'ColonAndPeriod': 2}
+{'ByHalfSpellLevel': 9, 'Named': 248, 'Default': 323, 'AnyMelee': 107, 'WithNamed2Options': 14, 'ArtAAndArtB': 204, 'ArtAAndArtBOrC': 21, 'AOrB': 20, 'WithNamed': 54, 'MeleeOrRanged': 28, 'Any': 15, 'AttacksWithNamed': 27, 'MakesAAndB': 6, 'TwiceArtAAndArtB': 6, 'NamedAndUses': 4}
 
 >>> pprint(grouped_by_form['Default'][:40])
->>> #pprint(grouped_by_form['a_and_art_b'][:40])
->>> pprint(grouped_by_form['TotalAAndB'][:40])
+>>> pprint(grouped_by_form['ByHalfSpellLevel'][:40])
 
 What's the deal with any_melee
 >>> any_melee = [n for n in m.where(actions=p.contains('Multiattack'))
@@ -116,6 +115,8 @@ class AttackForm:
             return
 
         for regexp, form_class in attack_forms.items():
+            if regexp is None:
+                continue
             match = re.fullmatch(regexp, actions.multiattack_text)
             if match:
                 self.__class__ = form_class
@@ -142,6 +143,9 @@ class AttackForm:
         This order will determine the priority of the various regexps.
         """
         attack_forms.update({subclass.re: subclass})
+
+    # changed to '>' or '>=' for classes which have additional effects
+    dpr_confidence='~='
 
     def dpr(self, target_ac):
         """Redefined in handler subclasses."""
@@ -363,6 +367,7 @@ class NamedAndUses(AttackForm):
     {12: 4.55, 14: 3.85, 16: 3.15, 18: 2.45, 20: 1.75, 22: 1.05, 24: 0.35, 26: 0.35, 28: 0.35}
     """
     re = f'{re_name} makes {re_count(1)} attacks? with {re_article}{re_type_word(1)} and (?:uses|can use) {re_article}\w+(?:\s\w+)' + r'{,3}\.?'
+    dpr_confidence = '>'
     _calc_dpr = Named._calc_dpr # we ignore the "uses" clause.
 
 class AttacksWithNamed(AttackForm):
@@ -460,16 +465,17 @@ class AOrB(AttackForm):
     # check type1 & type2; fail if check fails; calculate optimal damage
     def _calc_dpr(self, target_ac, v):
         return max(v.a1count * v.a1attack.dpr(target_ac), v.a2count * v.a2attack.dpr(target_ac))
-class ByHalfSpellLevel(AttackForm):
-    """MONSTER makes a number of attacks equal to half this spell's level (rounded down)."""
-    re = f"{re_name} makes a number of attacks equal to half this spell's level \(rounded down\)\."
-    # Auto-fail since we don't know the spell level.
-    # hmmmmm or maybe default to 1 attack of any kind?
-class Default(AttackForm):
-    """(Catch-all for whatever isn't matched by previous regexps.)"""
-    re = r'.*(?:\n.*)*'
+
 class NoMultiattack(AttackForm):
-    """(Handles case where there is no multiattack string."""
+    """(Handles case where there is no multiattack string.)
+
+    >>> from repltools import m
+    >>> wolf = m.where(name='Wolf')[0]
+    >>> wolf.actions.attack_form
+    NoMultiattack(None)
+    >>> {ac: wolf.dpr(ac) for ac in range(12, 27, 2)}
+    {12: 4.55, 14: 3.85, 16: 3.15, 18: 2.45, 20: 1.75, 22: 1.05, 24: 0.35, 26: 0.35}
+    """
     re = None
     def _validate(self):
         if self.actions.attacks:
@@ -477,6 +483,42 @@ class NoMultiattack(AttackForm):
         return None
     def _calc_dpr(self, target_ac, v):
         return max(attack.dpr(target_ac) for attack in v.attacks.values())
-# failures are rendered with uhhh '??' I guess.
-# however, we can will program in many of these as exceptional cases;
-#   these are found by checking the monster name before we reach this point.
+
+class ByHalfSpellLevel(AttackForm):
+    """MONSTER makes a number of attacks equal to half this spell's level (rounded down).
+
+    Assume the number of attacks is 1 for the purposes of calculating DPR.
+
+    I think these always use your spell modifier for their attack bonus
+    and thus cannot have their average DPR calculated automatically.
+
+    >>> from repltools import m
+    >>> celestial = m.where(name='Celestial Spirit')[0]
+    >>> celestial.actions.attack_form
+    ByHalfSpellLevel("The celestial makes a number of attacks equal to half this spell's level (rounded down).")
+    >>> {ac: celestial.dpr(ac) for ac in range(12, 27, 2)}
+    {12: 81.7, 14: 81.7, 16: 77.4, 18: 68.8, 20: 60.2, 22: 51.6, 24: 43.0, 26: 34.4}
+    """
+    re = f"{re_name} makes a number of attacks equal to half this spell's level \(rounded down\)\."
+    dpr_confidence = '>='
+    _validate = NoMultiattack._validate
+    _calc_dpr = NoMultiattack._calc_dpr
+
+class Default(AttackForm):
+    """(Catch-all for whatever isn't matched by previous regexps.)
+
+    This case catches a large number of exceptional cases.
+
+    We don't know anything about multiattacks here so we just use the best attack.
+
+    >>> from repltools import m
+    >>> hobgoblin = m.where(name='Hobgoblin Iron Shadow')[0]
+    >>> hobgoblin.actions.attack_form
+    Default('The hobgoblin makes four attacks, each of which can be an unarmed strike or a dart attack. It can also use Shadow Jaunt once, either before or after one of the attacks.')
+    >>> {ac: hobgoblin.dpr(ac) for ac in range(12, 27, 2)}
+    {12: 3.85, 14: 3.3, 16: 2.75, 18: 2.2, 20: 1.65, 22: 1.1, 24: 0.55, 26: 0.275}
+    """
+    re = r'.*(?:\n.*)*'
+    dpr_confidence = '>=~'
+    _validate = NoMultiattack._validate
+    _calc_dpr = NoMultiattack._calc_dpr
