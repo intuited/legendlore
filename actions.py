@@ -1,37 +1,4 @@
 """Handle actions, in particular, attack actions.
-
-A bit of exploration in here:
->>> from repltools import m, p
->>> from pprint import pprint
->>> from functools import partial
->>> pprint = partial(pprint, width=200)
->>> from collections import defaultdict
->>> from re import fullmatch
-
->>> have_ma = m.where(actions=p.contains('Multiattack'))
->>> have_ma[0]
-Monster(Aberrant Spirit: M Unaligned aberration, --CR 40HP/-- 0AC (walk 30, fly 30))
->>> have_ma[0].actions.attack_form
-ByHalfSpellLevel("The aberration makes a number of attacks equal to half this spell's level (rounded down).")
-
->>> def groupeddict(it):
-...     d = defaultdict(list)
-...     for k, v in it:
-...         d[k].append(v)
-...     return d
->>> histogram = lambda d: {k: len(v) for k, v in d.items()}
-
->>> grouped_by_form = groupeddict(n.actions.attack_form.summary for n in have_ma)
->>> histogram(grouped_by_form)
-{'ByHalfSpellLevel': 9, 'Named': 248, 'Default': 323, 'AnyMelee': 107, 'WithNamed2Options': 14, 'ArtAAndArtB': 204, 'ArtAAndArtBOrC': 21, 'AOrB': 20, 'WithNamed': 54, 'MeleeOrRanged': 28, 'Any': 15, 'AttacksWithNamed': 27, 'MakesAAndB': 6, 'TwiceArtAAndArtB': 6, 'NamedAndUses': 4}
-
->>> pprint(grouped_by_form['Default'][:40])
->>> pprint(grouped_by_form['ByHalfSpellLevel'][:40])
-
-What's the deal with any_melee
->>> any_melee = [n for n in m.where(actions=p.contains('Multiattack'))
-...              if n.actions.attack_form.form == 'AnyMelee']
->>> #pprint([n.actions for n in any_melee][:20])
 """
 import re
 from dnd5edb import calc
@@ -250,6 +217,7 @@ re_total = f'(?P<total>{re_num})'
 re_count = lambda n: f'(?P<num{n}>{re_num})'
 re_type_word = lambda n: f'(?P<type{n}>\w+(?:\s\w+)?)'
 re_type_phrase = lambda n: f'(?P<type{n}>[^,.]+)'
+re_words = lambda n: r'\w+(?:\s\w+){,' + str(n-1) + '}'
 
 # AttackForm subclasses defined in order of parsing priority.
 # AttackForm.__init__ will try to match the `re` attribute of each of these in this order.
@@ -497,7 +465,7 @@ class ByHalfSpellLevel(AttackForm):
     >>> celestial.actions.attack_form
     ByHalfSpellLevel("The celestial makes a number of attacks equal to half this spell's level (rounded down).")
     >>> {ac: celestial.dpr(ac) for ac in range(12, 27, 2)}
-    {12: 81.7, 14: 81.7, 16: 77.4, 18: 68.8, 20: 60.2, 22: 51.6, 24: 43.0, 26: 34.4}
+    {12: None, 14: None, 16: None, 18: None, 20: None, 22: None, 24: None, 26: None}
     """
     re = f"{re_name} makes a number of attacks equal to half this spell's level \(rounded down\)\."
     dpr_confidence = '>='
