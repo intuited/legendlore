@@ -23,7 +23,7 @@ Monster(Aberrant Spirit: M Unaligned aberration, --CR 40HP/-- 0AC (walk 30, fly 
 
 >>> grouped_by_form = groupeddict(n.actions.attack_form.summary for n in have_ma)
 >>> histogram(grouped_by_form)
-{'ByHalfSpellLevel': 9, 'Named': 246, 'Default': 348, 'AnyMelee': 105, 'WithNamed2Options': 12, 'ArtAAndArtB': 200, 'ArtAAndArtBOrC': 20, 'AOrB': 20, 'WithNamed': 52, 'MeleeOrRanged': 28, 'Any': 14, 'AttacksWithNamed': 25, 'MakesAAndB': 6, 'ColonAndPeriod': 1}
+{'ByHalfSpellLevel': 9, 'Named': 248, 'Default': 332, 'AnyMelee': 107, 'WithNamed2Options': 12, 'ArtAAndArtB': 200, 'ArtAAndArtBOrC': 20, 'AOrB': 20, 'WithNamed': 52, 'MeleeOrRanged': 28, 'Any': 15, 'AttacksWithNamed': 25, 'MakesAAndB': 6, 'TwiceArtAAndArtB': 6, 'NamedAndUses': 4, 'ColonAndPeriod': 2}
 
 >>> #pprint(grouped_by_form['ColonAndPeriod'][:40])
 >>> pprint(grouped_by_form['Default'][:40])
@@ -220,6 +220,7 @@ class Validated:
 ### parsing constants
 numberwords = {
     'one': 1,
+    'once': 1,
     'two': 2,
     'twice': 2,
     'three': 3,
@@ -240,18 +241,22 @@ re_type_phrase = lambda n: f'(?P<type{n}>[^,.]+)'
 # AttackForm subclasses defined in order of parsing priority.
 # AttackForm.__init__ will try to match the `re` attribute of each of these in this order.
 class Any(AttackForm):
-    re = f'{re_name} makes (?P<total>{re_num}) (?:weapon )?attacks\.'
+    """MONSTER makes NUM attacks."""
+    re = f'{re_name} makes (?P<total>{re_num}) (?:weapon )?attacks\.?'
     # we can select the most effective attacks from all options
 class AnyMelee(AttackForm):
-    re = f'{re_name} makes {re_count(1)} melee attacks\.'
+    """MONSTER makes NUM melee attacks."""
+    re = f'{re_name} makes {re_count(1)} melee attacks\.?'
     # we can select the most effective attacks from all melee options.
     # melee options seem to be consistently indicated with 'Melee' at the beginning of the action text.
 class AnyRanged(AttackForm):
-    re = f'{re_name} makes {re_count(1)} ranged attacks\.'
+    """MONSTER makes NUM ranged attacks."""
+    re = f'{re_name} makes {re_count(1)} ranged attacks\.?'
     # we can select the most effective attacks from all ranged options
     # ranged options seem to be consistently indicated with 'Melee' at the beginning of the action text.
 class MeleeOrRanged(AttackForm):
-    re = f'{re_name} makes (?P<num_melee>{re_num}) melee attacks or (?P<num_ranged>{re_num}) ranged attacks\.'
+    """MONSTER makes NUM melee attacks or NUM ranged attacks"""
+    re = f'{re_name} makes (?P<num_melee>{re_num}) melee attacks or (?P<num_ranged>{re_num}) ranged attacks\.?'
     # choose max of averages of optimal ranged and optimal melee attacks
 class Named(AttackForm):
     """MONSTER makes NUM ATTACK attacks.
@@ -263,7 +268,7 @@ class Named(AttackForm):
     >>> {ac: liff.dpr(ac) for ac in (10, 15, 20)}
     {10: 24.65, 15: 17.4, 20: 10.15}
     """
-    re = f'{re_name} makes {re_count(1)} {re_type_word(1)} attacks\.'
+    re = f'{re_name} makes {re_count(1)} {re_type_word(1)} attacks\.?'
     def dpr(self, target_ac):
         """Check if `type` matches an attack action name; otherwise fail."""
         v = self._validate()
@@ -301,6 +306,19 @@ class WithNamed2Options(AttackForm):
         if v is None:
             return None
         return v.total * max(v.a1attack.dpr(target_ac), v.a2attack.dpr(target_ac))
+
+class NamedAndUses(AttackForm):
+    """MONSTER makes NUM attack(s) with ATTACK and (uses|can use) ABILITY.
+
+    >>> from repltools import m
+    >>> devourer = m.where(name='Intellect Devourer')[0]
+    >>> devourer.actions.attack_form
+    NamedAndUses('The intellect devourer makes one attack with its claws and uses Devour Intellect.')
+    >>> {ac: devourer.dpr(ac) for ac in range(12, 30, 2)}
+    {12: 4.55, 14: 3.85, 16: 3.15, 18: 2.45, 20: 1.75, 22: 1.05, 24: 0.35, 26: 0.35, 28: 0.35}
+    """
+    re = f'{re_name} makes {re_count(1)} attacks? with {re_article} {re_type_word(1)} and (?:uses|can use) {re_article}? ?\w+(?:\s\w+)' + r'{,3}\.?'
+    dpr = Named.dpr # we ignore the "uses" clause.
 
 class AttacksWithNamed(AttackForm):
     """MONSTER attacks [twice] with ATTACK.
@@ -346,6 +364,18 @@ class ArtAAndArtB(AttackForm):
             return None
 
         return v.a1count * v.a1attack.dpr(target_ac) + v.a2count * v.a2attack.dpr(target_ac)
+class TwiceArtAAndArtB(AttackForm):
+    """MONSTER attacks twice, once with ATTACK1 and once with ATTACK2.
+
+    >>> from repltools import m
+    >>> drake = m.where(name='Black Guard Drake')[0]
+    >>> drake.actions.attack_form
+    TwiceArtAAndArtB('The drake attacks twice, once with its bite and once with its tail.')
+    >>> {ac: drake.dpr(ac) for ac in range(12, 30, 2)}
+    {12: 9.8, 14: 8.4, 16: 7.0, 18: 5.6, 20: 4.2, 22: 2.8, 24: 1.4, 26: 0.7, 28: 0.7}
+    """
+    re = f'{re_name} attacks (?P<total>twice)[,:] (?P<num1>once) with {re_article} {re_type_word(1)} and (?P<num2>once) with {re_article} {re_type_word(2)}\.?'
+    dpr = ArtAAndArtB.dpr
 
 class MakesAAndB(AttackForm):
     """MONSTER makes NUM1 ATTACK1 and NUM2 ATTACK2 attack(s).
@@ -361,18 +391,23 @@ class MakesAAndB(AttackForm):
     dpr = ArtAAndArtB.dpr # we can reuse this since it doesn't look at `total` outside of validation
 
 class AOrB(AttackForm):
-    re = f'{re_name} makes {re_count(1)} {re_type_phrase(1)} attacks or {re_count(2)} {re_type_phrase(2)} attacks\.'
+    """MONSTER makes NUM1 ATTACK1 attacks or NUM2 ATTACK2 attacks."""
+    re = f'{re_name} makes {re_count(1)} {re_type_phrase(1)} attacks or {re_count(2)} {re_type_phrase(2)} attacks\.?'
     # check type1 & type2; fail if check fails; calculate optimal damage
 class ColonAndPeriod(AttackForm):
-    re = f'{re_name} makes {re_total} attacks: {re_count(1)} with {re_type_phrase(1)} and {re_count(2)} with {re_type_phrase(2)}\.'
+    """MONSTER makes TOTAL attacks: NUM1 with ATTACK1 and NUM2 with ATTACK2."""
+    re = f'{re_name} makes {re_total} attacks[:,] {re_count(1)} with {re_type_phrase(1)} and {re_count(2)} with {re_type_phrase(2)}\.'
     # parse num1 and num2 as numbers; check type1 and type 2 against attack action names; otherwise fail
 class ByHalfSpellLevel(AttackForm):
+    """MONSTER makes a number of attacks equal to half this spell's level (rounded down)."""
     re = f"{re_name} makes a number of attacks equal to half this spell's level \(rounded down\)\."
     # Auto-fail since we don't know the spell level.
     # hmmmmm or maybe default to 1 attack of any kind?
 class Default(AttackForm):
+    """(Catch-all for whatever isn't matched by previous regexps.)"""
     re = r'.*(?:\n.*)*'
 class NoMultiattack(AttackForm):
+    """(Handles case where there is no multiattack string."""
     re = None
     def dpr(self, target_ac):
         if self.actions.attacks:
