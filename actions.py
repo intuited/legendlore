@@ -65,6 +65,12 @@ class Actions(dict):
         """
         return AttackForm(self)
 
+class Attack(dict):
+    def dpr(self, target_ac):
+        if 'attack_bonus' in self and 'damage' in self:
+            return calc.dpr(target_ac, self['attack_bonus'], self['damage'])
+        return None
+
 attack_forms = {} # gets filled up by AttackForm.__init_subclass__
 
 class AttackForm:
@@ -154,7 +160,7 @@ class AttackForm:
 
         Returns None instead if attack matching fails.
         """
-        w = lambda m: warning(f'{self.__class__.__name__}._validate: {m}.  Match: {self.match}')
+        w = lambda m: warning(f'{self.__class__.__name__}._validate: {m}.  MA string: "{getattr(self.match, "string", None)}"')
         ret = {}
         counts = []
         for key, val in self.match.groupdict().items():
@@ -187,12 +193,6 @@ class AttackForm:
 
         return Validated(**ret)
 
-class Attack(dict):
-    def dpr(self, target_ac):
-        if 'attack_bonus' in self and 'damage' in self:
-            return calc.dpr(target_ac, self['attack_bonus'], self['damage'])
-        return None
-
 class Validated:
     def __init__(self, **kwargs):
         self.__dict__ = kwargs
@@ -218,6 +218,53 @@ re_count = lambda n: f'(?P<num{n}>{re_num})'
 re_type_word = lambda n: f'(?P<type{n}>\w+(?:\s\w+)?)'
 re_type_phrase = lambda n: f'(?P<type{n}>[^,.]+)'
 re_words = lambda n: r'\w+(?:\s\w+){,' + str(n-1) + '}'
+
+#### Handlers: these are subclasses of AttackForm which override `re` and `_calc_dpr`, as well as possibly `_validate`.
+# Note that each time a class subclasses AttackForm, it's added to the sequential list of handlers.
+
+### Custom handlers first: these catch specific strings that would otherwise be false positives for generic handlers.
+# These typically override `dpr` rather than `_calc_dpr`, as there is no validation for them to do.
+class Centaur(AttackForm):
+    """Centaur.
+
+    >>> from dnd5edb.repltools import m
+    >>> {ac: m.where(name='Centaur')[0].dpr(ac) for ac in range(10, 31, 2)}
+    {10: 17.425, 12: 15.375, 14: 13.325, 16: 11.275, 18: 9.225, 20: 7.175, 22: 5.125, 24: 3.075, 26: 1.025, 28: 1.025, 30: 1.025}
+    """
+    re = 'The centaur makes two attacks: one with its pike and one with its hooves or two with its longbow\.'
+    def dpr(self, target_ac):
+        return max(self._match_attack('Pike').dpr(target_ac) + self._match_attack('Hooves').dpr(target_ac),
+                   2 * self._match_attack('Longbow').dpr(target_ac))
+class Lamia(AttackForm):
+    re = "The lamia makes two attacks: one with its claws and one with its dagger or Intoxicating Touch\."
+    def dpr(self, target_ac):
+        return self._match_attack('Claws').dpr(target_ac) + self._match_attack('Dagger').dpr(target_ac)
+class Manticore(AttackForm):
+    re = "The manticore makes three attacks: one with its bite and two with its claws or three with its tail spikes."
+    def dpr(self, target_ac):
+        return max(self._match_attack('Bite').dpr(target_ac) + 2 * self._match_attack('Claws').dpr(target_ac),
+                   self._match_attack('Tail Spikes').dpr(target_ac))
+class Orc(AttackForm):
+    """The Orc War Chief's Greataxe attack doesn't provide an attack handler or damage bonus.
+
+    >>> from repltools import m
+    >>> orc = m.where(name='Orc War Chief')[0]
+    >>> orc.actions.attack_form
+    Orc('The orc makes two attacks with its greataxe or its spear.')
+    >>> {ac: orc.dpr(ac) for ac in range(12, 27, 2)}
+    {12: 22.5, 14: 19.5, 16: 16.5, 18: 13.5, 20: 10.5, 22: 7.5, 24: 4.5, 26: 1.5}
+
+    Should equal the following:
+    >>> {ac: calc.round4(2*calc.dpr(ac, 6, '1d12+4+1d8')) for ac in range(12, 27, 2)}
+    {12: 22.5, 14: 19.5, 16: 16.5, 18: 13.5, 20: 10.5, 22: 7.5, 24: 4.5, 26: 1.5}
+    """
+    re = "The orc makes two attacks with its greataxe or its spear."
+    def dpr(self, target_ac):
+        return 2 * max(self._match_attack('Spear').dpr(target_ac),
+                       calc.dpr(target_ac, 6, '1d12+4+1d8'))
+
+
+### Generic handlers: use broadly constructed regexps to identify classes of multiattack strings.
 
 # AttackForm subclasses defined in order of parsing priority.
 # AttackForm.__init__ will try to match the `re` attribute of each of these in this order.
@@ -406,13 +453,26 @@ class TwiceArtAAndArtB(AttackForm):
     re = f'{re_name} attacks (?P<total>twice)[,:] (?P<num1>once) with {re_article}{re_type_word(1)} and (?P<num2>once) with {re_article}{re_type_word(2)}\.?'
     _calc_dpr = ArtAAndArtB._calc_dpr
 
-class MakesAAndB(AttackForm):
+class MakesAAttackAndBAttack(AttackForm):
+    """MONSTER makes NUM1 ATTACK1 and NUM2 ATTACK2 attack(s).
+
+    >>> from repltools import m
+    >>> peryton = m.where(name='Peryton')[0]
+    >>> peryton.actions.attack_form
+    MakesAAttackAndBAttack('The peryton makes one gore attack and one talon attack.')
+    >>> {ac: peryton.dpr(ac) for ac in range(12, 27, 2)}
+    {12: 10.85, 14: 9.3, 16: 7.75, 18: 6.2, 20: 4.65, 22: 3.1, 24: 1.55, 26: 0.775}
+    """
+    re = f'{re_name} makes {re_count(1)} {re_type_word(1)} attacks? and {re_count(2)} {re_type_word(2)} attacks?\.'
+    _calc_dpr = ArtAAndArtB._calc_dpr # we can reuse this since it doesn't look at `total` outside of validation
+
+class MakesAAndBAttack(AttackForm):
     """MONSTER makes NUM1 ATTACK1 and NUM2 ATTACK2 attack(s).
 
     >>> from repltools import m
     >>> norker = m.where(name='Norker')[0]
     >>> norker.actions.attack_form
-    MakesAAndB('The norker makes one mace and one bite attack.')
+    MakesAAndBAttack('The norker makes one mace and one bite attack.')
     >>> {ac: norker.dpr(ac) for ac in range(12, 27, 2)}
     {12: 5.4, 14: 4.5, 16: 3.6, 18: 2.7, 20: 1.8, 22: 0.9, 24: 0.45, 26: 0.45}
     """
