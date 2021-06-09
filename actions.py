@@ -23,7 +23,7 @@ Monster(Aberrant Spirit: M Unaligned aberration, --CR 40HP/-- 0AC (walk 30, fly 
 
 >>> grouped_by_form = groupeddict(n.actions.attack_form.summary for n in have_ma)
 >>> histogram(grouped_by_form)
-{'ByHalfSpellLevel': 9, 'Named': 220, 'Default': 391, 'AnyMelee': 105, 'WithNamed2Options': 11, 'ArtAAndArtB': 200, 'ArtAAndArtBOrC': 20, 'AOrB': 20, 'WithNamed': 42, 'MeleeOrRanged': 28, 'Any': 14, 'AttacksWithNamed': 25, 'ColonAndPeriod': 1}
+{'ByHalfSpellLevel': 9, 'Named': 220, 'Default': 390, 'AnyMelee': 105, 'WithNamed2Options': 11, 'ArtAAndArtB': 200, 'ArtAAndArtBOrC': 20, 'AOrB': 20, 'WithNamed': 42, 'MeleeOrRanged': 28, 'Any': 14, 'AttacksWithNamed': 25, 'MakesAAndB': 1, 'ColonAndPeriod': 1}
 
 >>> #pprint(grouped_by_form['ColonAndPeriod'][:40])
 >>> pprint(grouped_by_form['Default'][:40])
@@ -233,6 +233,7 @@ re_article = r'(?:a|its|his|her)?' # We should be able to just ignore articles l
 re_name = r'(?P<mname>[^,.]+)'
 re_total = f'(?P<total>{re_num})'
 
+re_count = lambda n: f'(?P<num{n}>{re_num})'
 re_type_word = lambda n: f'(?P<type{n}>\w+)'
 re_type_phrase = lambda n: f'(?P<type{n}>[^,.]+)'
 
@@ -242,11 +243,11 @@ class Any(AttackForm):
     re = f'{re_name} makes (?P<total>{re_num}) (?:weapon )?attacks\.'
     # we can select the most effective attacks from all options
 class AnyMelee(AttackForm):
-    re = f'{re_name} makes (?P<num1>{re_num}) melee attacks\.'
+    re = f'{re_name} makes {re_count(1)} melee attacks\.'
     # we can select the most effective attacks from all melee options.
     # melee options seem to be consistently indicated with 'Melee' at the beginning of the action text.
 class AnyRanged(AttackForm):
-    re = f'{re_name} makes (?P<num1>{re_num}) ranged attacks\.'
+    re = f'{re_name} makes {re_count(1)} ranged attacks\.'
     # we can select the most effective attacks from all ranged options
     # ranged options seem to be consistently indicated with 'Melee' at the beginning of the action text.
 class MeleeOrRanged(AttackForm):
@@ -262,7 +263,7 @@ class Named(AttackForm):
     >>> {ac: liff.dpr(ac) for ac in (10, 15, 20)}
     {10: 24.65, 15: 17.4, 20: 10.15}
     """
-    re = f'{re_name} makes (?P<num1>{re_num}) {re_type_word(1)} attacks\.'
+    re = f'{re_name} makes {re_count(1)} {re_type_word(1)} attacks\.'
     def dpr(self, target_ac):
         """Check if `type` matches an attack action name; otherwise fail."""
         v = self._validate()
@@ -280,7 +281,7 @@ class WithNamed(AttackForm):
     >>> {ac: displacer.dpr(ac) for ac in range(5, 30, 2)}
     {5: 14.25, 7: 14.25, 9: 13.5, 11: 12.0, 13: 10.5, 15: 9.0, 17: 7.5, 19: 6.0, 21: 4.5, 23: 3.0, 25: 1.5, 27: 0.75, 29: 0.75}
     """
-    re = f'{re_name} makes (?P<num1>{re_num}) (?:melee |ranged )?attacks with {re_article} {re_type_word(1)}\.'
+    re = f'{re_name} makes {re_count(1)} (?:melee |ranged )?attacks with {re_article} {re_type_word(1)}\.'
     # same handler as 'named'
     dpr = Named.dpr
 
@@ -321,8 +322,8 @@ class AttacksWithNamed(AttackForm):
 class ArtAAndArtBOrC(AttackForm):
     """MONSTER makes TOTAL attacks: NUM1 with ATTACK1 and NUM2 with ATTACK2 or ATTACK3."""
     re = (f'{re_name} makes {re_total} attacks: '
-          + f'(?P<num1>{re_num}) with {re_article} {re_type_phrase(1)} '
-          + f'and (?P<num2>{re_num}) with {re_article} {re_type_phrase(2)} or {re_type_phrase(3)}\.')
+          + f'{re_count(1)} with {re_article} {re_type_phrase(1)} '
+          + f'and {re_count(2)} with {re_article} {re_type_phrase(2)} or {re_type_phrase(3)}\.')
     # similar to `a_and_art_b` but there's a choice between type2 and type3 for the second attack.
 class ArtAAndArtB(AttackForm):
     """MONSTER makes TOTAL attacks: NUM1 with ATTACK1 and NUM2 with ATTACK2.
@@ -335,8 +336,8 @@ class ArtAAndArtB(AttackForm):
     {10: 16.575, 15: 11.7, 20: 6.825}
     """
     re = (f'{re_name} makes {re_total} (?:melee )?attacks: '
-          + f'(?P<num1>{re_num}) with {re_article} {re_type_phrase(1)} '
-          + f'and (?P<num2>{re_num}) with {re_article} {re_type_phrase(2)}\.')
+          + f'{re_count(1)} with {re_article} {re_type_phrase(1)} '
+          + f'and {re_count(2)} with {re_article} {re_type_phrase(2)}\.')
     def dpr(self, target_ac):
         """Sum of DPR from two different attacks."""
         v = self._validate()
@@ -356,14 +357,14 @@ class MakesAAndB(AttackForm):
     >>> {ac: norker.dpr(ac) for ac in range(12, 27, 2)}
     {12: 5.4, 14: 4.5, 16: 3.6, 18: 2.7, 20: 1.8, 22: 0.9, 24: 0.45, 26: 0.45}
     """
-    re = f'{re_name} makes (?P<num1>{re_num}) {re_type_word(1)} and (?P<num2>{re_num}) {re_type_word(2)} attacks?\.'
+    re = f'{re_name} makes {re_count(1)} {re_type_word(1)} and {re_count(2)} {re_type_word(2)} attacks?\.'
     dpr = ArtAAndArtB.dpr # we can reuse this since it doesn't look at `total` outside of validation
 
 class AOrB(AttackForm):
-    re = f'{re_name} makes (?P<num1>{re_num}) {re_type_phrase(1)} attacks or (?P<num2>{re_num}) {re_type_phrase(2)} attacks\.'
+    re = f'{re_name} makes {re_count(1)} {re_type_phrase(1)} attacks or {re_count(2)} {re_type_phrase(2)} attacks\.'
     # check type1 & type2; fail if check fails; calculate optimal damage
 class ColonAndPeriod(AttackForm):
-    re = f'{re_name} makes {re_total} attacks: (?P<num1>{re_num}) with {re_type_phrase(1)} and (?P<num2>{re_num}) with {re_type_phrase(2)}\.'
+    re = f'{re_name} makes {re_total} attacks: {re_count(1)} with {re_type_phrase(1)} and {re_count(2)} with {re_type_phrase(2)}\.'
     # parse num1 and num2 as numbers; check type1 and type 2 against attack action names; otherwise fail
 class ByHalfSpellLevel(AttackForm):
     re = f"{re_name} makes a number of attacks equal to half this spell's level \(rounded down\)\."
