@@ -319,8 +319,7 @@ class AttacksWithNamed(AttackForm):
 
         return v.a1count * v.a1attack.dpr(target_ac)
 class ArtAAndArtBOrC(AttackForm):
-    """MONSTER makes TOTAL attacks: NUM1 with ATTACK1 and NUM2 with ATTACK2 or ATTACK3.
-    """
+    """MONSTER makes TOTAL attacks: NUM1 with ATTACK1 and NUM2 with ATTACK2 or ATTACK3."""
     re = (f'{re_name} makes {re_total} attacks: '
           + f'(?P<num1>{re_num}) with {re_article} {re_type_phrase(1)} '
           + f'and (?P<num2>{re_num}) with {re_article} {re_type_phrase(2)} or {re_type_phrase(3)}\.')
@@ -330,7 +329,7 @@ class ArtAAndArtB(AttackForm):
 
     >>> from repltools import m
     >>> bear = m.where(name='Brown Bear')[0]
-    >>> (bear.actions.attack_form)
+    >>> bear.actions.attack_form
     ArtAAndArtB('The bear makes two attacks: one with its bite and one with its claws.')
     >>> {ac: bear.dpr(ac) for ac in (10, 15, 20)}
     {10: 16.575, 15: 11.7, 20: 6.825}
@@ -346,6 +345,19 @@ class ArtAAndArtB(AttackForm):
             return None
 
         return v.a1count * v.a1attack.dpr(target_ac) + v.a2count * v.a2attack.dpr(target_ac)
+
+class MakesAAndB(AttackForm):
+    """MONSTER makes NUM1 ATTACK1 and NUM2 ATTACK2 attack(s).
+
+    >>> from repltools import m
+    >>> norker = m.where(name='Norker')[0]
+    >>> norker.actions.attack_form
+    MakesAAndB('The norker makes one mace and one bite attack.')
+    >>> {ac: norker.dpr(ac) for ac in range(12, 27, 2)}
+    {12: 5.4, 14: 4.5, 16: 3.6, 18: 2.7, 20: 1.8, 22: 0.9, 24: 0.45, 26: 0.45}
+    """
+    re = f'{re_name} makes (?P<num1>{re_num}) {re_type_word(1)} and (?P<num2>{re_num}) {re_type_word(2)} attacks?\.'
+    dpr = ArtAAndArtB.dpr # we can reuse this since it doesn't look at `total` outside of validation
 
 class AOrB(AttackForm):
     re = f'{re_name} makes (?P<num1>{re_num}) {re_type_phrase(1)} attacks or (?P<num2>{re_num}) {re_type_phrase(2)} attacks\.'
