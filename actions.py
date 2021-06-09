@@ -118,7 +118,7 @@ class AttackForm:
         attack_forms.update({subclass.re: subclass})
 
     # changed to '>' or '>=' for classes which have additional effects
-    dpr_confidence='~='
+    dpr_confidence='='
 
     def dpr(self, target_ac):
         """Redefined in handler subclasses."""
