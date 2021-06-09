@@ -257,18 +257,13 @@ class Named(AttackForm):
     >>> {ac: liff.dpr(ac) for ac in (10, 15, 20)}
     {10: 24.65, 15: 17.4, 20: 10.15}
     """
-    re = f'(?P<mname>[^.]+) makes (?P<num>{re_num}) (?P<type>\w+) attacks\.'
+    re = f'(?P<mname>[^.]+) makes (?P<num1>{re_num}) (?P<type1>\w+) attacks\.'
     def dpr(self, target_ac):
         """Check if `type` matches an attack action name; otherwise fail."""
-        groupdict = self.match.groupdict()
-        num = numberwords[groupdict['num']]
-        attack_name = groupdict['type']
-
-        attack = self._match_attack(attack_name)
-        if attack:
-            return num * calc.dpr(target_ac, attack['attack_bonus'], attack['damage'])
-        warning(f'Named.dpr: failed to match attack name "{attack_name}" for match "{self.match}"; attacks: {self.actions.attacks}')
-        return None
+        v = self._validate()
+        if v is None:
+            return None
+        return v.a1count * v.a1attack.dpr(target_ac)
 
 class WithNamed(AttackForm):
     re = f'(?P<mname>[^.]+) makes (?P<num>{re_num}) (?:melee |ranged )?attacks with {re_article} (?P<type>\w+)\.'
@@ -317,7 +312,7 @@ class NoMultiattack(AttackForm):
     re = None
     def dpr(self, target_ac):
         if self.actions.attacks:
-            return max(calc.dpr(target_ac, attack['attack_bonus'], attack['damage'])
+            return max(attack.dpr(target_ac)
                        for name, attack in self.actions.attacks.items())
         return None
 # failures are rendered with uhhh '??' I guess.
