@@ -232,7 +232,9 @@ re_article = r'(?:a|its|his|her)?' # We should be able to just ignore articles l
 
 re_name = r'(?P<mname>[^,.]+)'
 re_total = f'(?P<total>{re_num})'
-form_text = lambda form: (form.__class__, form.match.string) # translates multiattack output into convenient form
+
+re_type_word = lambda n: f'(?P<type{n}>\w+)'
+re_type_phrase = lambda n: f'(?P<type{n}>[^,.]+)'
 
 # AttackForm subclasses defined in order of parsing priority.
 # AttackForm.__init__ will try to match the `re` attribute of each of these in this order.
@@ -260,7 +262,7 @@ class Named(AttackForm):
     >>> {ac: liff.dpr(ac) for ac in (10, 15, 20)}
     {10: 24.65, 15: 17.4, 20: 10.15}
     """
-    re = f'{re_name} makes (?P<num1>{re_num}) (?P<type1>\w+) attacks\.'
+    re = f'{re_name} makes (?P<num1>{re_num}) {re_type_word(1)} attacks\.'
     def dpr(self, target_ac):
         """Check if `type` matches an attack action name; otherwise fail."""
         v = self._validate()
@@ -278,7 +280,7 @@ class WithNamed(AttackForm):
     >>> {ac: displacer.dpr(ac) for ac in range(5, 30, 2)}
     {5: 14.25, 7: 14.25, 9: 13.5, 11: 12.0, 13: 10.5, 15: 9.0, 17: 7.5, 19: 6.0, 21: 4.5, 23: 3.0, 25: 1.5, 27: 0.75, 29: 0.75}
     """
-    re = f'{re_name} makes (?P<num1>{re_num}) (?:melee |ranged )?attacks with {re_article} (?P<type1>\w+)\.'
+    re = f'{re_name} makes (?P<num1>{re_num}) (?:melee |ranged )?attacks with {re_article} {re_type_word(1)}\.'
     # same handler as 'named'
     dpr = Named.dpr
 
@@ -292,7 +294,7 @@ class WithNamed2Options(AttackForm):
     >>> {ac: urg.dpr(ac) for ac in range(10, 25, 2)}
     {10: 12.0, 12: 10.5, 14: 9.0, 16: 7.5, 18: 6.0, 20: 4.5, 22: 3.0, 24: 1.5}
     """
-    re = f'{re_name} makes {re_total} attacks with {re_article} (?P<type1>\w+) or {re_article} (?P<type2>\w+)\.'
+    re = f'{re_name} makes {re_total} attacks with {re_article} {re_type_word(1)} or {re_article} {re_type_word(2)}\.'
     def dpr(self, target_ac):
         v = self._validate()
         if v is None:
@@ -309,7 +311,7 @@ class AttacksWithNamed(AttackForm):
     >>> {ac: eblis.dpr(ac) for ac in range(0, 30, 2)}
     {0: 10.45, 2: 10.45, 4: 10.45, 6: 10.45, 8: 9.9, 10: 8.8, 12: 7.7, 14: 6.6, 16: 5.5, 18: 4.4, 20: 3.3, 22: 2.2, 24: 1.1, 26: 0.55, 28: 0.55}
     """
-    re = f'{re_name} attacks ?(?P<num1>twice)? with {re_article} (?P<type1>\w+)\.'
+    re = f'{re_name} attacks ?(?P<num1>twice)? with {re_article} {re_type_word(1)}\.'
     def dpr(self, target_ac):
         v = self._validate()
         if v is None:
@@ -320,8 +322,8 @@ class ArtAAndArtBOrC(AttackForm):
     """MONSTER makes TOTAL attacks: NUM1 with ATTACK1 and NUM2 with ATTACK2 or ATTACK3.
     """
     re = (f'{re_name} makes {re_total} attacks: '
-          + f'(?P<num1>{re_num}) with {re_article} (?P<type1>[^,.]+) '
-          + f'and (?P<num2>{re_num}) with {re_article} (?P<type2>[^,.]+) or (?P<type3>[^,.]+)\.')
+          + f'(?P<num1>{re_num}) with {re_article} {re_type_phrase(1)} '
+          + f'and (?P<num2>{re_num}) with {re_article} {re_type_phrase(2)} or {re_type_phrase(3)}\.')
     # similar to `a_and_art_b` but there's a choice between type2 and type3 for the second attack.
 class ArtAAndArtB(AttackForm):
     """MONSTER makes TOTAL attacks: NUM1 with ATTACK1 and NUM2 with ATTACK2.
@@ -334,8 +336,8 @@ class ArtAAndArtB(AttackForm):
     {10: 16.575, 15: 11.7, 20: 6.825}
     """
     re = (f'{re_name} makes {re_total} (?:melee )?attacks: '
-          + f'(?P<num1>{re_num}) with {re_article} (?P<type1>[^,.]+) '
-          + f'and (?P<num2>{re_num}) with {re_article} (?P<type2>[^,.]+)\.')
+          + f'(?P<num1>{re_num}) with {re_article} {re_type_phrase(1)} '
+          + f'and (?P<num2>{re_num}) with {re_article} {re_type_phrase(2)}\.')
     def dpr(self, target_ac):
         """Sum of DPR from two different attacks."""
         v = self._validate()
@@ -346,10 +348,10 @@ class ArtAAndArtB(AttackForm):
         return v.a1count * v.a1attack.dpr(target_ac) + v.a2count * v.a2attack.dpr(target_ac)
 
 class AOrB(AttackForm):
-    re = f'{re_name} makes (?P<num1>{re_num}) (?P<type1>[^,.]+) attacks or (?P<num2>{re_num}) (?P<type2>[^,.]+) attacks\.'
+    re = f'{re_name} makes (?P<num1>{re_num}) {re_type_phrase(1)} attacks or (?P<num2>{re_num}) {re_type_phrase(2)} attacks\.'
     # check type1 & type2; fail if check fails; calculate optimal damage
 class ColonAndPeriod(AttackForm):
-    re = f'{re_name} makes {re_total} attacks: (?P<num1>{re_num}) with (?P<type1>[^,.]+) and (?P<num2>{re_num}) with (?P<type2>[^,.]+)\.'
+    re = f'{re_name} makes {re_total} attacks: (?P<num1>{re_num}) with {re_type_phrase(1)} and (?P<num2>{re_num}) with {re_type_phrase(2)}\.'
     # parse num1 and num2 as numbers; check type1 and type 2 against attack action names; otherwise fail
 class ByHalfSpellLevel(AttackForm):
     re = f"{re_name} makes a number of attacks equal to half this spell's level \(rounded down\)\."
