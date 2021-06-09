@@ -22,7 +22,7 @@ class DBItem:
           " At Higher Levels:
           " When you cast this spell using a spell slot of 2nd level or higher, the spell creates one more dart for each slot level above 1st.
         >>> print(Monsters().search('Griffon')[0].fmt_xlist()) # doctest: +ELLIPSIS
-        * Griffon: L Unaligned monstrosity, 2.0CR 59HP/7d10+21 12AC (walk 30, fly 80)
+        * Griffon: L UA monstrosity, 2.0CR 59HP/7d10+21 12AC (walk 30, fly 80)
           " STR:18 DEX:15 CON:16 INT:2 WIS:13 CHA:8
           " skills: {'Perception': 5}
           " passive perception: 15
@@ -269,15 +269,22 @@ class Monster(DBItem):
         """Returns a one-line summary of the item.
 
         >>> Monsters().where(name='Giant Crab')[0].fmt_oneline()
-        'Giant Crab: M Unaligned beast, 1/8CR 13HP/3d8 15AC (walk 30, swim 30)'
+        'Giant Crab: M UA beast, 1/8CR 13HP/3d8 15AC (walk 30, swim 30)'
         >>> Monsters().where(name='Crab Folk')[0].fmt_oneline()
-        'Crab Folk: L Neutral giant, 3.0CR 68HP/8d10+24 16AC (walk 40, swim 40)'
+        'Crab Folk: L TN giant, 3.0CR 68HP/8d10+24 16AC (walk 40, swim 40)'
         """
         fmt = '{name}: {size} {alignment} {type}, {cr}CR {hp}HP/{hitdice} {ac_num}AC ({speeds})'
 
         fields = ['name', 'size', 'alignment', 'type', 'hp', 'hitdice', 'ac_num']
         # fill `fields` from attributes of `self`
-        fields = dict((field, getattr(self, field, '--')) for field in fields)
+        fields = {field: getattr(self, field, '--') for field in fields}
+
+        align_abbrevs = {'Lawful Good'    : 'LG'  , 'Neutral Good' : 'NG' , 'Chaotic Good'    : 'CG' ,
+                         'Lawful Neutral' : 'LN'  , 'Neutral'      : 'TN' , 'Chaotic Neutral' : 'CN' ,
+                         'Lawful Evil'    : 'LE'  , 'Neutral Evil' : 'NE' , 'Chaotic Evil'    : 'CE' ,
+                         'Unaligned'      : 'UA'}
+        fields = {key: align_abbrevs[value] if key == 'alignment' and value in align_abbrevs else value
+                  for key, value in fields.items()}
 
         cr_table = {0.125: '1/8', 0.25: '1/4', 0.5: '1/2'}
         cr = getattr(self, 'cr', None)
@@ -376,7 +383,7 @@ class Monster(DBItem):
         in the output of `self.fmt_full()`.
 
         >>> Monsters().where(name='Goblin').print('pointform') # doctest: +ELLIPSIS
-        - Goblin: S Neutral Evil humanoid (goblinoid), 1/4CR 7HP/2d6 15AC (walk 30)
+        - Goblin: S NE humanoid (goblinoid), 1/4CR 7HP/2d6 15AC (walk 30)
           - STR:8 DEX:14 CON:10 INT:10 WIS:8 CHA:8
           - skills: {'Stealth': 6}
           - passive perception: 9
@@ -469,7 +476,7 @@ class Collection(list):
 
         Returns items where `field` contains `val`.
         >>> Monsters().search('AAR')[0]
-        Monster(Aarakocra: M Neutral Good humanoid (aarakocra), 1/4CR 13HP/3d8 12AC (walk 20, fly 50))
+        Monster(Aarakocra: M NG humanoid (aarakocra), 1/4CR 13HP/3d8 12AC (walk 20, fly 50))
         >>> Spells().search('smite')[0]
         Spell(Banishing Smite B/S/C<=1m [V] (5:ABS+P+WlH))
         """
@@ -492,7 +499,7 @@ class Collection(list):
 
         >>> from dnd5edb import predicates as p
         >>> Monsters().where(name='Aarakocra')
-        [Monster(Aarakocra: M Neutral Good humanoid (aarakocra), 1/4CR 13HP/3d8 12AC (walk 20, fly 50))]
+        [Monster(Aarakocra: M NG humanoid (aarakocra), 1/4CR 13HP/3d8 12AC (walk 20, fly 50))]
         >>> names = lambda mlist: [m.name for m in mlist]
         >>> names(Monsters().where(cr=p.gte(28.0)))
         ['Rak Tulkhesh', 'Sul Khatesh', 'Tarrasque', 'Tiamat']
@@ -501,9 +508,9 @@ class Collection(list):
         >>> names(Monsters().where(cr=3.0, senses=p.key('blindsight')))[0:4]
         ['Animated Stove', 'Assassin Vine', 'Blue Dragon Wyrmling', 'Brain in a Jar']
         >>> Monsters().where(cr=3.0, int=p.gt(16)).where(int=p.lte(17))
-        [Monster(Merrenoloth: M Neutral Evil fiend (yugoloth), 3.0CR 40HP/9d8 13AC (walk 30, swim 40))]
+        [Monster(Merrenoloth: M NE fiend (yugoloth), 3.0CR 40HP/9d8 13AC (walk 30, swim 40))]
         >>> Monsters().where(speed=p.key('swim'))[0]
-        Monster(Beast of the Sea: M Unaligned beast, --CR 5HP/-- 0AC (walk 5, swim 60))
+        Monster(Beast of the Sea: M UA beast, --CR 5HP/-- 0AC (walk 5, swim 60))
         >>> Monsters().where(spells=p.contains('conjure animals'))[0].name
         'Horncaller'
         """
@@ -582,21 +589,21 @@ class Collection(list):
 
         Same stuff works for monsters
         >>> m.where(type='beast', cr=4).sorted('hp').print()
-        Giant Subterranean Lizard: H Unaligned beast, 4.0CR 66HP/7d12+21 14AC (walk 30, swim 50)
-        Elephant: H Unaligned beast, 4.0CR 76HP/8d12+24 12AC (walk 40)
-        Stegosaurus: H Unaligned beast, 4.0CR 76HP/8d12+24 13AC (walk 40)
-        Giant Walrus: H Unaligned beast, 4.0CR 85HP/9d12+27 9AC (walk 20, swim 40)
-        Giant Coral Snake: L Unaligned beast, 4.0CR 90HP/12d10+24 13AC (walk 30, swim 30)
+        Giant Subterranean Lizard: H UA beast, 4.0CR 66HP/7d12+21 14AC (walk 30, swim 50)
+        Elephant: H UA beast, 4.0CR 76HP/8d12+24 12AC (walk 40)
+        Stegosaurus: H UA beast, 4.0CR 76HP/8d12+24 13AC (walk 40)
+        Giant Walrus: H UA beast, 4.0CR 85HP/9d12+27 9AC (walk 20, swim 40)
+        Giant Coral Snake: L UA beast, 4.0CR 90HP/12d10+24 13AC (walk 30, swim 30)
         >>> m.where(speed=p.contains('swim'), type=p.eq('beast')).sorted('cr')[:6].print()
-        Beast of the Sea: M Unaligned beast, --CR 5HP/-- 0AC (walk 5, swim 60)
-        Bestial Spirit: S Unaligned beast, --CR 20HP/-- 0AC (walk 30, climb 30, fly 60, swim 30)
-        Crab: T Unaligned beast, 0.0CR 2HP/1d4 11AC (walk 20, swim 20)
-        Fish: T Unaligned beast, 0.0CR 1HP/1d4-1 13AC (swim 40)
-        Frog: T Unaligned beast, 0.0CR 1HP/1d4-1 11AC (walk 20, swim 20)
-        Kingsport: M Unaligned beast, 0.0CR 5HP/1d8+1 11AC (walk 20, swim 40)
+        Beast of the Sea: M UA beast, --CR 5HP/-- 0AC (walk 5, swim 60)
+        Bestial Spirit: S UA beast, --CR 20HP/-- 0AC (walk 30, climb 30, fly 60, swim 30)
+        Crab: T UA beast, 0.0CR 2HP/1d4 11AC (walk 20, swim 20)
+        Fish: T UA beast, 0.0CR 1HP/1d4-1 13AC (swim 40)
+        Frog: T UA beast, 0.0CR 1HP/1d4-1 11AC (walk 20, swim 20)
+        Kingsport: M UA beast, 0.0CR 5HP/1d8+1 11AC (walk 20, swim 40)
         >>> m.where(speed=p.contains('swim'), type=p.eq('beast')).sorted('cr', reverse=True)[:2].print()
-        Huge Giant Crab: H Unaligned beast, 8.0CR 161HP/14d12+70 15AC (walk 30, swim 30)
-        Sperm Whale: G Unaligned beast, 8.0CR 189HP/14d20+42 13AC (walk 0, swim 60)
+        Huge Giant Crab: H UA beast, 8.0CR 161HP/14d12+70 15AC (walk 30, swim 30)
+        Sperm Whale: G UA beast, 8.0CR 189HP/14d20+42 13AC (walk 0, swim 60)
         >>> animat = m.where(type='construct', name=p.contains('Animat')).sorted('cr')
         >>> [getattr(n, 'cr', '--') for n in animat]
         ['--', '--', '--', '--', '--', '--', '--', 0.25, 0.25, 0.25, 1.0, 1.0, 2.0, 2.0, 3.0, 6.0, 10.0]
@@ -790,9 +797,9 @@ class Monsters(Collection):
     >>> monster('Astral Dreadnought').speed
     {'walk': 15, 'fly': 80}
     >>> monster('Aarakocra')
-    Monster(Aarakocra: M Neutral Good humanoid (aarakocra), 1/4CR 13HP/3d8 12AC (walk 20, fly 50))
+    Monster(Aarakocra: M NG humanoid (aarakocra), 1/4CR 13HP/3d8 12AC (walk 20, fly 50))
     >>> monster('Duergar Warlord')
-    Monster(Duergar Warlord: M Lawful Evil humanoid (dwarf), 6.0CR 75HP/10d8+30 20AC (walk 25))
+    Monster(Duergar Warlord: M LE humanoid (dwarf), 6.0CR 75HP/10d8+30 20AC (walk 25))
     >>> monster('War Priest')
     Monster(War Priest: M Any alignment humanoid (any race), 9.0CR 117HP/18d8+36 18AC (walk 30))
     >>> Monsters(m for m in Monsters() if getattr(m, 'name').startswith('C'))[0]

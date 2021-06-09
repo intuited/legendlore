@@ -57,19 +57,12 @@ What do the still-unhandled cases look like?
 """
 from dnd5edb.repltools import m, p
 from functools import partial
-from collections import defaultdict
 from pprint import pprint
 pprint = partial(pprint, width=200, sort_dicts=False)
 from re import fullmatch
 import itertools
 from dnd5edb import actions
-
-def groupeddict(it):
-    d = defaultdict(list)
-    for k, v in it:
-        d[k].append(v)
-    return d
-histogram = lambda d: {k: len(v) for k, v in d.items()}
+from db_analysis import groupeddict, histogram
 
 form_pos = dict(zip(actions.attack_forms.values(), itertools.count()))
 """Sorts the histogram by the position of the labeled form in actions.attack_forms"""

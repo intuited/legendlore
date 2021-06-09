@@ -77,9 +77,36 @@ The sole exception has no name element.  Appears to be an action element for a v
  ('attack', '||1d10'),
  ('text',
   '• Harpoon Haul. The battle balloon can pull each target grappled by it up to 30 feet toward the battle balloon.')]
+
+
+## Analysis of parsed data structures
+# These explorations use the processed XML data.
+
+Alignment values:
+>>> pprint(Counter(getattr(n, 'alignment', None) for n in m))
+Counter({'Unaligned': 462,
+         'Chaotic Evil': 328,
+         'Lawful Evil': 305,
+         'Neutral Evil': 271,
+         'Any alignment': 267,
+         'Neutral': 140,
+         'Lawful Good': 66,
+         'Chaotic Neutral': 65,
+         'Chaotic Good': 62,
+         'Lawful Neutral': 55,
+         'Neutral Good': 30,
+         'Any Non-Good Alignment': 27,
+         'Any Non-Lawful Alignment': 12,
+         'Any Evil Alignment': 11,
+         'Any Chaotic Alignment': 9,
+         'Neutral Good (50%) Neutral Evil (50%)': 8,
+         'Chaotic Good (75%) Neutral Evil (25%)': 1,
+         "as the eidolon's alignment": 1,
+         'Neutral Good Neutral Evil': 1})
 """
 from dnd5edb import parse
-from dnd5edb.db_analysis import tags_in_node, subnode_tags, string_tags, tag_count, get_name
+from dnd5edb.db_analysis import tags_in_node, subnode_tags, string_tags, tag_count, get_name, groupeddict, histogram
+from repltools import m
 
 from functools import reduce, partial
 from pprint import pprint

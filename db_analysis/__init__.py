@@ -3,6 +3,7 @@
 Inquiries into the nature of the database, used to write parsing code.
 """
 from functools import reduce
+from collections import defaultdict
 
 def tags_in_node(node):
     """Returns set of tags of child nodes of `node`."""
@@ -23,3 +24,10 @@ def get_name(node):
     for child in node.iterchildren():
         if child.tag == 'name':
             return child.text
+
+def groupeddict(it):
+    d = defaultdict(list)
+    for k, v in it:
+        d[k].append(v)
+    return d
+histogram = lambda d: {k: len(v) for k, v in d.items()}
