@@ -139,6 +139,15 @@ class AttackForm:
         for name, attack in self.actions.attacks.items():
             if attack_name.lower().rstrip('s') in name.lower():
                 return attack
+            if attack_name.lower() == 'hooves':
+                if name.lower() == 'hoof':
+                    return attack
+            if attack_name.lower() == 'adamantine greatclub':
+                if name.lower() == 'greatclub':
+                    return attack
+            if attack_name[:3] == '+1 ':
+                if name.lower() == attack_name[3:].lower() + ' +1':
+                    return attack
         return None
 
     def _validate(self):
@@ -213,7 +222,6 @@ re_article = r'(?:a|its|his|her)? ?' # We should be able to just ignore articles
 
 re_name = r'(?P<mname>[^,.]+)'
 re_total = f'(?P<total>{re_num})'
-
 re_count = lambda n: f'(?P<num{n}>{re_num})'
 re_type_word = lambda n: f'(?P<type{n}>\w+(?:\s\w+)?)'
 re_type_phrase = lambda n: f'(?P<type{n}>[^,.]+)'
@@ -263,6 +271,95 @@ class Orc(AttackForm):
         return 2 * max(self._match_attack('Spear').dpr(target_ac),
                        calc.dpr(target_ac, 6, '1d12+4+1d8'))
 
+class Devil(AttackForm):
+    """These and/or forms are ambiguous because without doing some counting we don't know the operator precedence.
+
+    I.E. "A and B or C" could mean "(A and B) or C" or "A and (B or C)".
+
+    There's only like 4 of them so we might as well just write custom handlers for them.
+
+    >>> from repltools import m
+    >>> devil = m.where(name='Spined Devil')[0]
+    >>> devil.actions.attack_form
+    Devil('The devil makes two attacks: one with its bite and one with its fork or two with its tail spines.')
+    >>> {ac: devil.dpr(ac) for ac in range(10, 29, 2)}
+    {10: 6.75, 12: 5.85, 14: 4.95, 16: 4.05, 18: 3.15, 20: 2.25, 22: 1.35, 24: 0.45, 26: 0.45, 28: 0.45}
+    """
+    re = "The devil makes two attacks: one with its bite and one with its fork or two with its tail spines\."
+    def dpr(self, target_ac):
+        return max(self._match_attack('Bite').dpr(target_ac) + self._match_attack('Fork').dpr(target_ac),
+                   2 * self._match_attack('Tail Spine').dpr(target_ac))
+class Morkoth(AttackForm):
+    """Another form ambiguous for similar reasons.
+
+    >>> from repltools import m
+    >>> devil = m.where(name='Morkoth')[0]
+    >>> devil.actions.attack_form
+    Morkoth('The morkoth makes three attacks: two with its bite and one with its tentacles or three with its bite.')
+    >>> {ac: devil.dpr(ac) for ac in range(10, 29, 2)}
+    {10: 28.475, 12: 25.125, 14: 21.775, 16: 18.425, 18: 15.075, 20: 11.725, 22: 8.375, 24: 5.025, 26: 1.675, 28: 1.675}
+    """
+    re = 'The morkoth makes three attacks: two with its bite and one with its tentacles or three with its bite.'
+    def dpr(self, target_ac):
+        dpr_one = 2 * self._match_attack('Bite').dpr(target_ac) + self._match_attack('Tentacles').dpr(target_ac)
+        dpr_two = 3 * self._match_attack('Bite').dpr(target_ac)
+        return max(dpr_one, dpr_two)
+
+class Marut(AttackForm):
+    """'Slam' attack refers to its "Unerring Slam", which auto-hits for 60 force damage.
+
+    >>> from repltools import m
+    >>> marut = m.where(name='Marut')[0]
+    >>> marut.actions.attack_form
+    Marut('The marut makes two slam attacks.')
+    >>> {ac: marut.dpr(ac) for ac in range(10, 29, 2)}
+    {10: 120, 12: 120, 14: 120, 16: 120, 18: 120, 20: 120, 22: 120, 24: 120, 26: 120, 28: 120}
+    """
+    re = 'The marut makes two slam attacks\.'
+    def dpr(self, target_ac):
+        return 120
+class Hunter(AttackForm):
+    re = "The blood hunter attacks twice with a weapon\."
+    def dpr(self, target_ac):
+        return 2 * max(self._match_attack('Greatsword').dpr(target_ac), self._match_attack('Heavy Crossbow').dpr(target_ac))
+class Sansuri(AttackForm):
+    """Multiattack references a spear attack she doesn't seem to have.
+
+    Just using the basic attacks.
+    """
+    re = 'Sansuri makes two spear attacks\.'
+    def dpr(self, target_ac):
+        return max(attack.dpr(target_ac) for attack in self.actions.attacks.values())
+class Generator(AttackForm):
+    """Uses an autohit dart attack.
+
+    >>> from repltools import m
+    >>> generator = m.where(name='Play-by-Play Generator')[0]
+    >>> generator.actions.attack_form
+    Generator('The generator makes two fist attacks or four dart attacks.')
+    >>> {ac: generator.dpr(ac) for ac in range(6, 29, 4)}
+    {6: 20.0, 10: 20.0, 14: 20.0, 18: 20.0, 22: 20.0, 26: 20.0}
+    """
+    re = 'The generator makes two fist attacks or four dart attacks\.'
+    def dpr(self, target_ac):
+        dpr_fist = 2 * self._match_attack('Fist').dpr(target_ac)
+        dpr_dart = 4 * calc.avg('2d4')
+        return max(dpr_fist, dpr_dart)
+class Stomper(AttackForm):
+    """We don't handle this one because it requires a saving throw for its multiattack.
+
+    >>> from repltools import m
+    >>> stomper = m.where(name='Shockerstomper')[0]
+    >>> stomper
+    Monster(Shockerstomper: G UA construct, 14.0CR DPR=??/??/?? 300HP/300d1 18AC (walk 40))
+    >>> stomper.actions.attack_form
+    Stomper('Shockerstomper makes three Lightning Turret attacks and two Stomp attacks.')
+    >>> {ac: stomper.dpr(ac) for ac in range(6, 29, 4)}
+    {6: None, 10: None, 14: None, 18: None, 22: None, 26: None}
+    """
+    re = 'Shockerstomper makes three Lightning Turret attacks and two Stomp attacks.'
+    def dpr(self, target_ac):
+        return None
 
 ### Generic handlers: use broadly constructed regexps to identify classes of multiattack strings.
 
@@ -278,10 +375,25 @@ class Any(AttackForm):
     >>> {ac: zombo.dpr(ac) for ac in range(10, 31, 2)}
     {10: 53.2, 12: 53.2, 14: 47.6, 16: 42.0, 18: 36.4, 20: 30.8, 22: 25.2, 24: 19.6, 26: 14.0, 28: 8.4, 30: 2.8}
     """
-    re = f'{re_name} makes (?P<total>{re_num}) (?:weapon )?attacks\.?'
+    re = f'{re_name} makes {re_total} (?:weapon )?attacks\.?'
     # we can select the most effective attacks from all options
     def _calc_dpr(self, target_ac, v):
         return v.total * max(attack.dpr(target_ac) for attack in self.actions.attacks.values())
+class NumWithWeapon(AttackForm):
+    """MONSTER attacks NUM with a weapon.
+
+    This is just a rewording of the above case: we are ignoring unarmed strikes, at least for now.
+
+    >>> from repltools import m
+    >>> sephek = m.where(name='Sephek Kaltro')[0]
+    >>> sephek.actions.attack_form
+    NumWithWeapon('Sephek attacks twice with a weapon.')
+    >>> {ac: sephek.dpr(ac) for ac in range(10, 31, 2)}
+    {10: 12.0, 12: 10.5, 14: 9.0, 16: 7.5, 18: 6.0, 20: 4.5, 22: 3.0, 24: 1.5, 26: 0.75, 28: 0.75, 30: 0.75}
+    """
+    re = f'{re_name} attacks {re_total} with a weapon\.?'
+    _calc_dpr = Any._calc_dpr
+
 class AnyMelee(AttackForm):
     """MONSTER makes NUM melee attacks.
 
@@ -292,7 +404,7 @@ class AnyMelee(AttackForm):
     >>> {ac: fanatic.dpr(ac) for ac in (10, 15, 20)}
     {10: 6.75, 15: 4.5, 20: 2.25}
     """
-    re = f'{re_name} makes {re_count(1)} melee attacks\.?'
+    re = f'{re_name} makes {re_count(1)} melee (?:weapon )?attacks\.?'
     # we can select the most effective attacks from all melee options.
     # melee options seem to be consistently indicated with 'Melee' at the beginning of the action text.
     def _calc_dpr(self, target_ac, v):
@@ -399,23 +511,41 @@ class AttacksWithNamed(AttackForm):
     def _calc_dpr(self, target_ac, v):
         return v.a1count * v.a1attack.dpr(target_ac)
 
-class ArtAAndArtBOrC(AttackForm):
-    """MONSTER makes TOTAL attacks: NUM1 with ATTACK1 and NUM2 with ATTACK2 or ATTACK3.
+class NumAAndNumBOrC(AttackForm):
+    """MONSTER makes TOTAL attacks: NUM1 with its ATTACK1 and NUM2 with its ATTACK2 or ATTACK3.
 
     >>> from repltools import m
     >>> slaad = m.where(name='Gray Slaad')[0]
     >>> slaad.actions.attack_form
-    ArtAAndArtBOrC('The slaad makes three attacks: one with its bite and two with its claws or greatsword.')
+    NumAAndNumBOrC('The slaad makes three attacks: one with its bite and two with its claws or greatsword.')
     >>> {ac: slaad.dpr(ac) for ac in range(10, 29, 2)}
     {10: 23.85, 12: 21.2, 14: 18.55, 16: 15.9, 18: 13.25, 20: 10.6, 22: 7.95, 24: 5.3, 26: 2.65, 28: 1.325}
     """
-    re = (f'{re_name} makes {re_total} attacks: '
+    re = (f'{re_name} makes {re_total} (?:melee )?attacks: '
           + f'{re_count(1)} with {re_article}{re_type_phrase(1)} '
-          + f'and {re_count(2)} with {re_article}{re_type_phrase(2)} or {re_type_phrase(3)}\.')
+          + f'and {re_count(2)} with (?:either )?{re_article}{re_type_phrase(2)} or {re_article}{re_type_phrase(3)}\.')
     # similar to `a_and_art_b` but there's a choice between type2 and type3 for the second attack.
     def _calc_dpr(self, target_ac, v):
         dpr_one = v.a1count * v.a1attack.dpr(target_ac)
         dpr_two = v.a2count * max(v.a2attack.dpr(target_ac), v.a3attack.dpr(target_ac))
+        return dpr_one + dpr_two
+
+class NumArtAorArtBAndNumArtC(AttackForm):
+    """MONSTER makes TOTAL attacks: NUM1 with its ATTACK1 or ATTACK2 and NUM2 with its ATTACK3.
+
+    >>> from repltools import m
+    >>> canoloth = m.where(name='Canoloth')[0]
+    >>> canoloth.actions.attack_form
+    NumArtAorArtBAndNumArtC('The canoloth makes two attacks: one with its tongue or its bite and one with its claws.')
+    >>> {ac: canoloth.dpr(ac) for ac in (10, 15, 20)}
+    {10: 36.0, 15: 26.0, 20: 16.0}
+    """
+    re = (f'{re_name} makes {re_total} attacks: {re_count(1)} '
+          + f'with {re_article}{re_type_word(1)} or {re_article}{re_type_word(2)} '
+          + f'and {re_count(3)} with {re_article}{re_type_word(3)}\.')
+    def _calc_dpr(self, target_ac, v):
+        dpr_one = v.a1count * max(v.a1attack.dpr(target_ac), v.a2attack.dpr(target_ac))
+        dpr_two = v.a3count * v.a3attack.dpr(target_ac)
         return dpr_one + dpr_two
 
 class ArtAAndArtB(AttackForm):
