@@ -19,7 +19,30 @@ Odds for normal attacks where a 1 always misses and a 20 always hits:
 Same with advantage:
 >>> range23(attackodds.adv)
 {0: 0.9975, 1: 0.9975, 2: 0.9975, 3: 0.99, 4: 0.9775, 5: 0.96, 6: 0.9375, 7: 0.91, 8: 0.8775, 9: 0.84, 10: 0.7975, 11: 0.75, 12: 0.6975, 13: 0.64, 14: 0.5775, 15: 0.51, 16: 0.4375, 17: 0.36, 18: 0.2775, 19: 0.19, 20: 0.0975, 21: 0.0975, 22: 0.0975}
+
+Odds for each stat in 4d6d1 character generation:
+#>>> vals_to_pct(1000000, sim_n_rolls(1000000))  # takes ~3s, most values the same for any two calls
+{3: 0.1, 4: 0.3, 5: 0.8, 6: 1.6, 7: 2.9, 8: 4.8, 9: 7.0, 10: 9.4, 11: 11.4, 12: 12.8, 13: 13.3, 14: 12.3, 15: 10.1, 16: 7.3, 17: 4.2, 18: 1.6}
+
+Odds that any one stat roll will be >=16:
+>>> 7.3 + 4.2 + 1.6
+13.1
+
+Odds that at least one stat roll of the 6 is >=16:
+>>> round((1 - (pow(1 - 0.131, 6))) * 100, ndigits=2)
+56.94
+
+Odds that at least one stat roll of the 6 is >=17:
+>>> round((1 - (pow(1 - 0.068, 6))) * 100, ndigits=2)
+34.46
+
+Odds that at least one stat roll of the 6 is 18:
+>>> round((1 - (pow(1 - 0.016, 6))) * 100, ndigits=2)
+9.22
 """
+from random import randint
+from collections import Counter
+
 # average die roll calculations
 def avg(expression):
     """Calculates the average total of `expression`.
@@ -71,3 +94,18 @@ attackodds.adv = lambda target: adv(attackodds(target))
 
 # rounding; passes None values through
 round4 = lambda x: round(x, 4) if x is not None else None
+
+
+# odds of rolling at least one 16 using 4d6d1
+def roll_4d6d1():
+    return sum(sorted(randint(1, 6) for _ in range(4))[1:])
+
+def sim_n_rolls(n, rollfn=roll_4d6d1):
+    """Simulates `n` rolls using `rollfn`, returns Counter of results."""
+    ret = Counter(rollfn() for _ in range(n))
+    ret = dict(sorted(ret.items(), key=lambda t: t[0]))
+    return ret
+
+def vals_to_pct(n, d):
+    """Remaps the values of the dict `d` to percentages of `n`."""
+    return {k: round(float(v) / n * 100, ndigits=1) for k, v in d.items()}
