@@ -56,6 +56,20 @@ def in_(val):
     """
     return lambda attr, obj: _hasvalue(obj, attr) and getattr(obj, attr) in val
 
+def apply(fn, val):
+    """Returned predicate passes (attr, val) to fn, returns result.
+
+    >>> from dnd5edb.repltools import m
+    >>> len(m.where(type='humanoid'))
+    17
+    >>> len(m.where(type=apply(str.startswith, 'humanoid')))
+    778
+    """
+    return lambda attr, obj: _hasvalue(obj, attr) and fn(getattr(obj, attr), val)
+
+def startswith(val):
+    return apply(str.startswith, val)
+
 def or_(*preds):
     """Check if any of the passed predicates return true.
 
