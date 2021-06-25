@@ -714,6 +714,22 @@ class Collection(list):
         """
         print(self.fmt(*args, **kwargs))
 
+    def __add__(self, value):
+        """Overrides list.__add__ to use the collection type when appropriate.
+
+        >>> from repltools import m
+        >>> enemies = m.where(name='Scout') + m.where(name='Orc Eye of Gruumsh') + m.where(name='Yorn')
+        >>> type(enemies)
+        <class 'dnd5edb.Monsters'>
+        >>> enemies += m.where(name='Bandit')
+        >>> type(enemies)
+        <class 'dnd5edb.Monsters'>
+        """
+        ret = super().__add__(value)
+        if type(self) == type(value):
+            ret = type(self)(ret)
+        return ret
+
 class Spells(Collection):
     """A list of spells from the db.
 
@@ -821,3 +837,20 @@ class Monsters(Collection):
     def _post_process_where(self, result):
         """Sort by name and level."""
         return result.sorted('name').sorted('cr')
+
+    def combat_stats(self, target_ac):
+        """Generates report of average/total combat stats vs `target_ac`.
+
+        >>> from dnd5edb.repltools import m
+        >>> from dnd5edb import Monsters
+        >>> enemies = m.where(name='Scout') + m.where(name='Orc Eye of Gruumsh') + m.where(name='Yorn')
+        >>> enemies.combat_stats(16.5)
+        {'dpr': 15.9, 'avg_ac': 13.3, 'hp': 93}
+        """
+        careful_list_sum = lambda l: None if None in l else sum(l)
+        careful_sum = lambda l: careful_list_sum(list(l))
+
+        return {'dpr': round(careful_sum(m.dpr(target_ac) for m in self), ndigits=1),
+                'avg_ac': round(float(sum(m.ac_num for m in self)) / len(self), ndigits=1),
+                'hp': sum(m.hp for m in self),
+                }
