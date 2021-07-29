@@ -1,8 +1,8 @@
 from functools import partial, cached_property
-from dnd5edb import parse, predicates, reflect, datatypes
+from dnd5edb import parse, predicates, reflect, datatypes, calc
 import re
-import calc
 from logging import warning
+from actions import Actions
 
 def dictify(fn):
     """Used as a wrapper for generator functions that produce dicts."""
@@ -258,9 +258,24 @@ class Spell(DBItem):
         return ', '.join(components)
 
 class Monster(DBItem):
-    def __init__(self, node):
-        """Instantiates this instance using data from the XML `node`."""
-        self.__dict__.update(parse.MonsterParser.parse(node))
+    def __init__(self, node=None, **kwargs):
+        """Instantiates this instance using data from the XML `node` or custom data.
+
+        Custom data (passed via keyword arguments) is typically used
+        to enter PC AC, HP, attacks, etc. for use in encounter balancing.
+
+        >>> from dnd5edb.repltools import *
+        >>> l3rogue = Monster(ac_num=16, hp=30, actions={'Crossbow': {'attack_bonus': 6, 'damage': '1d8+3+2d6'}})
+        >>> party = Monsters([l3rogue])
+        >>> party.combat_stats(12) # combat effectiveness vs 12 AC
+        {'dpr': 10.9, 'avg_ac': 16.0, 'weighted_ac': 16.0, 'hp': 30}
+        """
+        if node is not None:
+            self.__dict__.update(parse.MonsterParser.parse(node))
+        else:
+            self.__dict__.update(kwargs)
+            if hasattr(self, 'actions'):
+                self.actions = Actions(self.actions)
 
     def __repr__(self):
         return f"Monster({self.fmt_oneline()})"
@@ -845,7 +860,7 @@ class Monsters(Collection):
         >>> from dnd5edb import Monsters
         >>> enemies = m.where(name='Scout') + m.where(name='Orc Eye of Gruumsh') + m.where(name='Yorn')
         >>> enemies.combat_stats(16.5)
-        {'dpr': 15.9, 'avg_ac': 13.3, 'hp': 93}
+        {'dpr': 15.9, 'avg_ac': 13.3, 'weighted_ac': 13.8, 'hp': 93}
         """
         careful_list_sum = lambda l: None if None in l else sum(l)
         careful_sum = lambda l: careful_list_sum(list(l))
