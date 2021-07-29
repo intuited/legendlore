@@ -850,7 +850,12 @@ class Monsters(Collection):
         careful_list_sum = lambda l: None if None in l else sum(l)
         careful_sum = lambda l: careful_list_sum(list(l))
 
-        return {'dpr': round(careful_sum(m.dpr(target_ac) for m in self), ndigits=1),
-                'avg_ac': round(float(sum(m.ac_num for m in self)) / len(self), ndigits=1),
-                'hp': sum(m.hp for m in self),
-                }
+        hp = sum(m.hp for m in self)
+        weighted_ac = round(sum(float(m.hp) * m.ac_num for m in self) / hp, ndigits=1)
+
+        return dict({
+            'dpr': round(careful_sum(m.dpr(target_ac) for m in self), ndigits=1),
+            'avg_ac': round(float(sum(m.ac_num for m in self)) / len(self), ndigits=1),
+            'weighted_ac': weighted_ac,
+            'hp': hp,
+            })
