@@ -9,16 +9,19 @@ Can be sourced into the current REPL environment using ipython's %run command:
 
 Functionality:
     #TODO
-"""
-class Blank:
-    """Blank class used as basis for attribute-based structures."""
-    None
 
+>>> bb = m.where(name='Brown Bear')[0]
+>>> druid.ac.bearbarian(bb) # AC for wildshaped Druid/Barbarian
+13
+>>> druid.ac.drunk(bb, 18) # AC for wildshaped Druid/Monk with 18 WIS
+14
+"""
 import dnd5edb
 from dnd5edb import predicates as p
 s = dnd5edb.Spells()
 m = dnd5edb.Monsters()
 from dnd5edb import calc
+from dnd5edb.util import Generic
 
 # Spell Print in a convenient format
 sp = lambda name: s.search(name).print('xlist')
@@ -28,8 +31,7 @@ asbonus = lambda ascore: int((ascore - 10) / 2)
 
 ### just druid stuff
 
-druid = Blank()
-druid.__doc__ = """Functions and data structures pertinent to druids."""
+druid = Generic(__doc__="Functions and data structures pertinent to druids.")
 
 def beasts(cr, fly=True, swim=True, crpred=p.lte):
     """Returns beast-type creatures matching the other conditions.
@@ -64,8 +66,8 @@ del elementals
 druid.moonws = { k: v.sorted('cr') for k, v in druid.moonws.items() }
 
 # AC evaluation for druid mc
-druid.ac = Blank()
-druid.ac.bearbarian = lambda creature: max(creature.ac_num if 'natural armor' in creature.ac.lower() else 0, asbonus(10 + creature.dex + creature.con))
+druid.ac = Generic()
+druid.ac.bearbarian = lambda creature: max(creature.ac_num if 'natural armor' in creature.ac[0].lower() else 0, asbonus(10 + creature.dex + creature.con))
 druid.ac.bearbarian.__doc__ = 'Calculate AC for Druid/Barbarian wildshaped into `creature`.'
-druid.ac.drunk = lambda creature, wis: max(creature.ac_num if 'natural armor' in creature.ac.lower() else 0, asbonus(10 + creature.dex + wis))
+druid.ac.drunk = lambda creature, wis: max(creature.ac_num if 'natural armor' in creature.ac[0].lower() else 0, asbonus(10 + creature.dex + wis))
 druid.ac.drunk.__doc__ = 'Calculate AC for Druid/Monk with Wisdom `wis` wildshaped into `creature`.'
