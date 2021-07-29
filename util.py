@@ -10,6 +10,9 @@ Help on Generic in module util:
     Test object docstring.
 <BLANKLINE>
 """
+def dictify(fn):
+    """Used as a wrapper for generator functions that produce dicts."""
+    return lambda *args, **kwargs: dict(fn(*args, **kwargs))
 
 class Generic:
     """Generic class used as basis for attribute-based structures."""

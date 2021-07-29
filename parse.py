@@ -5,7 +5,6 @@ from functools import reduce, partial
 from pprint import pprint, pformat
 from textwrap import dedent
 from fractions import Fraction
-import dnd5edb
 from dnd5edb import predicates, datatypes
 from dnd5edb.datatypes import Reference
 from dnd5edb.actions import Actions
@@ -15,7 +14,7 @@ from collections import defaultdict
 from os import path
 
 
-default_db_file = path.join(path.dirname(dnd5edb.__file__), 'FC5eXML', 'Collections', 'CoreOnly.xml')
+default_db_file = path.join(path.dirname(__file__), 'FC5eXML', 'Collections', 'CoreOnly.xml')
 
 def anyfalse(bools):
     """Returns True iff any elements of iterable `bools` are False

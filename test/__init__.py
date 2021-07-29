@@ -1,7 +1,7 @@
 """Functions and objects used by doctests in the module code."""
-import dnd5edb
+from dnd5edb.collections import Spells
 
-s = dnd5edb.Spells()
+s = Spells()
 
 class BlankClass():
     None

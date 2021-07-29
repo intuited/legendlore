@@ -3,7 +3,7 @@
 Various functions that use the module code to analyse the database.
 Not part of the core functionality.
 """
-import dnd5edb
+from dnd5edb.collections import Monsters, Spells
 from collections import defaultdict, Counter
 from pprint import pprint, pformat
 from functools import partial
@@ -91,7 +91,7 @@ def analyze_monster_nodes(tree=XML.get_tree()):
 
 def analyze_fey(tree=XML.get_tree()):
     """Breakdown of Fey monsters in 5e."""
-    fey = [m for m in dnd5edb.Monsters() if m.type.startswith('fey')]
+    fey = [m for m in Monsters() if m.type.startswith('fey')]
     print(f'Number of fey monsters: {len(fey)}')
 
     as_names = ['str', 'dex', 'con', 'int', 'wis', 'cha']
@@ -153,7 +153,7 @@ def tabular(rows):
 
 def knowledge_cleric_spells(tree=XML.get_tree()):
     """Prints one-line summaries of knowledge cleric spells."""
-    spells = dnd5edb.Spells()
+    spells = Spells()
 
     cleric_spells = (spell for spell in spells
                      if 'Cleric' in spell['classes']
@@ -184,7 +184,7 @@ def battle_royale_creatures():
     """Interesting creature options for battle royale at odd CRs.
 
     """
-    M = dnd5edb.Monsters()
+    M = Monsters()
     blindsight = sorted(M.where(senses=p.key('blindsight')))
     truesight = sorted(M.where(senses=p.key('truesight')))
 
@@ -205,7 +205,7 @@ def print_spell_list(spells):
 
     The "SpellName Summary" line is the output of Spell.oneline().
 
-    >>> print_spell_list(dnd5edb.Spells().where(name='Compulsion'))
+    >>> print_spell_list(Spells().where(name='Compulsion'))
     * Compulsion A/30'/C<=1m (4:B)
       " Creatures of your choice that you can see within range and that can hear you must make a Wisdom saving throw. A target automatically succeeds on this saving throw if it can't be charmed. On a failed save, a target is affected by this spell. Until the spell ends, you can use a bonus action on each of your turns to designate a direction that is horizontal to you. Each affected target must use as much of its movement as possible to move in that direction on its next turn. It can take its action before it moves. After moving in this way, it can make another Wisdom saving throw to try to end the effect.
       " A target isn't compelled to move into an obviously deadly hazard, such as a fire pit, but it will provoke opportunity attacks to move in the designated direction.

@@ -16,12 +16,12 @@ Functionality:
 >>> druid.ac.drunk(bb, 18) # AC for wildshaped Druid/Monk with 18 WIS
 14
 """
-import dnd5edb
+from dnd5edb import collections, calc
 from dnd5edb import predicates as p
-s = dnd5edb.Spells()
-m = dnd5edb.Monsters()
-from dnd5edb import calc
 from dnd5edb.util import Generic
+
+s = collections.Spells()
+m = collections.Monsters()
 
 # Spell Print in a convenient format
 sp = lambda name: s.search(name).print('xlist')
