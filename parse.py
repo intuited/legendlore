@@ -12,8 +12,10 @@ from dnd5edb.actions import Actions
 from itertools import groupby, chain
 chainfi = chain.from_iterable
 from collections import defaultdict
+from os import path
 
-default_db_file = 'FC5eXML/Collections/CoreOnly.xml'
+
+default_db_file = path.join(path.dirname(dnd5edb.__file__), 'FC5eXML', 'Collections', 'CoreOnly.xml')
 
 def anyfalse(bools):
     """Returns True iff any elements of iterable `bools` are False
