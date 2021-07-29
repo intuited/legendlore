@@ -6,3 +6,4 @@ python -m doctest datatypes.py
 python -m doctest actions.py
 python -m doctest db_analysis/monster_nodes.py
 python -m doctest db_analysis/spell_nodes.py
+python -m doctest util.py
