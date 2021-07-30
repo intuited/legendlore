@@ -18,3 +18,6 @@ class Generic:
     """Generic class used as basis for attribute-based structures."""
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
+
+careful_list_sum = lambda l: None if None in l else sum(l)
+careful_sum = lambda l: careful_list_sum(list(l))

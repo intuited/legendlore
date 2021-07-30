@@ -3,7 +3,7 @@
 Various functions that use the module code to analyse the database.
 Not part of the core functionality.
 """
-from dnd5edb.collections import Monsters, Spells
+from dnd5edb.collection import Monsters, Spells
 from collections import defaultdict, Counter
 from pprint import pprint, pformat
 from functools import partial

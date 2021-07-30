@@ -3,6 +3,8 @@ function test {
   python -m doctest "$1";
 }
 test __init__.py
+test db_items.py
+test collection.py
 test predicates.py
 test parse.py
 test repltools.py

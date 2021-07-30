@@ -1,5 +1,9 @@
 from functools import partial
 from dnd5edb import parse, predicates, reflect, db_items
+from dnd5edb.util import careful_sum
+import pprint as pp_module
+
+pprint = partial(pp_module.pprint, sort_dicts=False)
 
 class Collection(list):
     """Virtual superclass for a list of DB items.
@@ -58,7 +62,7 @@ class Collection(list):
         Animal Friendship A/30'/24h [V/S] (1:Bd+CN+D+Ra)
         Armor of Agathys A/S/1h [V/S] (1:PCo+Wl)
         >>> type(s.where(level=1)[:4])
-        <class 'dnd5edb.Spells'>
+        <class 'dnd5edb.collection.Spells'>
         """
         ret = super().__getitem__(key)
         if type(key) is slice:
@@ -309,10 +313,10 @@ class Collection(list):
         >>> from repltools import m
         >>> enemies = m.where(name='Scout') + m.where(name='Orc Eye of Gruumsh') + m.where(name='Yorn')
         >>> type(enemies)
-        <class 'dnd5edb.Monsters'>
+        <class 'dnd5edb.collection.Monsters'>
         >>> enemies += m.where(name='Bandit')
         >>> type(enemies)
-        <class 'dnd5edb.Monsters'>
+        <class 'dnd5edb.collection.Monsters'>
         """
         ret = super().__add__(value)
         if type(self) == type(value):
@@ -427,37 +431,67 @@ class Monsters(Collection):
         """Sort by name and level."""
         return result.sorted('name').sorted('cr')
 
+    def total_hp(self):
+        return sum(m.hp for m in self)
+
+    def weighted_ac(self):
+        """Average AC of the group, weighted by the number of hp each monster has."""
+        return round(sum(float(m.hp) * m.ac_num for m in self) / self.total_hp(), ndigits=1)
+
+    def dpr(self, target_ac):
+        """Average DPR of the entire group versus the target AC."""
+        return round(careful_sum(m.dpr(target_ac) for m in self), ndigits=1)
+
     def combat_stats(self, target_ac):
         """Generates report of average/total combat stats vs `target_ac`.
 
         >>> from dnd5edb.repltools import m
-        >>> from dnd5edb import Monsters
+        >>> from dnd5edb.collection import Monsters
         >>> enemies = m.where(name='Scout') + m.where(name='Orc Eye of Gruumsh') + m.where(name='Yorn')
         >>> enemies.combat_stats(16.5)
         {'dpr': 15.9, 'avg_ac': 13.3, 'weighted_ac': 13.8, 'hp': 93}
         """
-        careful_list_sum = lambda l: None if None in l else sum(l)
-        careful_sum = lambda l: careful_list_sum(list(l))
-
-        hp = sum(m.hp for m in self)
-        weighted_ac = round(sum(float(m.hp) * m.ac_num for m in self) / hp, ndigits=1)
-
         return dict({
-            'dpr': round(careful_sum(m.dpr(target_ac) for m in self), ndigits=1),
+            'dpr': self.dpr(target_ac),
             'avg_ac': round(float(sum(m.ac_num for m in self)) / len(self), ndigits=1),
-            'weighted_ac': weighted_ac,
-            'hp': hp,
+            'weighted_ac': self.weighted_ac(),
+            'hp': sum(m.hp for m in self),
             })
-#
-#    def ttv(self, opponents):
-#        """Calculates Turns To Victory for self vs a group with combat stats ``."""
-#        return
-#
-#class CombatStats(dict):
-#    """Holds data regarding combat stats and methods to work with it.
-#
-#    >>> party = CombatStats({'dpr': 20, 'avg_ac': 15, 'hp': 100})
-#    >>> enemies = CombatStats({'dpr': 22, 'avg_ac': 13.5, 'hp': 110})
-#    >>> party.ttv(enemies)
-#    >>> enemies.ttv(party)
-#    """
+
+    def vs(self, opponents, weighted_ac=True):
+        """Calculates combat stats for this set of monsters vs. another.
+
+        Uses weighted average for AC calculations unless `weighted_ac` is false;
+        in that case, uses regular average.
+
+        >>> m = Monsters()
+        >>> g1 = m.where(name='Scout') + m.where(name='Orc Eye of Gruumsh') + m.where(name='Yorn')
+        >>> g2 = m.where(name='Displacer Beast')
+        >>> pprint(g1.vs(g2))
+        {'group1': {'weighted_ac': 13.8,
+                    'avg_ac': 13.3,
+                    'hp': 93,
+                    'dpr': 22.2,
+                    'ttv': 3.8},
+         'group2': {'weighted_ac': 13.0,
+                    'avg_ac': 13.0,
+                    'hp': 85,
+                    'dpr': 9.9,
+                    'ttv': 9.4}}
+        """
+        ac_calc = 'weighted_ac' if weighted_ac else 'avg_ac'
+
+        defensive_stats = lambda group: {
+            'weighted_ac': group.weighted_ac(),
+            'avg_ac': round(float(sum(m.ac_num for m in group)) / len(group), ndigits=1),
+            'hp': group.total_hp() }
+
+        us = defensive_stats(self)
+        them = defensive_stats(opponents)
+
+        us['dpr'] = self.dpr(them.get(ac_calc))
+        us['ttv'] = round(float(them['hp']) / us['dpr'], ndigits=1)
+        them['dpr'] = opponents.dpr(us.get(ac_calc))
+        them['ttv'] = round(float(us['hp']) / them['dpr'], ndigits=1)
+
+        return {'group1': us, 'group2': them}

@@ -9,7 +9,7 @@ class DBItem:
 
         DBItem subclass must implement fmt_pointform for this to work.
 
-        >>> from dnd5edb.collections import Spells, Monsters
+        >>> from dnd5edb.collection import Spells, Monsters
         >>> print(Spells().search('Magic Missile')[0].fmt_xlist())
         * Magic Missile A/120'/I [V/S] (1:AArm+CA+S+Wz)
           " Evocation (PHB#257)
@@ -120,6 +120,7 @@ class Spell(DBItem):
             C = Components
             L = Level
 
+        >>> from dnd5edb.collection import Spells
         >>> test = lambda name: Spells().search(name)[0].fmt_oneline()
         >>> test('Banishing Smite')
         'Banishing Smite B/S/C<=1m [V] (5:ABS+P+WlH)'
@@ -166,6 +167,7 @@ class Spell(DBItem):
         `tabstop` determines the depth to which the body lines are indented.
 
         By default, uses `-` as the bullet for all lines and tabstop of 2:
+        >>> from dnd5edb.collection import Spells
         >>> print(Spells().search('Magic Missile')[0].fmt_pointform())
         - Magic Missile A/120'/I [V/S] (1:AArm+CA+S+Wz)
           - Evocation (PHB#257)
@@ -259,7 +261,7 @@ class Monster(DBItem):
         Custom data (passed via keyword arguments) is typically used
         to enter PC AC, HP, attacks, etc. for use in encounter balancing.
 
-        >>> from dnd5edb.collections import Spells, Monsters
+        >>> from dnd5edb.collection import Spells, Monsters
         >>> l3rogue = Monster(ac_num=16, hp=30, actions={'Crossbow': {'attack_bonus': 6, 'damage': '1d8+3+2d6'}})
         >>> party = Monsters([l3rogue])
         >>> party.combat_stats(12) # combat effectiveness vs 12 AC
@@ -278,7 +280,7 @@ class Monster(DBItem):
     def fmt_oneline(self):
         """Returns a one-line summary of the item.
 
-        >>> from dnd5edb.collections import Spells, Monsters
+        >>> from dnd5edb.collection import Spells, Monsters
         >>> Monsters().where(name='Giant Crab')[0].fmt_oneline()
         'Giant Crab: M UA beast, 1/8CR DPR=3.1/2.0/0.9 13HP/3d8 15AC (walk 30, swim 30)'
         >>> Monsters().where(name='Crab Folk')[0].fmt_oneline()
@@ -403,7 +405,7 @@ class Monster(DBItem):
         Subsequent lines are any remaining lines after the first two
         in the output of `self.fmt_full()`.
 
-        >>> from dnd5edb.collections import Spells, Monsters
+        >>> from dnd5edb.collection import Spells, Monsters
         >>> Monsters().where(name='Goblin').print('pointform') # doctest: +ELLIPSIS
         - Goblin: S NE humanoid (goblinoid), 1/4CR DPR=4.1/2.8/1.4 7HP/2d6 15AC (walk 30)
           - STR:8 DEX:14 CON:10 INT:10 WIS:8 CHA:8
