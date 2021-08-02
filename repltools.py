@@ -20,6 +20,13 @@ from dnd5edb import collection, calc
 from dnd5edb import predicates as p
 from dnd5edb.util import Generic
 
+# generally useful routines
+from pprint import pprint
+from functools import partial
+pp = partial(pprint, sort_dicts=False)
+del pprint
+from copy import deepcopy
+
 s = collection.Spells()
 m = collection.Monsters()
 
