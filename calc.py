@@ -87,8 +87,10 @@ def dpr(ac, attack_bonus, damage):
 
 # die roll odds
 adv = lambda odds: 1.0 - ((1.0 - odds) * (1.0 - odds))
+ea = lambda odds: 1.0 - ((1.0 - odds) * (1.0 - odds) * (1.0 - odds))
 meetorbeat = lambda target: max(min(1.0 - (target - 1.0) / 20, 1.0), 0.0)
 meetorbeat.adv = lambda target: adv(meetorbeat(target))
+meetorbeat.ea = lambda target: ea(meetorbeat(target))
 attackodds = lambda target: max(min(1.0 - (target - 1.0) / 20, 0.95), 0.05)
 attackodds.adv = lambda target: adv(attackodds(target))
 
