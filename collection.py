@@ -94,6 +94,18 @@ class Collection(list):
         """
         return self.__class__(i for i in self if pred(i))
 
+    def text_match(self, text):
+        """Case-insensitive search over all text fields.
+
+        >>> from dnd5edb.repltools import *
+        >>> pp(m.text_match('aaqa'))
+        [Monster(Aarakocra: M NG humanoid (aarakocra), 1/4CR DPR=4.1/2.8/1.4 13HP/3d8 12AC (walk 20, fly 50)),
+         Monster(Gargoyle: M CE elemental, 2.0CR DPR=8.2/5.5/2.8 52HP/7d8+21 15AC (walk 30, fly 60)),
+         Monster(Asharra: M LN humanoid (aarakocra), 2.0CR DPR=4.1/2.8/1.4 31HP/7d8 12AC (walk 20, fly 50)),
+         Monster(Mwaxanaré: M LN humanoid (human), 1/8CR DPR=1.6/1.0/0.4 13HP/3d8 10AC (walk 30))]
+        """
+        return self.__class__(i for i in self if i.text_match(text))
+
     def where(self, **kwargs):
         """Filter for items for which all conditions are true.
 
@@ -322,6 +334,19 @@ class Collection(list):
         if type(self) == type(value):
             ret = type(self)(ret)
         return ret
+
+    def __mul__(self, value):
+        """Similar to __add__.
+
+        >>> from repltools import *
+        >>> enemies = 4 * m.where(name='Scout')
+        >>> type(enemies)  # Not sure if there is a way to make this work
+        <class 'list'>
+        >>> more_enemies = m.where(name='Bandit') * 4
+        >>> type(more_enemies)
+        <class 'dnd5edb.collection.Monsters'>
+        """
+        return type(self)(super().__mul__(value))
 
 class Spells(Collection):
     """A list of spells from the db.
