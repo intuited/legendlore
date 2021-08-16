@@ -20,6 +20,10 @@ from dnd5edb import collection, calc
 from dnd5edb import predicates as p
 from dnd5edb.util import Generic
 
+# just imported so they'll be available in the REPL
+from dnd5edb.db_items import Monster, Spell
+from dnd5edb.collection import Monsters, Spells
+
 # generally useful routines
 from pprint import pprint
 from functools import partial
@@ -27,10 +31,14 @@ pp = partial(pprint, sort_dicts=False)
 del pprint
 from copy import deepcopy
 
-s = collection.Spells()
-m = collection.Monsters()
+# Quick-access abbreviations
+s = Spells()
+m = Monsters()
 
-# Spell Print in a convenient format
+def a(x, p=1):
+    """Average of XdY calculation, rounded to `p` digits."""
+    return round(calc.avg(x), ndigits=p)
+
 sp = lambda name: s.search(name).print('xlist')
 
 # convert Ability Score to Bonus
@@ -78,3 +86,22 @@ druid.ac.bearbarian = lambda creature: max(creature.ac_num if 'natural armor' in
 druid.ac.bearbarian.__doc__ = 'Calculate AC for Druid/Barbarian wildshaped into `creature`.'
 druid.ac.drunk = lambda creature, wis: max(creature.ac_num if 'natural armor' in creature.ac[0].lower() else 0, asbonus(10 + creature.dex + wis))
 druid.ac.drunk.__doc__ = 'Calculate AC for Druid/Monk with Wisdom `wis` wildshaped into `creature`.'
+
+def reload_db():
+    """Reloads the database and refreshes code related to it."""
+    ##~~ from dnd5edb.parse import XML
+    ##~~ from importlib import reload
+    ##~~ del Monsters._parsed
+    ##~~ del Spells._parsed
+    ##~~ from dnd5edb import repltools
+    ##~~ repltools.Monsters = collection.Monsters
+    ##~~ repltools.m = Monsters()
+    ##~~ repltools.s = Spells()
+    ##~~ XML.tree = None
+
+    from importlib import reload
+    from dnd5edb import db_items, collection, parse, repltools
+    reload(parse)
+    reload(db_items)
+    reload(collection)
+    reload(repltools)
