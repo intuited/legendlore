@@ -2,6 +2,28 @@ from functools import cached_property
 from dnd5edb import parse, datatypes, calc
 from dnd5edb.actions import Actions
 
+def traverse_filter(item, predicate):
+    """Traverses lists and dicts starting with `item`.
+
+    Yields non-dict, non-list items for which predicate(item) returns True.
+
+    >>> is_string = lambda v: type(v) is str
+    >>> l = [1, 'two', 3, 'four']
+    >>> list(traverse_filter(l, is_string))
+    ['two', 'four']
+    >>> dl = {1: 'one', 2: [2, 'two'], 3: [3, {"six": 4, 8: 'three'}]}
+    >>> list(traverse_filter(dl, is_string))
+    ['one', 'two', 'three']
+    """
+    if isinstance(item, dict):
+        for subitem in item.values():
+            yield from traverse_filter(subitem, predicate)
+    elif isinstance(item, list):
+        for subitem in item:
+            yield from traverse_filter(subitem, predicate)
+    elif predicate(item):
+        yield item
+
 class DBItem:
     """Abstract base class for Spell, Monster, and other database entries."""
     def fmt_xlist(self, tabstop=2):
@@ -29,6 +51,32 @@ class DBItem:
     def abbrev_sources(self):
         """Abbreviate the list of sources for this DB item."""
         return ', '.join(ref.abbr() for ref in self.sources)
+
+    def _filter_fields(self, predicate):
+        return traverse_filter(self.__dict__, predicate)
+
+    def text_match(self, text):
+        """Returns true if any of the item's text fields match `text`.
+
+        >>> from dnd5edb.repltools import *
+        >>> aara = m.where(name='Aarakocra')[0]
+        >>> aara.text_match('asdfasdf')
+        False
+        >>> aara.text_match('aaqa')
+        True
+        >>> aara.text_match('summon')
+        True
+        >>> aara.text_match('melee weapon attack')
+        True
+        """
+        def lc_match(term, field_text):
+            return str(text).lower() in field_text.lower()
+        is_string = lambda v: type(v) is str
+        text_fields = self._filter_fields(is_string)
+        return any(lc_match(text, field) for field in text_fields)
+
+    def print(self, method='xlist', **kwargs):
+        print(getattr(self, 'fmt_' + method)(**kwargs))
 
 class Spell(DBItem):
     """Object with spell db object fields mapped as attributes."""
