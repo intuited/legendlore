@@ -16,7 +16,7 @@ class Collection(list):
         - e.g. Monsters._type = Monster
     """
 
-    def __init__(self, l=None, tree=None):
+    def __init__(self, l=None, tree=None, name=None):
         """A list of db objects with added methods.
 
         With no arguments, returns the list of all db objects of the type, 
@@ -29,9 +29,14 @@ class Collection(list):
 
         If tree was not given, stores the parsed tree in a class
             variable (`_parsed`)
+
+        `name` can be used to assign an arbitrary name to the collection,
+        for example 'party' when simulating the party's combat abilities.
         """
         if l is not None:
             super().__init__(l)
+            if name:
+                self.name = name
             return
 
         if hasattr(self, '_parsed') and not tree:
@@ -333,6 +338,8 @@ class Collection(list):
         ret = super().__add__(value)
         if type(self) == type(value):
             ret = type(self)(ret)
+            if hasattr(self, 'name'):
+                ret.name = self.name
         return ret
 
     def __mul__(self, value):
@@ -342,11 +349,21 @@ class Collection(list):
         >>> enemies = 4 * m.where(name='Scout')
         >>> type(enemies)  # Not sure if there is a way to make this work
         <class 'list'>
-        >>> more_enemies = m.where(name='Bandit') * 4
+        >>> more_enemies = m.where(name='Bandit').set_name('badguise') * 4
         >>> type(more_enemies)
         <class 'dnd5edb.collection.Monsters'>
+        >>> more_enemies.name
+        'badguise'
         """
-        return type(self)(super().__mul__(value))
+        ret = type(self)(super().__mul__(value))
+        if hasattr(self, 'name'):
+            ret.name = self.name
+        return ret
+
+    def set_name(self, newname):
+        """Sets the `name` property of this collection and returns `self`."""
+        self.name = newname
+        return self
 
 class Spells(Collection):
     """A list of spells from the db.
@@ -490,19 +507,20 @@ class Monsters(Collection):
         in that case, uses regular average.
 
         >>> m = Monsters()
-        >>> g1 = m.where(name='Scout') + m.where(name='Orc Eye of Gruumsh') + m.where(name='Yorn')
-        >>> g2 = m.where(name='Displacer Beast')
+        >>> g1 = Monsters(m.where(name='Scout') + m.where(name='Orc Eye of Gruumsh') + m.where(name='Yorn'),
+        ...               name='The Misfits')
+        >>> g2 = m.where(name='Displacer Beast').set_name('The Holograms')
         >>> pprint(g1.vs(g2))
-        {'group1': {'weighted_ac': 13.8,
-                    'avg_ac': 13.3,
-                    'hp': 93,
-                    'dpr': 22.2,
-                    'ttv': 3.8},
-         'group2': {'weighted_ac': 13.0,
-                    'avg_ac': 13.0,
-                    'hp': 85,
-                    'dpr': 9.9,
-                    'ttv': 9.4}}
+        {'The Misfits': {'weighted_ac': 13.8,
+                         'avg_ac': 13.3,
+                         'hp': 93,
+                         'dpr': 22.2,
+                         'ttv': 3.8},
+         'The Holograms': {'weighted_ac': 13.0,
+                           'avg_ac': 13.0,
+                           'hp': 85,
+                           'dpr': 9.9,
+                           'ttv': 9.4}}
         """
         ac_calc = 'weighted_ac' if weighted_ac else 'avg_ac'
 
@@ -519,4 +537,7 @@ class Monsters(Collection):
         them['dpr'] = opponents.dpr(us.get(ac_calc))
         them['ttv'] = round(float(us['hp']) / them['dpr'], ndigits=1)
 
-        return {'group1': us, 'group2': them}
+        usname = getattr(self, 'name', 'group1')
+        themname = getattr(opponents, 'name', 'group2')
+
+        return {usname: us, themname: them}
