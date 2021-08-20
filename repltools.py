@@ -24,6 +24,8 @@ from dnd5edb.util import Generic
 from dnd5edb.db_items import Monster, Spell
 from dnd5edb.collection import Monsters, Spells
 
+from dnd5edb.datatypes import SpellRange
+
 # generally useful routines
 from pprint import pprint
 from functools import partial
@@ -33,6 +35,9 @@ from copy import deepcopy
 
 # Quick-access abbreviations
 s = Spells()
+s.byclass = Generic(**{cls.lower(): s.where(classes=p.contains(cls))
+                       for cls in ['Artificer', 'Bard', 'Cleric', 'Druid', 'Paladin', 'Ranger', 'Sorcerer', 'Wizard', 'Warlock']})
+s.byclass.dss = Spells(set(s.byclass.sorcerer + s.byclass.cleric))  # Divine Soul Sorcerer
 m = Monsters()
 
 def a(x, p=1):
