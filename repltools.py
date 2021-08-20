@@ -100,8 +100,9 @@ def reload_db():
     ##~~ XML.tree = None
 
     from importlib import reload
-    from dnd5edb import db_items, collection, parse, repltools
+    from dnd5edb import parse, db_items, actions, collection, repltools
     reload(parse)
     reload(db_items)
+    reload(actions)
     reload(collection)
     reload(repltools)
