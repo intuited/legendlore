@@ -439,6 +439,10 @@ class Spells(Collection):
 
         return "\n".join(lines)
 
+    def __sub__(self, value):
+        """Set-wise difference."""
+        return type(self)(set(self) - set(value))
+
 class Monsters(Collection):
     """List of all the <monster> entries in the db.
 
