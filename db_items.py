@@ -1,4 +1,26 @@
-from functools import cached_property
+"""db_items
+
+Contains Spell and Monster classes along with their base class and support functions.
+
+Doctests for methods that don't get their doctests run for some reason:
+
+>>> from dnd5edb.repltools import *
+>>> aara = m.search('aara')[0]
+>>> aara.dpr(15)
+2.75
+>>> aara.actions['Talon']['damage'] = '20'
+>>> aara.dpr(15)
+10.0
+>>> big_bad_aara = deepcopy(aara)
+>>> big_bad_aara.dpr(15)
+10.0
+>>> big_bad_aara.actions['Talon']['damage'] = '200'
+>>> big_bad_aara.dpr(15)
+100.0
+>>> aara.dpr(15)
+10.0
+"""
+
 from dnd5edb import parse, datatypes, calc
 from dnd5edb.actions import Actions
 
@@ -467,10 +489,10 @@ class Monster(DBItem):
         ret += [f'{" " * tabstop}{body} {line}' for line in self.fmt_full().split('\n')[2:]]
         return '\n'.join(ret)
 
-    @cached_property
+    @property
     def dpr(self):
+        """Overly complicated way of caching dpr method.  I have no idea why I wrote it this way."""
         if hasattr(self, 'actions'):
             return lambda *args, **kwargs: calc.round4(self.actions.dpr(*args, **kwargs))
         else:
             return lambda *args, **kwargs: None
-

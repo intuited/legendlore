@@ -2,7 +2,6 @@
 """
 import re
 from dnd5edb import calc
-from functools import cached_property
 from logging import warning
 
 class Actions(dict):
@@ -44,20 +43,20 @@ class Actions(dict):
         """
         return self.attack_form.dpr
 
-    @cached_property
+    @property
     def attacks(self):
         """Subset of Actions which have `attack_bonus` and `damage` entries."""
         return {name: Attack(attack) for name, attack in self.items()
                 if 'attack_bonus' in attack and 'damage' in attack}
 
-    @cached_property
+    @property
     def multiattack_text(self):
         try:
             return self['Multiattack']['text']
         except KeyError:
             return None
 
-    @cached_property
+    @property
     def attack_form(self):
         """Matches multiattack text to one of the REs in attack_forms.keys().
 
