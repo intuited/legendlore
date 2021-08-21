@@ -48,7 +48,7 @@ def in_(val):
 
     >>> from dnd5edb.repltools import s
     >>> s.where(classes=contains("Wizard"), level=in_([2, 3, 4]), text=contains('spell attack')).print()
-    Melf's Acid Arrow A/90'/I [V/S] (2:AAl+DL+Wz)
+    Melf's Acid Arrow A/90'/I [V/S/M] (2:AAl+DL+Wz)
     Ray of Enfeeblement A/60'/C<=1m [V/S] (2:CD+CG+Wl+Wz)
     Scorching Ray A/120'/I [V/S] (2:AArt+CLt+DW+S+WlFi+WlGe+Wz)
     Vampiric Touch A/S/C<=1m [V/S] (3:CD+CG+Wl+Wz)

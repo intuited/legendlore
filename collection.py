@@ -63,9 +63,9 @@ class Collection(list):
         >>> from repltools import s
         >>> s.where(level=1)[:4].print()
         Absorb Elements R/S/1r [S] (1:A+D+Ra+S+Wz)
-        Alarm (rit.) 1m/30'/8h [V/S] (1:A+PW+Ra+SCS+Wz)
-        Animal Friendship A/30'/24h [V/S] (1:Bd+CN+D+Ra)
-        Armor of Agathys A/S/1h [V/S] (1:PCo+Wl)
+        Alarm (rit.) 1m/30'/8h [V/S/M] (1:A+PW+Ra+SCS+Wz)
+        Animal Friendship A/30'/24h [V/S/M] (1:Bd+CN+D+Ra)
+        Armor of Agathys A/S/1h [V/S/M] (1:PCo+Wl)
         >>> type(s.where(level=1)[:4])
         <class 'dnd5edb.collection.Spells'>
         """
@@ -167,13 +167,13 @@ class Collection(list):
         Spirit Shroud B/S/C<=1m [V/S] (3:C+P+Wl+Wz)
         Shadow of Moil A/S/C<=1m [V/S/M@150gp] (4:Wl)
         Sickening Radiance A/120'/C<=10m [V/S] (4:S+Wl+Wz)
-        Wall of Light A/120'/C<=10m [V/S] (5:S+Wl+Wz)
+        Wall of Light A/120'/C<=10m [V/S/M] (5:S+Wl+Wz)
         Tasha's Otherworldly Guise B/S/C<=1m [V/S/M@500gp] (6:S+Wl+Wz)
         Crown of Stars A/S/1h [V/S] (7:S+Wl+Wz)
         >>> s.sorted('level', reverse=True).print()
         Crown of Stars A/S/1h [V/S] (7:S+Wl+Wz)
         Tasha's Otherworldly Guise B/S/C<=1m [V/S/M@500gp] (6:S+Wl+Wz)
-        Wall of Light A/120'/C<=10m [V/S] (5:S+Wl+Wz)
+        Wall of Light A/120'/C<=10m [V/S/M] (5:S+Wl+Wz)
         Shadow of Moil A/S/C<=1m [V/S/M@150gp] (4:Wl)
         Sickening Radiance A/120'/C<=10m [V/S] (4:S+Wl+Wz)
         Spirit Shroud B/S/C<=1m [V/S] (3:C+P+Wl+Wz)
@@ -182,7 +182,7 @@ class Collection(list):
         Crown of Stars A/S/1h [V/S] (7:S+Wl+Wz)
         Sickening Radiance A/120'/C<=10m [V/S] (4:S+Wl+Wz)
         Tasha's Otherworldly Guise B/S/C<=1m [V/S/M@500gp] (6:S+Wl+Wz)
-        Wall of Light A/120'/C<=10m [V/S] (5:S+Wl+Wz)
+        Wall of Light A/120'/C<=10m [V/S/M] (5:S+Wl+Wz)
         Shadow of Moil A/S/C<=1m [V/S/M@150gp] (4:Wl)
 
         # Sorting by level does not disturb previous sort by name
@@ -192,7 +192,7 @@ class Collection(list):
         Crown of Stars A/S/1h [V/S] (7:S+Wl+Wz)
         Shadow of Moil A/S/C<=1m [V/S/M@150gp] (4:Wl)
         Sickening Radiance A/120'/C<=10m [V/S] (4:S+Wl+Wz)
-        Wall of Light A/120'/C<=10m [V/S] (5:S+Wl+Wz)
+        Wall of Light A/120'/C<=10m [V/S/M] (5:S+Wl+Wz)
 
         Invalid sort fields have no effect
         >>> s.sorted('blipdebloop').print()
@@ -201,7 +201,7 @@ class Collection(list):
         Sickening Radiance A/120'/C<=10m [V/S] (4:S+Wl+Wz)
         Spirit Shroud B/S/C<=1m [V/S] (3:C+P+Wl+Wz)
         Tasha's Otherworldly Guise B/S/C<=1m [V/S/M@500gp] (6:S+Wl+Wz)
-        Wall of Light A/120'/C<=10m [V/S] (5:S+Wl+Wz)
+        Wall of Light A/120'/C<=10m [V/S/M] (5:S+Wl+Wz)
 
         Test that we're handling empty sets correctly
         >>> len(s.where(classes=p.contains('gobbledegook')).sorted())
@@ -265,16 +265,16 @@ class Collection(list):
         Sacred Flame A/60'/I [V/S] (0:C+WlC)
         Guiding Bolt A/120'/1r [V/S] (1:C+PG+WlC)
         Hellish Rebuke R/60'/I [V/S] (1:PO+Wl)
-        Unseen Servant (rit.) A/60'/1h [V/S] (1:Bd+Wl+Wz)
-        Flaming Sphere A/60'/C<=1m [V/S] (2:AAl+CLt+D+DW+S+WlC+Wz)
+        Unseen Servant (rit.) A/60'/1h [V/S/M] (1:Bd+Wl+Wz)
+        Flaming Sphere A/60'/C<=1m [V/S/M] (2:AAl+CLt+D+DW+S+WlC+Wz)
         Spirit Shroud B/S/C<=1m [V/S] (3:C+P+Wl+Wz)
         Elemental Bane A/90'/C<=1m [V/S] (4:A+D+Wl+Wz)
         Guardian of Faith A/30'/8h [V] (4:C+CLf+CLt+PCr+PD+WlC)
         Shadow of Moil A/S/C<=1m [V/S/M@150gp] (4:Wl)
         Sickening Radiance A/120'/C<=10m [V/S] (4:S+Wl+Wz)
-        Wall of Fire A/120'/C<=1m [V/S] (4:AArt+CF+CLt+D+S+WlC+WlFi+Wz)
-        Flame Strike A/60'/I [V/S] (5:C+CLt+CW+DW+PD+PG+WlC+WlFi+WlGe)
-        Wall of Light A/120'/C<=10m [V/S] (5:S+Wl+Wz)
+        Wall of Fire A/120'/C<=1m [V/S/M] (4:AArt+CF+CLt+D+S+WlC+WlFi+Wz)
+        Flame Strike A/60'/I [V/S/M] (5:C+CLt+CW+DW+PD+PG+WlC+WlFi+WlGe)
+        Wall of Light A/120'/C<=10m [V/S/M] (5:S+Wl+Wz)
         Investiture of Flame A/S/C<=10m [V/S] (6:D+S+Wl+Wz)
         Investiture of Ice A/S/C<=10m [V/S] (6:D+S+Wl+Wz)
         Mental Prison A/60'/C<=1m [S] (6:S+Wl+Wz)
