@@ -13,6 +13,8 @@ def _hasvalue(obj, attr):
 
 def eq(val):
     return lambda attr, obj: _hasvalue(obj, attr) and getattr(obj, attr) == val
+def ne(val):
+    return lambda attr, obj: _hasvalue(obj, attr) and getattr(obj, attr) != val
 def lt(val):
     return lambda attr, obj: _hasvalue(obj, attr) and getattr(obj, attr) < val
 def lte(val):
@@ -34,10 +36,10 @@ def key(val):
 def contains(val):
     """Check if `attr` contains `val`.
     >>> from dnd5edb.test import s
-    >>> s.where(components=contains('pearl')).sorted('level').print()
-    Identify (rit.) 1m/T/I (1:A+Bd+CF+CK+Wz)
-    Fortune's Favor 1m/T/1h (2:WzC+WzG)
-    Circle of Death A/150'/I (6:S+Wl+Wz)
+    >>> s.where(components=dictvalue('M', contains('pearl'))).sorted('level').print()
+    Identify (rit.) 1m/T/I [V/S/M@100gp] (1:A+Bd+CF+CK+Wz)
+    Fortune's Favor 1m/T/1h [V/S/M@!100!gp] (2:WzC+WzG)
+    Circle of Death A/150'/I [V/S/M@500gp] (6:S+Wl+Wz)
     """
     return lambda attr, obj: _hasvalue(obj, attr) and val in getattr(obj, attr)
 
@@ -46,13 +48,27 @@ def in_(val):
 
     >>> from dnd5edb.repltools import s
     >>> s.where(classes=contains("Wizard"), level=in_([2, 3, 4]), text=contains('spell attack')).print()
-    Melf's Acid Arrow A/90'/I (2:AAl+DL+Wz)
-    Ray of Enfeeblement A/60'/C<=1m (2:CD+CG+Wl+Wz)
-    Scorching Ray A/120'/I (2:AArt+CLt+DW+S+WlFi+WlGe+Wz)
-    Vampiric Touch A/S/C<=1m (3:CD+CG+Wl+Wz)
-    Storm Sphere A/150'/C<=1m (4:S+Wz)
+    Melf's Acid Arrow A/90'/I [V/S] (2:AAl+DL+Wz)
+    Ray of Enfeeblement A/60'/C<=1m [V/S] (2:CD+CG+Wl+Wz)
+    Scorching Ray A/120'/I [V/S] (2:AArt+CLt+DW+S+WlFi+WlGe+Wz)
+    Vampiric Touch A/S/C<=1m [V/S] (3:CD+CG+Wl+Wz)
+    Storm Sphere A/150'/C<=1m [V/S] (4:S+Wz)
     """
     return lambda attr, obj: _hasvalue(obj, attr) and getattr(obj, attr) in val
+
+def apply(fn, val):
+    """Returned predicate passes (attr, val) to fn, returns result.
+
+    >>> from dnd5edb.repltools import m
+    >>> len(m.where(type='humanoid'))
+    17
+    >>> len(m.where(type=apply(str.startswith, 'humanoid')))
+    778
+    """
+    return lambda attr, obj: _hasvalue(obj, attr) and fn(getattr(obj, attr), val)
+
+def startswith(val):
+    return apply(str.startswith, val)
 
 def or_(*preds):
     """Check if any of the passed predicates return true.
@@ -157,3 +173,27 @@ def not_(*preds):
         return True
 
     return not_closure
+
+def dictvalue(key, pred):
+    """Test the predicate on the value of `key` in the dictionaries passed to the returned closure.
+
+    Find spells whose value of used material components equals 100
+    >>> from dnd5edb.repltools import s
+    >>> s.where(components=dictvalue('used', eq(100))).print()
+    Identify (rit.) 1m/T/I [V/S/M@100gp] (1:A+Bd+CF+CK+Wz)
+    Warding Bond A/T/1h [V/S/M@100gp] (2:ABS+C+CPe+P+PCr)
+    Clairvoyance 10m/1mi/C<=10m [V/S/M@100gp] (3:BbAG+Bd+C+S+WlGOO+Wz)
+    Dawn A/60'/C<=1m [V/S/M@100gp] (5:C+Wz)
+    Find the Path 1m/S/C<=1d [V/S/M@100gp] (6:Bd+C+D)
+    Soul Cage R/60'/8h [V/S/M@100gp] (6:Wl+Wz)
+    """
+    from dnd5edb.test import obj_fromdict
+    
+    def dictvalue_closure(attr, obj):
+        if _hasvalue(obj, attr):
+            dictionary = getattr(obj, attr)
+            # predicate is expecting the value to be in an attribute, not a key
+            return pred(key, obj_fromdict(dictionary))
+        return False
+
+    return dictvalue_closure
