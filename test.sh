@@ -2,7 +2,6 @@ function test {
   echo "python -m doctest $1:";
   python -m doctest "$1";
 }
-test __init__.py
 test db_items.py
 test collection.py
 test predicates.py
