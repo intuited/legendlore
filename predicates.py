@@ -6,6 +6,21 @@ depending on whether they fit the condition specified at generation.
 
 See the docstring of Collection.where for examples
 that illustrate why this unusual syntax is used.
+
+>>> from util import Generic
+>>> testpred = lambda attrval, pred: pred('test', Generic(test=attrval))
+>>> testpred(4, eq(5))
+False
+>>> testpred(6, eq(6))
+True
+>>> testpred('test string', contains("test string"))
+True
+>>> testpred([1, 2, 3, 4], contains(6))
+False
+>>> testpred('Testing', startswith('test'))
+True
+>>> testpred('Testing', startswith('test', ignorecase=False))
+False
 """
 def _hasvalue(obj, attr):
     """True if the attribute `attr` of `obj` exists and is not None."""
@@ -67,8 +82,11 @@ def apply(fn, val):
     """
     return lambda attr, obj: _hasvalue(obj, attr) and fn(getattr(obj, attr), val)
 
-def startswith(val):
-    return apply(str.startswith, val)
+def startswith(val, ignorecase=True):
+    if ignorecase:
+        return lambda attr, obj: _hasvalue(obj, attr) and getattr(obj, attr).lower().startswith(val.lower())
+    else:
+        return apply(str.startswith, val)
 
 def or_(*preds):
     """Check if any of the passed predicates return true.
