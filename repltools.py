@@ -15,6 +15,29 @@ Functionality:
 13
 >>> druid.ac.drunk(bb, 18) # AC for wildshaped Druid/Monk with 18 WIS
 14
+
+`s.byclass`, `s.byschool` provide convenient access to subcategories
+>>> pp(s.byclass.paladin.where(level=5))
+[Spell(Banishing Smite B/S/C<=1m [V] (5:ABS+P+WlH)),
+ Spell(Circle of Power A/S(30'r)/C<=10m [V] (5:CTw+P+PCr)),
+ Spell(Destructive Wave A/S(30'r)/I [V] (5:CTm+P)),
+ Spell(Dispel Evil and Good A/S/C<=1m [V/S/M] (5:C+P)),
+ Spell(Geas 1m/60'/30d [V] (5:Bd+C+D+P+PCr+Wz)),
+ Spell(Holy Weapon B/T/C<=1h [V/S] (5:C+P)),
+ Spell(Raise Dead 1h/T/I [V/S/M@!500!gp] (5:AAl+Bd+C+CG+CLf+P)),
+ Spell(Summon Celestial A/90'/C<=1h [V/S/M@500gp] (5:C+P))]
+>>> pp(s.byschool.enchantment.where(level=1))
+[Spell(Animal Friendship A/30'/24h [V/S/M] (1:Bd+CN+D+Ra)),
+ Spell(Bane A/30'/C<=1m [V/S/M] (1:Bd+C+CG+PV+SDS)),
+ Spell(Bless A/30'/C<=1m [V/S/M] (1:C+CLf+P+SDS)),
+ Spell(Charm Person A/30'/1h [V/S] (1:Bd+CTr+D+RaFW+S+Wl+Wz)),
+ Spell(Command A/60'/1r [V] (1:Bd+BdG+C+CK+CO+P+PCo+PCr+WlFi)),
+ Spell(Compelled Duel B/30'/C<=1m [V] (1:P+PCr)),
+ Spell(Dissonant Whispers A/60'/I [V] (1:Bd+SAM+WlGOO)),
+ Spell(Heroism A/T/C<=1m [V/S] (1:ABS+Bd+CO+CPe+P+PG)),
+ Spell(Hex B/90'/C<=1h [V/S/M] (1:Wl)),
+ Spell(Sleep A/90'/1m [V/S/M] (1:Bd+CTw+PR+S+WlA+Wz)),
+ Spell(Tasha's Hideous Laughter A/30'/C<=1m [V/S/M] (1:Bd+WlGOO+Wz))]
 """
 from dnd5edb import collection, calc
 from dnd5edb import predicates as p
@@ -42,6 +65,10 @@ s = Spells()
 s.byclass = Generic(**{cls.lower(): s.where(classes=p.contains(cls))
                        for cls in ['Artificer', 'Bard', 'Cleric', 'Druid', 'Paladin', 'Ranger', 'Sorcerer', 'Wizard', 'Warlock']})
 s.byclass.dss = Spells(set(s.byclass.sorcerer + s.byclass.cleric))  # Divine Soul Sorcerer
+s.byschool = Generic(**{school.lower(): s.where(school=school)
+                        for school in ('Abjuration', 'Conjuration', 'Divination', 'Enchantment',
+                                       'Evocation', 'Illusion', 'Necromancy', 'Transmutation'   )})
+
 m = Monsters()
 
 def a(x, p=1):
