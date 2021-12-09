@@ -13,10 +13,9 @@ The purpose of this code is to enable convenient programmatic access to the data
 
 It is particularly useful in a REPL like [iPython][1].  To setup convenient access, it can be useful to issue commands such as the following:
 
+    >>> from dnd5edb.repl import *
     >>> from dnd5edb import Spells, Monsters
     >>> from dnd5edb import predicates as p
-    >>> s = Spells()
-    >>> m = Monsters()
 
 Currently, only the spells and monsters aspects of the database are properly implemented.
 
@@ -71,6 +70,17 @@ Here we have another example using predicates.  This code gives us a printout of
     ...          level=p.and_(p.gte(2), p.lte(3)) ).sorted('level').print()
 
 The `and_` predicate is simply a predicate that checks the values of two or more other predicates.
+
+Ever wanted to know which spells are available to sorcerers but not wizards?
+
+    >>> s.where(classes=p.and_(p.contains('Sorcerer'), p.not_(p.contains('Wizard'))))
+    [Spell(Chaos Bolt A/120'/I [V/S] (1:S)),
+     Spell(Daylight A/60'/1h [V/S] (3:C+CLt+D+DL+P+Ra+S+WlC)),
+     Spell(Water Walk (rit.) A/30'/1h [V/S] (3:A+C+D+DL+Ra+S)),
+     Spell(Dominate Beast A/60'/C<=1m [V/S] (4:CN+D+PCo+S+WlA+WlGOO)),
+     Spell(Insect Plague A/300'/C<=10m [V/S] (5:C+CN+CTm+D+DL+RaS+S)),
+     Spell(Fire Storm A/150'/I [V/S] (7:C+D+S)),
+     Spell(Earthquake A/500'/C<=1m [V/S] (8:C+D+S))]
 
 Current predicates are:
 
