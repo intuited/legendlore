@@ -20,6 +20,10 @@ from dnd5edb import collection, calc
 from dnd5edb import predicates as p
 from dnd5edb.util import Generic
 
+# quick Spell Print in commonly used formats
+sp = lambda name: s.search(name).print('xlist')
+pl = lambda name: s.search(name).print('plop')
+
 # just imported so they'll be available in the REPL
 from dnd5edb.db_items import Monster, Spell
 from dnd5edb.collection import Monsters, Spells
@@ -43,8 +47,6 @@ m = Monsters()
 def a(x, p=1):
     """Average of XdY calculation, rounded to `p` digits."""
     return round(calc.avg(x), ndigits=p)
-
-sp = lambda name: s.search(name).print('xlist')
 
 # convert Ability Score to Bonus
 asbonus = lambda ascore: int((ascore - 10) / 2)
