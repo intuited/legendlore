@@ -55,13 +55,13 @@ What do the still-unhandled cases look like?
 [Uncomment for info on a specific case]
 >>> #pprint(grouped_by_form['ByHalfSpellLevel'][:40])
 """
-from dnd5edb.repltools import m, p
+from legendlore.repltools import m, p
 from functools import partial
 from pprint import pprint
 pprint = partial(pprint, width=200, sort_dicts=False)
 from re import fullmatch
 import itertools
-from dnd5edb import actions
+from legendlore import actions
 from db_analysis import groupeddict, histogram
 
 form_pos = dict(zip(actions.attack_forms.values(), itertools.count()))

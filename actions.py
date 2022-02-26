@@ -1,7 +1,7 @@
 """Handle actions, in particular, attack actions.
 """
 import re
-from dnd5edb import calc
+from legendlore import calc
 from logging import warning
 
 class Actions(dict):
@@ -234,7 +234,7 @@ re_words = lambda n: r'\w+(?:\s\w+){,' + str(n-1) + '}'
 class Centaur(AttackForm):
     """Centaur.
 
-    >>> from dnd5edb.repltools import m
+    >>> from legendlore.repltools import m
     >>> {ac: m.where(name='Centaur')[0].dpr(ac) for ac in range(10, 31, 2)}
     {10: 17.425, 12: 15.375, 14: 13.325, 16: 11.275, 18: 9.225, 20: 7.175, 22: 5.125, 24: 3.075, 26: 1.025, 28: 1.025, 30: 1.025}
     """

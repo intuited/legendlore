@@ -3,12 +3,12 @@
 Various functions that use the module code to analyse the database.
 Not part of the core functionality.
 """
-from dnd5edb.collection import Monsters, Spells
+from legendlore.collection import Monsters, Spells
 from collections import defaultdict, Counter
 from pprint import pprint, pformat
 from functools import partial
 import statistics
-from dnd5edb.parse import XML
+from legendlore.parse import XML
 
 pprint = partial(pprint, indent=2, width=100)
 pformat = partial(pformat, indent=2, width=100)

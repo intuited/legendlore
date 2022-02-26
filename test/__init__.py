@@ -1,5 +1,5 @@
 """Functions and objects used by doctests in the module code."""
-from dnd5edb.collection import Spells
+from legendlore.collection import Spells
 
 s = Spells()
 

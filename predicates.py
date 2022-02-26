@@ -50,7 +50,7 @@ def key(val):
     return keypred
 def contains(val):
     """Check if `attr` contains `val`.
-    >>> from dnd5edb.test import s
+    >>> from legendlore.test import s
     >>> s.where(components=dictvalue('M', contains('pearl'))).sorted('level').print()
     Identify (rit.) 1m/T/I [V/S/M@100gp] (1:A+Bd+CF+CK+Wz)
     Fortune's Favor 1m/T/1h [V/S/M@!100!gp] (2:WzC+WzG)
@@ -61,7 +61,7 @@ def contains(val):
 def in_(val):
     """Check if `val` is in the value of `attr`.
 
-    >>> from dnd5edb.repltools import s
+    >>> from legendlore.repltools import s
     >>> s.where(classes=contains("Wizard"), level=in_([2, 3, 4]), text=contains('spell attack')).print()
     Melf's Acid Arrow A/90'/I [V/S/M] (2:AAl+DL+Wz)
     Ray of Enfeeblement A/60'/C<=1m [V/S] (2:CD+CG+Wl+Wz)
@@ -74,7 +74,7 @@ def in_(val):
 def apply(fn, val):
     """Returned predicate passes (attr, val) to fn, returns result.
 
-    >>> from dnd5edb.repltools import m
+    >>> from legendlore.repltools import m
     >>> len(m.where(type='humanoid'))
     17
     >>> len(m.where(type=apply(str.startswith, 'humanoid')))
@@ -91,7 +91,7 @@ def startswith(val, ignorecase=True):
 def or_(*preds):
     """Check if any of the passed predicates return true.
 
-    >>> from dnd5edb.test import aobj
+    >>> from legendlore.test import aobj
     >>> numor = or_(contains(1), contains(2), contains(3))
     >>> numor('a', aobj([1, 2, 3]))
     True
@@ -131,7 +131,7 @@ def or_(*preds):
 def and_(*preds):
     """Check if all of the passed predicates are true.
 
-    >>> from dnd5edb.test import aobj
+    >>> from legendlore.test import aobj
     >>> numand = and_(contains(1), contains(2), contains(3))
     >>> numand('a', aobj([1, 2, 3]))
     True
@@ -171,7 +171,7 @@ def and_(*preds):
 def not_(*preds):
     """Check if none of the passed predicates are true.
 
-    >>> from dnd5edb.test import aobj
+    >>> from legendlore.test import aobj
     >>> not_(lt(4))('a', aobj(7))
     True
     >>> not_(lt(4))('a', aobj(2))
@@ -196,7 +196,7 @@ def dictvalue(key, pred):
     """Test the predicate on the value of `key` in the dictionaries passed to the returned closure.
 
     Find spells whose value of used material components equals 100
-    >>> from dnd5edb.repltools import s
+    >>> from legendlore.repltools import s
     >>> s.where(components=dictvalue('used', eq(100))).print()
     Identify (rit.) 1m/T/I [V/S/M@100gp] (1:A+Bd+CF+CK+Wz)
     Warding Bond A/T/1h [V/S/M@100gp] (2:ABS+C+CPe+P+PCr)
@@ -205,7 +205,7 @@ def dictvalue(key, pred):
     Find the Path 1m/S/C<=1d [V/S/M@100gp] (6:Bd+C+D)
     Soul Cage R/60'/8h [V/S/M@100gp] (6:Wl+Wz)
     """
-    from dnd5edb.test import obj_fromdict
+    from legendlore.test import obj_fromdict
     
     def dictvalue_closure(attr, obj):
         if _hasvalue(obj, attr):

@@ -1,6 +1,6 @@
 from functools import partial
-from dnd5edb import parse, predicates, reflect, db_items
-from dnd5edb.util import careful_sum
+from legendlore import parse, predicates, reflect, db_items
+from legendlore.util import careful_sum
 import pprint as pp_module
 
 pprint = partial(pp_module.pprint, sort_dicts=False)
@@ -67,7 +67,7 @@ class Collection(list):
         Animal Friendship A/30'/24h [V/S/M] (1:Bd+CN+D+Ra)
         Armor of Agathys A/S/1h [V/S/M] (1:PCo+Wl)
         >>> type(s.where(level=1)[:4])
-        <class 'dnd5edb.collection.Spells'>
+        <class 'legendlore.collection.Spells'>
         """
         ret = super().__getitem__(key)
         if type(key) is slice:
@@ -102,7 +102,7 @@ class Collection(list):
     def text_match(self, text):
         """Case-insensitive search over all text fields.
 
-        >>> from dnd5edb.repltools import *
+        >>> from legendlore.repltools import *
         >>> pp(m.text_match('aaqa'))
         [Monster(Aarakocra: M NG humanoid (aarakocra), 1/4CR DPR=4.1/2.8/1.4 13HP/3d8 12AC (walk 20, fly 50)),
          Monster(Gargoyle: M CE elemental, 2.0CR DPR=8.2/5.5/2.8 52HP/7d8+21 15AC (walk 30, fly 60)),
@@ -117,7 +117,7 @@ class Collection(list):
         If a function-like value is passed, it is treated as a predicate.
         If any other value is passed, it is treated as an == predicate for that value.
 
-        >>> from dnd5edb import predicates as p
+        >>> from legendlore import predicates as p
         >>> Monsters().where(name='Aarakocra')
         [Monster(Aarakocra: M NG humanoid (aarakocra), 1/4CR DPR=4.1/2.8/1.4 13HP/3d8 12AC (walk 20, fly 50))]
         >>> names = lambda mlist: [m.name for m in mlist]
@@ -252,7 +252,7 @@ class Collection(list):
     def extend(self, new_items):
         """Adds to `self` any items from `new_items` not already in `self`.
 
-        >>> from dnd5edb import predicates as p
+        >>> from legendlore import predicates as p
         >>> s = Spells()
         >>> # Celestial Warlock spells containing "adiant" or case-insensitive "fire"
         >>> (s.where(text=p.contains('adiant')).extend(s.where(text=p.contains('fire')))
@@ -293,7 +293,7 @@ class Collection(list):
 
         By default, uses the one-line format method for the given item type.
 
-        >>> from dnd5edb import predicates as p
+        >>> from legendlore import predicates as p
         >>> print(Spells().where(name=p.contains('Circle')).fmt())
         Magic Circle 1m/10'/1h [V/S/M@!100!gp] (3:C+CA+P+RaMS+Wl+Wz)
         Circle of Power A/S(30'r)/C<=10m [V] (5:CTw+P+PCr)
@@ -330,10 +330,10 @@ class Collection(list):
         >>> from repltools import m
         >>> enemies = m.where(name='Scout') + m.where(name='Orc Eye of Gruumsh') + m.where(name='Yorn')
         >>> type(enemies)
-        <class 'dnd5edb.collection.Monsters'>
+        <class 'legendlore.collection.Monsters'>
         >>> enemies += m.where(name='Bandit')
         >>> type(enemies)
-        <class 'dnd5edb.collection.Monsters'>
+        <class 'legendlore.collection.Monsters'>
         """
         ret = super().__add__(value)
         if type(self) == type(value):
@@ -351,7 +351,7 @@ class Collection(list):
         <class 'list'>
         >>> more_enemies = m.where(name='Bandit').set_name('badguise') * 4
         >>> type(more_enemies)
-        <class 'dnd5edb.collection.Monsters'>
+        <class 'legendlore.collection.Monsters'>
         >>> more_enemies.name
         'badguise'
         """
@@ -491,8 +491,8 @@ class Monsters(Collection):
     def combat_stats(self, target_ac):
         """Generates report of average/total combat stats vs `target_ac`.
 
-        >>> from dnd5edb.repltools import m
-        >>> from dnd5edb.collection import Monsters
+        >>> from legendlore.repltools import m
+        >>> from legendlore.collection import Monsters
         >>> enemies = m.where(name='Scout') + m.where(name='Orc Eye of Gruumsh') + m.where(name='Yorn')
         >>> enemies.combat_stats(16.5)
         {'dpr': 15.9, 'avg_ac': 13.3, 'weighted_ac': 13.8, 'hp': 93}

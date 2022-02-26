@@ -39,19 +39,19 @@ Functionality:
  Spell(Sleep A/90'/1m [V/S/M] (1:Bd+CTw+PR+S+WlA+Wz)),
  Spell(Tasha's Hideous Laughter A/30'/C<=1m [V/S/M] (1:Bd+WlGOO+Wz))]
 """
-from dnd5edb import collection, calc
-from dnd5edb import predicates as p
-from dnd5edb.util import Generic
+from legendlore import collection, calc
+from legendlore import predicates as p
+from legendlore.util import Generic
 
 # quick Spell Print in commonly used formats
 sp = lambda name: s.search(name).print('xlist')
 pl = lambda name: s.search(name).print('plop')
 
 # just imported so they'll be available in the REPL
-from dnd5edb.db_items import Monster, Spell
-from dnd5edb.collection import Monsters, Spells
+from legendlore.db_items import Monster, Spell
+from legendlore.collection import Monsters, Spells
 
-from dnd5edb.datatypes import SpellRange
+from legendlore.datatypes import SpellRange
 
 # generally useful routines
 from pprint import pprint
@@ -85,7 +85,7 @@ druid = Generic(__doc__="Functions and data structures pertinent to druids.")
 def beasts(cr, fly=True, swim=True, crpred=p.lte):
     """Returns beast-type creatures matching the other conditions.
 
-    `crpred` is a predicate factory from `dnd5edb.predicates`.
+    `crpred` is a predicate factory from `legendlore.predicates`.
     It's passed `cr` and the returned function is used to filter results
     based on the creature CR.
     """
@@ -123,18 +123,18 @@ druid.ac.drunk.__doc__ = 'Calculate AC for Druid/Monk with Wisdom `wis` wildshap
 
 def reload_db():
     """Reloads the database and refreshes code related to it."""
-    ##~~ from dnd5edb.parse import XML
+    ##~~ from legendlore.parse import XML
     ##~~ from importlib import reload
     ##~~ del Monsters._parsed
     ##~~ del Spells._parsed
-    ##~~ from dnd5edb import repltools
+    ##~~ from legendlore import repltools
     ##~~ repltools.Monsters = collection.Monsters
     ##~~ repltools.m = Monsters()
     ##~~ repltools.s = Spells()
     ##~~ XML.tree = None
 
     from importlib import reload
-    from dnd5edb import parse, predicates, db_items, actions, collection, repltools
+    from legendlore import parse, predicates, db_items, actions, collection, repltools
     reload(parse)
     reload(predicates)
     reload(db_items)

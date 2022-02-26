@@ -1,6 +1,6 @@
 """monster_nodes.py
 
-Analysis routines, largely independent of the dnd5edb module, which provide information about the database.
+Analysis routines, largely independent of the legendlore module, which provide information about the database.
 
 This functionality is already present in analysis.py but this version is a bit more readable?
 Mostly I just forgot about that whole function and wrote this instead.
@@ -104,8 +104,8 @@ Counter({'Unaligned': 462,
          "as the eidolon's alignment": 1,
          'Neutral Good Neutral Evil': 1})
 """
-from dnd5edb import parse
-from dnd5edb.db_analysis import tags_in_node, subnode_tags, string_tags, tag_count, get_name, groupeddict, histogram
+from legendlore import parse
+from legendlore.db_analysis import tags_in_node, subnode_tags, string_tags, tag_count, get_name, groupeddict, histogram
 from repltools import m
 
 from functools import reduce, partial

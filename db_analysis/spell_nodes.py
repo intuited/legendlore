@@ -157,10 +157,10 @@ What's actually in the roll field, anyway?
 Doesn't seem super useful?  I guess it could be used to provide average damage for damage spells, but inaccurately,
 since there's no allowance made for the saving throw, if any, that can halve that damage.
 """
-from dnd5edb import parse
+from legendlore import parse
 re_components = parse.SpellParser.re_components
 re_value = parse.SpellParser.re_value
-from dnd5edb.db_analysis import subnode_tags, string_tags, tag_count
+from legendlore.db_analysis import subnode_tags, string_tags, tag_count
 from functools import partial
 from pprint import pprint
 pprint = partial(pprint, width=1000)

@@ -5,9 +5,9 @@ from functools import reduce, partial
 from pprint import pprint, pformat
 from textwrap import dedent
 from fractions import Fraction
-from dnd5edb import predicates, datatypes
-from dnd5edb.datatypes import Reference
-from dnd5edb.actions import Actions
+from legendlore import predicates, datatypes
+from legendlore.datatypes import Reference
+from legendlore.actions import Actions
 from itertools import groupby, chain
 chainfi = chain.from_iterable
 from collections import defaultdict
@@ -97,7 +97,7 @@ def yield_int(element, node):
 def yield_fraction(element, node):
     """Convert fractional text field to float and yield (field, result)
 
-    >>> from dnd5edb.test import obj_fromdict
+    >>> from legendlore.test import obj_fromdict
     >>> fakenode = lambda v: obj_fromdict({'tag': 'cr', 'text': v})
     >>> test = lambda text: dict(yield_fraction(fakenode(text), None))
     >>> test(None)
@@ -177,7 +177,7 @@ class NodeParser():
         `yield_` methods are generators which iterate (field, value) tuples.
 
         For example, yield_ac yields two or three such tuples:
-        >>> from dnd5edb.test import obj_fromdict
+        >>> from legendlore.test import obj_fromdict
         >>> fakenode = lambda v: obj_fromdict({'tag': 'ac', 'text': v})
         >>> list(MonsterParser.yield_ac(fakenode('10 (natural armor)'), None))
         [('ac', '10 (natural armor)'), ('ac_num', 10), ('armor', 'natural armor')]
@@ -281,7 +281,7 @@ class MonsterParser(NodeParser):
 
         Similar to yield_ac but parses `hp` and `hitdice` attributes.
 
-        >>> from dnd5edb.test import obj_fromdict
+        >>> from legendlore.test import obj_fromdict
         >>> fakenode = lambda v: obj_fromdict({'tag': 'hp', 'text': v})
         >>> d = dict(MonsterParser.yield_hp(fakenode('135 (18d10+36)'), None))
         >>> d['hp']
@@ -311,7 +311,7 @@ class MonsterParser(NodeParser):
     def yield_speed(element, node):
         """Parse speed fields into a dictionary.
 
-        >>> from dnd5edb.test import obj_fromdict
+        >>> from legendlore.test import obj_fromdict
         >>> fakenode = lambda v: obj_fromdict({'tag': 'speed', 'text': v})
         >>> test = lambda t: dict(MonsterParser.yield_speed(fakenode(t), None))['speed']
         >>> test('25 ft.')
@@ -486,7 +486,7 @@ class MonsterParser(NodeParser):
 
         Dictionary entries are a stat (eg 'str') and an integer.
 
-        >>> from dnd5edb.test import obj_fromdict
+        >>> from legendlore.test import obj_fromdict
         >>> fakenode = lambda v: obj_fromdict({'tag': 'saves', 'text': v})
         >>> test = lambda text: next(MonsterParser.yield_saves(fakenode(text), None))
         >>> test(None)
@@ -517,7 +517,7 @@ class MonsterParser(NodeParser):
 
         Dictionary entries are a skill (eg 'Athletics') and an integer.
 
-        >>> from dnd5edb.test import obj_fromdict
+        >>> from legendlore.test import obj_fromdict
         >>> fakenode = lambda v: obj_fromdict({'tag': 'skill', 'text': v})
         >>> test = lambda text: next(MonsterParser.yield_skill(fakenode(text), None))
         >>> test(None)
@@ -565,7 +565,7 @@ class MonsterParser(NodeParser):
 
         May also yield notes in the form ('resist_notes': {..})
 
-        >>> from dnd5edb.test import obj_fromdict
+        >>> from legendlore.test import obj_fromdict
         >>> fakenode = lambda v: obj_fromdict({'tag': 'resist', 'text': v})
         >>> test = lambda text: list(MonsterParser.yield_damage_types(fakenode(text), None))
         >>> test(None)
@@ -667,7 +667,7 @@ class MonsterParser(NodeParser):
     def yield_conditionImmune(element, node):
         """Parse field containing a set of conditions and yield the result.
 
-        >>> from dnd5edb.test import obj_fromdict
+        >>> from legendlore.test import obj_fromdict
         >>> fakenode = lambda v: obj_fromdict({'tag': 'conditionImmune', 'text': v})
         >>> test = lambda text: dict(MonsterParser.yield_conditionImmune(fakenode(text), None))
         >>> ptest = lambda text: pprint(test(text), width=200)
@@ -742,7 +742,7 @@ class MonsterParser(NodeParser):
     def yield_senses(element, node):
         """Parse 'senses' fields and yield the results.
 
-        >>> from dnd5edb.test import obj_fromdict
+        >>> from legendlore.test import obj_fromdict
         >>> fakenode = lambda v: obj_fromdict({'tag': 'senses', 'text': v})
         >>> test = lambda text: dict(MonsterParser.yield_senses(fakenode(text), None))
         >>> test(None)
@@ -942,7 +942,7 @@ class SpellParser(NodeParser):
         {'V': True,
          'M': "a sprig of rosemary"}
 
-        >>> from dnd5edb.test import fakenode
+        >>> from legendlore.test import fakenode
         >>> test = lambda string: list(SpellParser.yield_components(fakenode('components', string), None))
         >>> test('S')
         [('components', {'S': True})]
@@ -1020,7 +1020,7 @@ class SpellParser(NodeParser):
     def yield_duration(element, node):
         """Yields tuples for 'concentration' and 'duration'.
 
-        >>> from dnd5edb.test import fakenode
+        >>> from legendlore.test import fakenode
         >>> test = lambda string: list(SpellParser.yield_duration(fakenode('duration', string), None))
         >>> test('Concentration, up to 10 minutes')
         [('concentration', True), ('duration', SpellDuration('up to 10 minutes'))]
