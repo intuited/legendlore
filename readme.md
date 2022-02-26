@@ -8,6 +8,8 @@ XML data is from [FightClub5eXML][0], installed by `legendlore` as a submodule.
 
 Currently, only the spells and monsters aspects of the database are properly handled.
 
+Note that some documentation in this README file may be out-of-date and inaccurate.
+
 ### Vim usage
 
 In addition to the primary function of `legendlore`—providing information in a REPL session, detailed below—it is also possible to access some functionality via the [`vim-legendlore`][2] pack.  See that pack's README for details.
