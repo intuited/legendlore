@@ -1,4 +1,4 @@
-## legendlore ##
+## `legendlore` ##
 
 Python API to run queries on and format data from XML data for D&D 5th ed.
 
