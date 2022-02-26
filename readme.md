@@ -6,6 +6,8 @@ Python API to run queries on and format data from XML data for D&D 5th ed.
 
 XML data is from [FightClub5eXML][0], installed by `legendlore` as a submodule.
 
+Currently, only the spells and monsters aspects of the database are properly handled.
+
 ### Vim usage
 
 In addition to the primary function of `legendlore`—providing information in a REPL session, detailed below—it is also possible to access some functionality via the [`vim-legendlore`][2] pack.  See that pack's README for details.
@@ -15,8 +17,6 @@ In addition to the primary function of `legendlore`—providing information in a
 `legendlore` is particularly useful in a powerful REPL like [iPython][1].  To setup convenient access, it can be useful to issue the following command in the REPL:
 
     >>> from legendlore.repltools import *
-
-Currently, only the spells and monsters aspects of the database are properly implemented.
 
 ### Usage
 
@@ -30,21 +30,44 @@ One of the most common lookups is made convenient via the `repl.sp` function, wh
 More specific information can be gleaned using the API.  A basic query can give us a list of all level 9 spells in the game:
 
     >>> s.where(level=9).print()
+    Astral Projection 1h/10'/S [V/S/M@!1100!gp] (9:C+Wl+Wz)
+    Blade of Disaster B/60'/C<=1m [V/S] (9:S+Wl+Wz)
+    Foresight 1m/T/8h [V/S/M] (9:Bd+D+Wl+Wz)
+    Gate A/60'/C<=1m [V/S/M@5000gp] (9:C+S+Wz)
+    Imprisonment 1m/30'/UD [V/S/M@500gp] (9:Wl+Wz)
+    Invulnerability A/S/C<=10m [V/S/M@!500!gp] (9:Wz)
+    Mass Heal A/60'/I [V/S] (9:C)
+    Mass Polymorph A/120'/C<=1h [V/S/M] (9:Bd+S+Wz)
+    Meteor Swarm A/1mi/I [V/S] (9:S+Wz)
+    Power Word Heal A/T/I [V/S] (9:Bd)
+    Power Word Kill A/60'/I [V] (9:Bd+S+Wl+Wz)
+    Prismatic Wall A/60'/10m [V/S] (9:Wz)
+    Psychic Scream A/90'/I [S] (9:Bd+S+Wl+Wz)
+    Ravenous Void A/1000'/C<=1m [V/S/M] (9:WzG)
+    Shapechange A/S/C<=1h [V/S/M@1500gp] (9:D+Wz)
+    Storm of Vengeance A/Sight/C<=1m [V/S] (9:D)
+    Time Ravage A/90'/I [V/S/M@!5000!gp] (9:WzC)
+    Time Stop A/S/I [V] (9:S+Wz)
+    True Polymorph A/30'/C<=1h [V/S/M] (9:Bd+Wl+Wz)
+    True Resurrection 1h/T/I [V/S/M@!25000!gp] (9:C+D)
+    Weird A/120'/C<=1m [V/S] (9:Wz)
+    Wish A/S/I [V] (9:S+WlGe+Wz)
 
 The `s` object is imported from `legendlore.repl`; it's a list-like object (with some added methods) that contains all of the spells in the game.  It's an instance of the `legendlore.Spells` class.
 
 To list all level 4 Bard spells, sorted by level:
 
-    >>> s.where(level=4, classes=p.in_('Bard')).sorted('level')
-    [Spell(Compulsion A/30'/C<=1m (4:B)),
-     Spell(Confusion A/90'/C<=1m (4:B+D+AT+S+Wz)),
-     Spell(Dimension Door A/500'/I (4:B+S+Wl+Wz)),
-     Spell(Freedom of Movement A/T/1h (4:A+B+C+D+Ra)),
-     Spell(Greater Invisibility A/T/C<=1m (4:B+B+RGS+AT+S+WlA+Wz)),
-     Spell(Hallucinatory Terrain 10m/300'/24h (4:B+D+AT+Wl+Wz)),
-     Spell(Locate Creature A/S/C<=1h (4:B+C+D+P+Ra+WlR+WlS+Wz)),
-     Spell(Polymorph A/60'/C<=1h (4:B+D+S+Wz)),
-     Spell(Charm Monster A/30'/1h (4:B+D+AT+S+Wl+Wz))]
+    >>> s.where(level=4, classes=p.contains('Bard')).print()
+    Charm Monster A/30'/1h [V/S] (4:Bd+D+S+Wl+Wz)
+    Compulsion A/30'/C<=1m [V/S] (4:Bd+CO+PG)
+    Confusion A/90'/C<=1m [V/S/M] (4:Bd+CK+D+DS+PO+S+Wz)
+    Dimension Door A/500'/I [V] (4:Bd+CTr+PV+RaFW+S+Wl+Wz)
+    Freedom of Movement A/T/1h [V/S/M] (4:A+Bd+C+CW+D+DL+PD+PG+Ra+SCS)
+    Greater Invisibility A/T/C<=1m [V/S] (4:AArm+Bd+CTw+DL+RaGS+S+WlA+WlGe+Wz)
+    Hallucinatory Terrain 10m/300'/24h [V/S/M] (4:Bd+D+DL+Wl+Wz)
+    Locate Creature A/S/C<=1h [V/S/M] (4:Bd+C+CO+D+DL+P+Ra+Wz)
+    Phantasmal Killer A/120'/C<=1m [V/S] (4:Bd+WlGe+WlH+Wz)
+    Polymorph A/60'/C<=1h [V/S/M] (4:Bd+CTr+D+S+Wz)
 
 This last example uses predicates.
 
@@ -61,7 +84,7 @@ Otherwise, a the closure returns `True`.
 The `Spells.where` method runs this comparison on all the spells in that collection,
 and returns a list of the ones for which the predicate evaluated to `True`.
 
-In the previous example, the `in_` predicate checks whether `'Bard'` is one of the items in the list of strings
+In the previous example, the `contains` predicate checks whether `'Bard'` is one of the items in the list of strings
 stored in the `'classes'` attribute of `obj`.
 
 #### Predicates: tl;dr
@@ -72,23 +95,58 @@ of `Spells` and `Monsters` collections.
 
 #### Composite predicates
 
-Here we have another example using predicates.  This code gives us a printout of all Ranger spells between 2nd and 3rd level:
+Here we have another example using predicates.  This code gives us a printout of all Ranger spells of 2nd or 3rd level:
 
-    >>> s.where( classes=p.in_('Ranger'),
+    >>> s.where( classes=p.contains('Ranger'),
     ...          level=p.and_(p.gte(2), p.lte(3)) ).sorted('level').print()
+    Aid A/30'/8h [V/S/M] (2:A+Bd+C+CPe+P+Ra+SCS)
+    Animal Messenger (rit.) A/30'/24h [V/S/M] (2:Bd+D+Ra)
+    Barkskin A/T/C<=1h [V/S/M] (2:CN+D+DL+Ra)
+    Beast Sense (rit.) A/T/C<=1h [S] (2:BbTW+D+Ra)
+    Cordon of Arrows A/5'/8h [V/S/M] (2:Ra)
+    Darkvision A/T/8h [V/S/M] (2:A+D+Ra+S+Wz)
+    Enhance Ability A/T/C<=1h [V/S/M] (2:A+Bd+C+D+PG+Ra+S+Wz)
+    Find Traps A/120'/I [V/S] (2:C+D+Ra)
+    Gust of Wind A/S(60'line)/C<=1m [V/S/M] (2:CTm+D+Ra+S+WlFa+WlGe+Wz)
+    Healing Spirit B/60'/C<=1m [V/S] (2:D+Ra)
+    Lesser Restoration A/T/I [V/S] (2:A+Bd+C+CLf+D+P+PD+Ra+SCS+WlC)
+    Locate Animals or Plants (rit.) A/S/I [V/S/M] (2:Bd+D+Ra)
+    Locate Object A/S/C<=10m [V/S/M] (2:Bd+C+D+P+Ra+Wz)
+    Magic Weapon B/T/C<=1h [V/S] (2:A+CA+CF+CW+P+PG+Ra+S+Wz)
+    Pass without Trace A/S/C<=1h [V/S/M] (2:CTr+D+DL+Ra)
+    Protection from Poison A/T/1h [V/S] (2:A+C+D+P+Ra)
+    Silence (rit.) A/120'/C<=10m [V/S] (2:Bd+C+DL+Ra+WlFa+WlU)
+    Spike Growth A/150'/C<=10m [V/S/M] (2:CN+D+DL+Ra+WlGe)
+    Summon Beast A/90'/C<=1h [V/S/M@200gp] (2:D+Ra)
+    Conjure Animals A/60'/C<=1h [V/S] (3:D+Ra)
+    Conjure Barrage A/S(60'cone)/I [V/S/M] (3:ABS+Ra)
+    Daylight A/60'/1h [V/S] (3:C+CLt+D+DL+P+Ra+S+WlC)
+    Elemental Weapon A/T/C<=1h [V/S] (3:A+CF+D+P+Ra+WlH)
+    Flame Arrows A/T/C<=1h [V/S] (3:A+D+Ra+S+Wz)
+    Lightning Arrow B/S/C<=1m [V/S] (3:Ra)
+    Meld into Stone (rit.) A/T/8h [V/S] (3:C+D+DL+Ra+WlGe)
+    Nondetection A/T/8h [V/S/M@!25!gp] (3:Bd+CK+PW+Ra+Wz)
+    Plant Growth A/8h/150'/I [V/S] (3:Bd+CN+D+DL+DW+PA+Ra+WlA)
+    Protection from Energy A/T/C<=1h [V/S] (3:A+C+CF+D+DL+PA+PG+PV+Ra+S+SCS+Wz)
+    Revivify A/T/I [V/S/M@!300!gp] (3:A+C+CG+CLf+D+DW+P+Ra+WlC)
+    Speak with Plants A/S(30'r)/10m [V/S] (3:Bd+D+Ra)
+    Summon Fey A/90'/C<=1h [V/S/M@300gp] (3:D+Ra+Wl+Wz)
+    Water Breathing (rit.) A/30'/24h [V/S/M] (3:A+D+DL+Ra+S+Wz)
+    Water Walk (rit.) A/30'/1h [V/S/M] (3:A+C+D+DL+Ra+S)
+    Wind Wall A/120'/C<=1m [V/S/M] (3:AArt+CN+D+Ra+WlGe)
 
 The `and_` predicate is simply a predicate that checks the values of two or more other predicates.
 
 Ever wanted to know which spells are available to sorcerers but not wizards?
 
-    >>> s.where(classes=p.and_(p.contains('Sorcerer'), p.not_(p.contains('Wizard'))))
-    [Spell(Chaos Bolt A/120'/I [V/S] (1:S)),
-     Spell(Daylight A/60'/1h [V/S] (3:C+CLt+D+DL+P+Ra+S+WlC)),
-     Spell(Water Walk (rit.) A/30'/1h [V/S] (3:A+C+D+DL+Ra+S)),
-     Spell(Dominate Beast A/60'/C<=1m [V/S] (4:CN+D+PCo+S+WlA+WlGOO)),
-     Spell(Insect Plague A/300'/C<=10m [V/S] (5:C+CN+CTm+D+DL+RaS+S)),
-     Spell(Fire Storm A/150'/I [V/S] (7:C+D+S)),
-     Spell(Earthquake A/500'/C<=1m [V/S] (8:C+D+S))]
+    >>> s.where(classes=p.and_(p.contains('Sorcerer'), p.not_(p.contains('Wizard')))).print()
+    Chaos Bolt A/120'/I [V/S] (1:S)
+    Daylight A/60'/1h [V/S] (3:C+CLt+D+DL+P+Ra+S+WlC)
+    Water Walk (rit.) A/30'/1h [V/S/M] (3:A+C+D+DL+Ra+S)
+    Dominate Beast A/60'/C<=1m [V/S] (4:CN+D+PCo+S+WlA+WlGOO)
+    Insect Plague A/300'/C<=10m [V/S/M] (5:C+CN+CTm+D+DL+RaS+S)
+    Fire Storm A/150'/I [V/S] (7:C+D+S)
+    Earthquake A/500'/C<=1m [V/S/M] (8:C+D+S)
 
 Current predicates are:
 
@@ -103,7 +161,7 @@ Current predicates are:
 
 You can also pass your own predicates to `where`.  What's that race that starts with "aa" again?
 
-    >>> m.where(name=lambda attr, obj: getattr(obj, attr, '').startswith('aa')).print()
+    >>> m.where(name=lambda attr, obj: getattr(obj, attr, '').startswith('aa')).print() #TODO: fix this example!
     Monster({'name': Aarakocra, 'type': humanoid (aarakocra)})
 
 Predicates need to be type-safe—in other words, they should safely return `False` if the attribute is not present in an object.
@@ -117,7 +175,9 @@ Currently, monster and spell objects have three format options.
 The default `'oneline'` format generates a single-line summary of the object's vital statistics.  EG
 
     >>> s.where(name='Magic Missile').print()
+    Magic Missile A/120'/I [V/S] (1:AArm+CA+S+Wz)
     >>> s.where(name='Magic Missile').print('oneline')
+    Magic Missile A/120'/I [V/S] (1:AArm+CA+S+Wz)
 
 ##### Class abbreviations
 
@@ -129,24 +189,21 @@ These are as follows:
 
 #### `'full'`
 
-Specifying the `'full'` format produces complete\* information about the item:
+#TODO: write an example for this
 
-    >>> s.where(name='Magic Missile').print('full')
+#### `'pointform'`
 
-\*: currently, some information is missing for Monsters, e.g. attacks
-
-#### `'point'`
-
-The `'point'` format yields a header summary (identical to the `'oneline'` output)
+The `'pointform'` format yields a header summary (identical to the `'oneline'` output)
 followed by indented lines containing the rest of the information for the item.
 
 For spells, the indented lines simply contain the spell text.
 
-    >>> s.where(name='Magic Missile').print('point')
-    - Magic Missile A/120'/I (1:FEK+S+Wz)
-      - You create three glowing darts of magical force. Each dart hits a creature...
-      - 
-      - At Higher Levels: When you cast this spell using a spell slot of 2nd...
+    >>> s.where(name='Magic Missile').print('pointform')
+    - Magic Missile A/120'/I [V/S] (1:AArm+CA+S+Wz)
+      - Evocation (PHB#257)
+      - You create three glowing darts of magical force. Each dart hits a creature of your choice that you can see within range. A dart deals 1d4 + 1 force damage to its target. The darts all strike simultaneously, and you can direct them to hit one creature or several.
+      - At Higher Levels:
+      - When you cast this spell using a spell slot of 2nd level or higher, the spell creates one more dart for each slot level above 1st.
 
 ### Fields
 
