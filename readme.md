@@ -4,8 +4,7 @@ Documentation last updated 2021-04-11
 
 Python API to run queries on and format data from XML data for D&D 5th ed.
 
-The XML data is built for an Android app called Fight Club and is not licensed content.
-As such, it may be somewhat difficult to locate.  Most recently, it appears to live in [this DropBox][0]
+XML data is built from [the FightClubXML repo][0]
 
 The purpose of this code is to enable convenient programmatic access to the database.
 
@@ -218,7 +217,15 @@ As documentation for this module is less likely to be updated than that of other
 
 ### Installation ###
 
-Once you manage to find a copy of the XML database, put it in a subdirectory of the dnd5edb code called `FC5eXML`.
+Essentially, you'll need to clone the git repo that has the XML data and build the files.
+
+As of the last update of this document, that procedure looked like this:
+
+    $ git clone git@github.com:kinkofer/FightClub5eXML.git
+    $ cd FightClub5eXML
+    $ for i in Collections/*.xml; do xsltproc -o FightClub5eXML/$i Utilities/merge.xslt $i; done
+
+Once you've built the XML database, put it in a subdirectory of the dnd5edb code called `FC5eXML`.
 Currently the code looks for the file CoreOnly.xml in that directory.  That file is located in the "Collections" directory of [the DropBox][0].
 
 #### Modules we use
@@ -227,5 +234,5 @@ You'll need to install some modules via `pip` (or `pip3`, depending on your inst
 
 `pip3 install simpleeval` should cover it.
 
-[0]: https://www.dropbox.com/sh/v4qy66rxi8gpexs/AAADWx5AC55J_A9Ni0rWzWB8a?dl=0&fbclid=IwAR0Vx1n6MmVGuL05jsVsIAvSgUDti1vF5onwA75QGZ3JdWcSk8MgVi4Y12c
+[0]: https://github.com/kinkofer/FightClub5eXML
 [1]: https://ipython.org/
