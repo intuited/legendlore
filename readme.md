@@ -4,9 +4,7 @@ Documentation last updated 2021-04-11
 
 Python API to run queries on and format data from XML data for D&D 5th ed.
 
-XML data is built from [the FightClubXML repo][0]
-
-The purpose of this code is to enable convenient programmatic access to the database.
+XML data is from [FightClub5eXML][0], installed by `legendlore` as a submodule.
 
 ### Vim usage
 
