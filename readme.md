@@ -215,18 +215,23 @@ There is also an `sp` function which provides convenient access to spell informa
 
 As documentation for this module is less likely to be updated than that of others, it is best to check the source file `repltools.py` for information on its contents.
 
+### Required tools for installation
+
+`xsltproc` is required by FightClub5eXML to build the XML data.  On Ubuntu, this can be installed via
+
+    $ sudo apt install xsltproc
+
+You'll also need to have the `simpleeval` python module installed.  To install with `pip`:
+
+    $ pip3 install simpleeval
+
 ### Installation ###
 
-Essentially, you'll need to clone the git repo that has the XML data and build the files.
+#TODO: submodule installation
 
-As of the last update of this document, that procedure looked like this:
+From the top directory of the `legendlore` repo, run `make`.  This should descend into the FightClub5eXML submodule and build the XML file that `legendlore` uses as its database.
 
-    $ git clone git@github.com:kinkofer/FightClub5eXML.git
-    $ cd FightClub5eXML
-    $ for i in Collections/*.xml; do xsltproc -o FightClub5eXML/$i Utilities/merge.xslt $i; done
-
-Once you've built the XML database, put it in a subdirectory of the legendlore code called `FC5eXML`.
-Currently the code looks for the file CoreOnly.xml in that directory.  That file is located in the "Collections" directory of [the DropBox][0].
+Once this is done, you should be able to use the module.
 
 #### Modules we use
 

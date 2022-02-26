@@ -14,7 +14,7 @@ from collections import defaultdict
 from os import path
 
 
-default_db_file = path.join(path.dirname(__file__), 'FC5eXML', 'Collections', 'CoreOnly.xml')
+default_db_file = path.join(path.dirname(__file__), 'FightClub5eXML', 'FightClub5eXML', 'Collections', 'CoreOnly.xml')
 
 def anyfalse(bools):
     """Returns True iff any elements of iterable `bools` are False
