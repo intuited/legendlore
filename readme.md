@@ -14,17 +14,25 @@ It is particularly useful in a REPL like [iPython][1].  To setup convenient acce
 
     >>> from legendlore.repl import *
     >>> from legendlore import Spells, Monsters
-    >>> from legendlore import predicates as p
 
 Currently, only the spells and monsters aspects of the database are properly implemented.
 
 ### Usage
 
-A basic query can give us a list of all level 9 spells in the game:
+One of the most common lookups is made convenient via the `sp` function, which provides convenient access to spell information in the author's preferred format:
+
+    In [176]: sp('eldritch blast')
+    * Eldritch Blast A/120'/I (0:Wl)
+      " A beam of crackling energy streaks toward a creature within range. Make a ranged spell attack against the target. On a hit, the target takes 1d10 force damage.
+      " The spell creates more than one beam when you reach higher levels: two beams at 5th level, three beams at 11th level, and four beams at 17th level. you can direct the beams at the same target or at different ones. Make a separate attack roll for each beam.
+
+More specific information can be gleaned using the API.  A basic query can give us a list of all level 9 spells in the game:
 
     >>> s.where(level=9).print()
 
-For example, to list all level 4 Bard spells, sorted by level:
+The `s` object is imported from `legendlore.repl`; it's a list-like object (with some added methods) that contains all of the spells in the game.
+
+To list all level 4 Bard spells, sorted by level:
 
     >>> s.where(level=4, classes=p.in_('Bard')).sorted('level')
     [Spell(Compulsion A/30'/C<=1m (4:B)),
@@ -205,13 +213,6 @@ These can be used as per the following ipython snippet:
      'AC:13 DEX:15 CON:11 HP:7 Monster(Giant Rat: S unaligned beast, 1/8CR 7HP/2d6 12AC (walk 30))',
      'AC:13 DEX:15 CON:11 HP:7 Monster(Giant Rat (Diseased): S unaligned beast, 1/8CR 7HP/2d6 12AC (walk 30))',
      'AC:13 DEX:16 CON:10 HP:9 Monster(Giant Weasel: M unaligned beast, 1/8CR 9HP/2d8 13AC (walk 40))']
-
-There is also an `sp` function which provides convenient access to spell information in the author's preferred format:
-
-    In [176]: sp('eldritch blast')
-    * Eldritch Blast A/120'/I (0:Wl)
-      " A beam of crackling energy streaks toward a creature within range. Make a ranged spell attack against the target. On a hit, the target takes 1d10 force damage.
-      " The spell creates more than one beam when you reach higher levels: two beams at 5th level, three beams at 11th level, and four beams at 17th level. you can direct the beams at the same target or at different ones. Make a separate attack roll for each beam.
 
 As documentation for this module is less likely to be updated than that of others, it is best to check the source file `repltools.py` for information on its contents.
 
