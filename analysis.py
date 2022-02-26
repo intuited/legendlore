@@ -1,7 +1,7 @@
 """analysis.py
 
 Various functions that use the module code to analyse the database.
-Not part of the core functionality.
+Not part of the core functionality, and largely vestigial at this point.
 """
 from legendlore.collection import Monsters, Spells
 from collections import defaultdict, Counter

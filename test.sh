@@ -1,3 +1,6 @@
+#!/bin/bash
+# Test script that just runs doctests on all applicable files.
+
 function test {
   echo "python -m doctest $1:";
   python -m doctest "$1";
