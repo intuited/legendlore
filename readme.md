@@ -227,17 +227,31 @@ You'll also need to have the `simpleeval` python module installed.  To install w
 
 ### Installation ###
 
-#TODO: submodule installation
+Once you've got the above tools installed (plus any I forgot about), you're ready to install the repo.
 
-From the top directory of the `legendlore` repo, run `make`.  This should descend into the FightClub5eXML submodule and build the XML file that `legendlore` uses as its database.
+To install the repo, change directory to one that's in your PYTHONPATH and run
 
-Once this is done, you should be able to use the module.
+    $ git clone --recursive https://github.com/intuited/legendlore
 
-#### Modules we use
+Assuming the submodule gets set up correctly, at this point you just need to build the actual XML file with a simple `make` command:
 
-You'll need to install some modules via `pip` (or `pip3`, depending on your installation/distribution/OS).
+    $ cd legendlore
+    $ make
 
-`pip3 install simpleeval` should cover it.
+Once this is done, you should be able to use the module.  Test with ipython:
+
+    $ PYTHONPATH=.. ipython3
+    Python 3.8.10 (default, Nov 26 2021, 20:14:08)
+    Type 'copyright', 'credits' or 'license' for more information
+    IPython 7.13.0 -- An enhanced Interactive Python. Type '?' for help.
+
+    In [1]: from legendlore.repltools import *
+    sp(
+    In [2]: sp('legend lore')
+    * Legend Lore 10m/S/I [V/S/M@200+!250!gp] (5:Bd+C+CK+WlU+Wz)
+      " Divination (PHB#254); Material components: incense worth at least 250 gp, which the spell consumes, and four ivory strips worth at least 50 gp each
+      " Name or describe a person, place, or object. The spell brings to your mind a brief summary of the significant lore about the thing you named. The lore might consist of current tales, forgotten stories, or even secret lore that has never been widely known. If the thing you named isn't of legendary importance, you gain no information. The more information you already have about the thing, the more precise and detailed the information you receive is.
+      " The information you learn is accurate but might be couched in figurative language. For example, if you have a mysterious magic axe on hand, the spell might yield this information: "Woe to the evildoer whose hand touches the axe, for even the haft slices the hand of the evil ones. Only a true Child of Stone, lover and beloved of Moradin, may awaken the true powers of the axe, and only with the sacred word Rudnogg on the lips."
 
 [0]: https://github.com/kinkofer/FightClub5eXML
 [1]: https://ipython.org/
