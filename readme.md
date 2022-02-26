@@ -8,6 +8,10 @@ XML data is built from [the FightClubXML repo][0]
 
 The purpose of this code is to enable convenient programmatic access to the database.
 
+### Vim usage
+
+In addition to the primary function of `legendlore`—providing information in a REPL session, detailed below—it is also possible to access some functionality via the [`vim-legendlore`][2] pack.  See that pack's README for details.
+
 ### REPL usage
 
 It is particularly useful in a REPL like [iPython][1].  To setup convenient access, it can be useful to issue commands such as the following:
@@ -256,3 +260,4 @@ Once this is done, you should be able to use the module.  Test with ipython:
 
 [0]: https://github.com/kinkofer/FightClub5eXML
 [1]: https://ipython.org/
+[2]: https://github.com/intuited/vim-legendlore
