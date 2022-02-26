@@ -12,16 +12,15 @@ In addition to the primary function of `legendlore`—providing information in a
 
 ### REPL usage
 
-It is particularly useful in a REPL like [iPython][1].  To setup convenient access, it can be useful to issue commands such as the following:
+`legendlore` is particularly useful in a powerful REPL like [iPython][1].  To setup convenient access, it can be useful to issue the following command in the REPL:
 
-    >>> from legendlore.repl import *
-    >>> from legendlore import Spells, Monsters
+    >>> from legendlore.repltools import *
 
 Currently, only the spells and monsters aspects of the database are properly implemented.
 
 ### Usage
 
-One of the most common lookups is made convenient via the `sp` function, which provides convenient access to spell information in the author's preferred format:
+One of the most common lookups is made convenient via the `repl.sp` function, which provides convenient access to spell information in the author's preferred format:
 
     In [176]: sp('eldritch blast')
     * Eldritch Blast A/120'/I (0:Wl)
@@ -32,7 +31,7 @@ More specific information can be gleaned using the API.  A basic query can give 
 
     >>> s.where(level=9).print()
 
-The `s` object is imported from `legendlore.repl`; it's a list-like object (with some added methods) that contains all of the spells in the game.
+The `s` object is imported from `legendlore.repl`; it's a list-like object (with some added methods) that contains all of the spells in the game.  It's an instance of the `legendlore.Spells` class.
 
 To list all level 4 Bard spells, sorted by level:
 
