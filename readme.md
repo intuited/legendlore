@@ -1,7 +1,5 @@
 ## legendlore ##
 
-Documentation last updated 2021-04-11
-
 Python API to run queries on and format data from XML data for D&D 5th ed.
 
 XML data is from [FightClub5eXML][0], installed by `legendlore` as a submodule.
