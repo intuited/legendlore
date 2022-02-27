@@ -1,4 +1,6 @@
-"""Probability functionality.
+"""calc.py
+
+A collection of functions used for calculations, primarily probability.
 
 (test functions)
 >>> round4 = lambda value: round(value, ndigits=4)

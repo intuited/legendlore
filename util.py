@@ -21,3 +21,8 @@ class Generic:
 
 careful_list_sum = lambda l: None if None in l else sum(l)
 careful_sum = lambda l: careful_list_sum(list(l))
+
+def collection_attribs(col):
+    """Returns a list of the unique non-subscripted attributes of items in `col`."""
+    attribs = (attrib for item in col for attrib in item.__dict__ if attrib[0] != '_')
+    return list(set(attribs))

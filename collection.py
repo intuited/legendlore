@@ -1,3 +1,9 @@
+"""collection.py
+
+Contains the Collection base class and classes for specific types of collections.
+
+These are list-like objects with some added methods.
+"""
 from functools import partial
 from legendlore import parse, predicates, reflect, db_items
 from legendlore.util import careful_sum

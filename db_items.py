@@ -1,6 +1,7 @@
 """db_items
 
-Contains Spell and Monster classes along with their base class and support functions.
+Contains the DBItem base class and derived classes which represent
+top-level database items.
 
 Doctests for methods that don't get their doctests run for some reason:
 

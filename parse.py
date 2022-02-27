@@ -1,3 +1,14 @@
+"""parse.py
+
+The main parsing code which reads the XML database and translates it into
+Python objects.
+
+Code is organized into a base parser class (`NodeParser`) and subclasses
+for each type of database item (spells, monsters, etc.).
+
+The subclasses consist of generator methods `yield_*` which are called
+when the base class encounters an element with a matching tag.
+"""
 import re
 from lxml import etree
 from logging import debug, warning, error

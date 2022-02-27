@@ -1,4 +1,6 @@
-"""Handle actions, in particular, attack actions.
+"""actions. py
+
+Code to parse and represent monster actions, particularly attack actions.
 """
 import re
 from legendlore import calc

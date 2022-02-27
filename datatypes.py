@@ -1,4 +1,7 @@
-"""Various items of data used by both parse.py and higher level code."""
+"""datatypes.py
+
+Data types for aspects of entities found in db_items.py.
+"""
 from functools import total_ordering
 from logging import warning
 from collections import namedtuple

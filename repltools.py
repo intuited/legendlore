@@ -26,6 +26,7 @@ Functionality:
  Spell(Holy Weapon B/T/C<=1h [V/S] (5:C+P)),
  Spell(Raise Dead 1h/T/I [V/S/M@!500!gp] (5:AAl+Bd+C+CG+CLf+P)),
  Spell(Summon Celestial A/90'/C<=1h [V/S/M@500gp] (5:C+P))]
+
 >>> pp(s.byschool.enchantment.where(level=1))
 [Spell(Animal Friendship A/30'/24h [V/S/M] (1:Bd+CN+D+Ra)),
  Spell(Bane A/30'/C<=1m [V/S/M] (1:Bd+C+CG+PV+SDS)),
@@ -45,7 +46,7 @@ from legendlore.util import Generic
 
 # quick Spell Print in commonly used formats
 sp = lambda name: s.search(name).print('xlist')
-pl = lambda name: s.search(name).print('plop')
+pl = lambda name: s.search(name).print('plop')  # Tableplop VTT
 
 # just imported so they'll be available in the REPL
 from legendlore.db_items import Monster, Spell
