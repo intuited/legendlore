@@ -15,3 +15,4 @@ test actions.py
 test db_analysis/monster_nodes.py
 test db_analysis/spell_nodes.py
 test util.py
+test README.md
