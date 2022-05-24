@@ -119,9 +119,19 @@ def or_(*preds):
     False
     >>> ranges('a', aobj(8))
     True
+
+    or_ also supports strings as parameters
+
+    >>> star_words = or_('hello', 'there', 'general', 'kenobi')
+    >>> star_words('a', aobj('general'))
+    True
+    >>> star_words('a', aobj('grievous'))
+    False
     """
     def or_closure(*args, **kwargs):
         for p in preds:
+            if type(p) is str:
+                p = eq(p)
             if p(*args, **kwargs):
                 return True
         return False
@@ -176,6 +186,7 @@ def not_(*preds):
     True
     >>> not_(lt(4))('a', aobj(2))
     False
+
     >>> numnot = not_(contains(1), contains(2), contains(3))
     >>> numnot('a', aobj([1, 2, 3]))
     False
@@ -183,9 +194,17 @@ def not_(*preds):
     True
     >>> numnot('a', aobj([1, 6, 9]))
     False
+
+    >>> notmaster = not_('master')
+    >>> notmaster('a', aobj('master'))
+    False
+    >>> notmaster('a', aobj('Anakin'))
+    True
     """
     def not_closure(*args, **kwargs):
         for p in preds:
+            if type(p) is str:
+                p = eq(p)
             if p(*args, **kwargs):
                 return False
         return True

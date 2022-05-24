@@ -148,6 +148,10 @@ Ever wanted to know which spells are available to sorcerers but not wizards?
     Fire Storm A/150'/I [V/S] (7:C+D+S)
     Earthquake A/500'/C<=1m [V/S/M] (8:C+D+S)
 
+If a string is passed to the `or_` or `not_` composite predicates, it is mapped to the `eq` predicate.  Spells available via the Spirits Bard's 6th-level Spirit Session feature at level 6:
+
+s(school=p.or_('Divination', 'Necromancy'), level=p.lte(3))
+
 Current predicates are:
 
     - `eq`: equivalent to Python's `==` operator
