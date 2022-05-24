@@ -3,7 +3,7 @@
 >>> test = Generic(attrib1='testing', __doc__='Test object docstring.')
 >>> test.attrib1
 'testing'
->>> help(test)
+>>> help(test)   # TODO: fix this functionality
 Help on Generic in module util:
 <BLANKLINE>
 <util.Generic object>
