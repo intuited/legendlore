@@ -151,6 +151,9 @@ class Collection(list):
 
         return self._post_process_where(result)
 
+    def __call__(self, *args, **kwargs):
+        return self.where(*args, **kwargs)
+
     where_fields = reflect.collection_attribs
 
     def _post_process_where(self, result):

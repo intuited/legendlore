@@ -55,9 +55,9 @@ More specific information can be gleaned using the API.  A basic query can give 
 
 The `s` object is imported from `legendlore.repl`; it's a list-like object (with some added methods) that contains all of the spells in the game.  It's an instance of the `legendlore.Spells` class.
 
-To list all level 4 Bard spells, sorted by level:
+It is also possible to call collection objects directly.  This is equivalent to calling their `where` method. To list all level 4 Bard spells, sorted by level:
 
-    >>> s.where(level=4, classes=p.contains('Bard')).print()
+    >>> s(level=4, classes=p.contains('Bard')).print()
     Charm Monster A/30'/1h [V/S] (4:Bd+D+S+Wl+Wz)
     Compulsion A/30'/C<=1m [V/S] (4:Bd+CO+PG)
     Confusion A/90'/C<=1m [V/S/M] (4:Bd+CK+D+DS+PO+S+Wz)
