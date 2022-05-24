@@ -21,6 +21,12 @@ False
 True
 >>> testpred('Testing', startswith('test', ignorecase=False))
 False
+>>> testpred(69, between(69, 90))
+True
+>>> testpred(420, between(69, 420))
+True
+>>> testpred(42, between(69, 420))  # TODO: change laws of mathematics so this is True
+False
 """
 def _hasvalue(obj, attr):
     """True if the attribute `attr` of `obj` exists and is not None."""
@@ -38,6 +44,8 @@ def gt(val):
     return lambda attr, obj: _hasvalue(obj, attr) and getattr(obj, attr) > val
 def gte(val):
     return lambda attr, obj: _hasvalue(obj, attr) and getattr(obj, attr) >= val
+def between(lowbound, highbound):
+    return lambda attr, obj: _hasvalue(obj, attr) and getattr(obj, attr) >= lowbound and getattr(obj, attr) <= highbound
 def key(val):
     """Check if the attr is a dict and contains a key with name == val."""
     def keypred(field_name, obj):
